@@ -50,3 +50,9 @@ El backend es la fuente operativa de verdad. El frontend y n8n presentan o trans
 ## Criterio de alcance
 
 Una funcionalidad pertenece al MVP cuando está respaldada por una especificación vigente en `openspec/specs/`, tiene un contrato verificable y aparece en la hoja de ruta aprobada. Una idea presente solo en un PDF, prototipo o conversación sigue siendo referencia hasta ser incorporada mediante el flujo OpenSpec.
+
+## Cuándo el MVP es suficiente
+
+El alcance indica **qué** debe formar parte del MVP; la especificación de [aceptación del MVP](../../openspec/specs/aceptacion-del-mvp/spec.md) determina **cuándo** el conjunto puede considerarse funcional. La [guía de aceptación](mvp-acceptance.md) traduce ese umbral en puertas, evidencias y un guion reproducible.
+
+La reducción del 30 por ciento en el tiempo de espera y la disponibilidad del 99,9 por ciento son objetivos de resultado que requieren línea base y observación operativa. La entrega académica debe dejar preparada su medición, pero no necesita afirmar resultados que todavía no pueden comprobarse en producción.

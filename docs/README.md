@@ -5,14 +5,15 @@ Este directorio es la entrada humana a la documentación. Los requisitos normati
 ## Orden de lectura recomendado
 
 1. [Visión y alcance del MVP](product/vision-and-scope.md)
-2. [Glosario del dominio](domain/glossary.md)
-3. [Catálogo de casos de uso](product/use-case-catalog.md)
-4. [Matriz de reglas de negocio](product/business-rules.md)
-5. [Contexto del sistema](architecture/system-context.md)
-6. [Decisiones abiertas](planning/open-decisions.md)
-7. [Hoja de ruta](planning/implementation-roadmap.md)
-8. [Flujo de trabajo](development/team-workflow.md)
-9. [Definición de terminado](development/definition-of-done.md)
+2. [Guía de aceptación del MVP](product/mvp-acceptance.md)
+3. [Glosario del dominio](domain/glossary.md)
+4. [Catálogo de casos de uso](product/use-case-catalog.md)
+5. [Matriz de reglas de negocio](product/business-rules.md)
+6. [Contexto del sistema](architecture/system-context.md)
+7. [Decisiones abiertas](planning/open-decisions.md)
+8. [Hoja de ruta](planning/implementation-roadmap.md)
+9. [Flujo de trabajo](development/team-workflow.md)
+10. [Definición de terminado](development/definition-of-done.md)
 
 ## Contenido
 

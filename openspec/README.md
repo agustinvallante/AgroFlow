@@ -32,6 +32,10 @@ changes/agregar-confirmacion-de-arribo/
 
 Las delta specs usan secciones `## ADDED Requirements`, `## MODIFIED Requirements`, `## REMOVED Requirements` o `## RENAMED Requirements`. Las especificaciones vigentes de `specs/` usan `## Requirements`.
 
+## Aceptación del MVP
+
+La capacidad [`aceptacion-del-mvp`](specs/aceptacion-del-mvp/spec.md) define el umbral normativo para declarar una versión funcional. La [guía de aceptación](../docs/product/mvp-acceptance.md) organiza las puertas, evidencias y el guion que el equipo debe ejecutar. La definición de terminado de una tarea no reemplaza esta evaluación del producto integrado.
+
 ## Convenciones
 
 - Una capacidad describe comportamiento observable, no componentes internos.

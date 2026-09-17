@@ -2,6 +2,8 @@
 
 Una tarea funcional se considera terminada solo cuando cumplen los puntos que le corresponden.
 
+Esta lista evalúa una tarea o incremento individual. No implica que el producto completo esté listo: la versión solo se considera MVP cuando también satisface la [especificación de aceptación](../../openspec/specs/aceptacion-del-mvp/spec.md) y la [guía de aceptación del MVP](../product/mvp-acceptance.md).
+
 ## Especificación y alcance
 
 - [ ] El issue enlaza capacidad, caso de uso y reglas relevantes.

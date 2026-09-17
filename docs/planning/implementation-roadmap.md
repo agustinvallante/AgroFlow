@@ -72,6 +72,10 @@ La secuencia prioriza dependencias y demostraciones verticales. Las fechas y res
 
 **Salida verificable:** una instalación limpia puede desplegarse, demostrarse y recuperarse siguiendo la documentación.
 
+## Puerta de aceptación del MVP
+
+Completar las etapas no basta por sí solo para declarar la entrega. La versión candidata debe satisfacer la especificación de [aceptación del MVP](../../openspec/specs/aceptacion-del-mvp/spec.md) y todas las puertas de la [guía de aceptación](../product/mvp-acceptance.md). Si una puerta obligatoria no cumple o está bloqueada, la versión aún no es un MVP aceptado.
+
 ## Regla para cada etapa
 
 Cada funcionalidad se implementa como una porción vertical: cambio OpenSpec, contrato, backend, frontend o integración necesaria, pruebas y documentación. No se considera avance funcional una pantalla aislada o un endpoint que aún no satisfaga un escenario aprobado.

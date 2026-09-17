@@ -25,6 +25,7 @@ Estas preguntas no sustituyen reglas del PDF; son detalles necesarios para poder
 | OD-010 | Entrega de notificaciones | Proveedor, plantillas, estados de entrega, reintentos y tratamiento de fallas. | Interrupciones y cancelaciones | Pendiente |
 | OD-011 | Operación y calidad de servicio | Medición del objetivo de disponibilidad, observabilidad, copias de seguridad, recuperación y tratamiento de datos personales. | Puesta en producción | Pendiente |
 | OD-012 | Indicadores y refresco del dashboard | Fórmulas de cada indicador, fecha operativa e intervalo de actualización periódica. | Dashboard funcional | Pendiente |
+| OD-013 | Alcance de gestión de datos maestros | Definir para transportistas, camiones, fincas y asociaciones las operaciones del MVP, sus campos editables y qué actores pueden ejecutarlas. | Contratos y pantallas de CU-009, CU-010 y CU-012 | Pendiente |
 
 ## Cómo cerrar una decisión
 

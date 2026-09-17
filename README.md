@@ -30,6 +30,7 @@ Los documentos académicos originales son fuentes históricas. Una vez incorpora
 
 - Leer la [guía de incorporación](docs/onboarding/getting-started.md).
 - Consultar la [visión y alcance del MVP](docs/product/vision-and-scope.md).
+- Usar la [guía de aceptación del MVP](docs/product/mvp-acceptance.md) para saber qué resultado es suficiente y qué evidencia conservar.
 - Revisar el [catálogo de casos de uso](docs/product/use-case-catalog.md).
 - Consultar la [matriz de 61 reglas de negocio](docs/product/business-rules.md).
 - Resolver las [decisiones abiertas](docs/planning/open-decisions.md) antes de implementar los puntos bloqueados.
