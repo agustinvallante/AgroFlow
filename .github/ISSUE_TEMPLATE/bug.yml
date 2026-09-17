@@ -1,0 +1,51 @@
+name: Error
+description: Informar una diferencia entre el comportamiento esperado y el observado.
+title: "[Error]: "
+body:
+  - type: dropdown
+    id: area
+    attributes:
+      label: Área observada
+      options:
+        - Backend
+        - Frontend
+        - Integración
+        - Documentación
+    validations:
+      required: true
+  - type: input
+    id: spec
+    attributes:
+      label: Requisito o escenario esperado
+      description: Enlace o identificador dentro de OpenSpec.
+      placeholder: RN-019 / turnos-consulta
+    validations:
+      required: true
+  - type: textarea
+    id: observed
+    attributes:
+      label: Comportamiento observado
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Pasos para reproducir
+      placeholder: |
+        1. ...
+        2. ...
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidencia y entorno
+      description: Capturas, respuesta HTTP, versión, navegador u otros datos sin secretos ni información personal.
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Verificación
+      options:
+        - label: La evidencia no contiene secretos, credenciales ni datos personales.
+          required: true

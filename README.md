@@ -1,28 +1,47 @@
 # AgroFlow
 
-Proyecto académico para la materia **Administración de Sistemas**. El objetivo es convertir el prototipo visual de AgroFlow en una aplicación funcional con una API en .NET y un frontend web.
+Proyecto académico de **Administración de Sistemas** para coordinar turnos y operaciones logísticas de la zafra azucarera. El objetivo es convertir el prototipo visual en una aplicación funcional con una API .NET, un frontend web y una integración controlada con WhatsApp mediante n8n.
 
-## Estado actual
+## Organización del repositorio
 
-Este repositorio contiene el punto de partida técnico:
-
-- `backend/`: copia limpia e independiente del código de [ICS2026-backend](https://github.com/agustinvallante/ICS2026-backend), basada en el commit `dc40f7cfa515a1425f8709c73ae917e9c004266a`.
-- `frontend/`: espacio reservado para integrar o evolucionar [AgroFlow-Dashboard](https://github.com/GabrielBurieque/AgroFlow-Dashboard).
-- `docs/`: especificaciones, decisiones, planificación y contratos del sistema.
-
-La copia se inició sin reutilizar el historial Git del backend original, para mantener un historial propio de AgroFlow y evitar trasladar configuraciones sensibles antiguas.
-
-## Verificación del backend base
-
-Requisitos: SDK de .NET 8 y SQL Server LocalDB.
-
-```powershell
-dotnet restore backend/Dsw2025Tpi.sln
-dotnet build backend/Dsw2025Tpi.sln
+```text
+AgroFlow/
+|- openspec/   Especificaciones normativas y cambios propuestos
+|- docs/       Producto, arquitectura, contratos y guías
+|- backend/    API y persistencia
+`- frontend/   Aplicación web
 ```
 
-La solución todavía conserva nombres y módulos del proyecto de comercio electrónico original. Su adaptación al dominio de AgroFlow se realizará de forma trazable a partir de las especificaciones de `docs/`.
+OpenSpec no reemplaza las carpetas de código. `backend/` y `frontend/` permanecen separados para que cada equipo trabaje con claridad, mientras `openspec/specs/` define el comportamiento común que ambos deben respetar.
 
-## Configuración sensible
+## Fuente de verdad
 
-No se deben versionar claves reales ni credenciales. La clave JWT no está incluida en el repositorio: se debe definir `Jwt__Key` mediante variables de entorno o secretos de usuario de .NET.
+La jerarquía documental del proyecto es:
+
+1. [`openspec/specs/`](openspec/specs/) para comportamiento y criterios verificables.
+2. [`docs/contracts/`](docs/contracts/) para contratos técnicos compartidos.
+3. [`docs/architecture/decisions/`](docs/architecture/decisions/) para decisiones y sus motivos.
+4. [`docs/`](docs/) para contexto, diseño, planificación y guías.
+5. Los README de cada componente para instalación y operación local.
+
+Los documentos académicos originales son fuentes históricas. Una vez incorporado un requisito a OpenSpec, la especificación versionada es la referencia vigente.
+
+## Cómo empezar
+
+- Leer la [guía de incorporación](docs/onboarding/getting-started.md).
+- Consultar la [visión y alcance del MVP](docs/product/vision-and-scope.md).
+- Revisar el [catálogo de casos de uso](docs/product/use-case-catalog.md).
+- Consultar la [matriz de 61 reglas de negocio](docs/product/business-rules.md).
+- Resolver las [decisiones abiertas](docs/planning/open-decisions.md) antes de implementar los puntos bloqueados.
+- Leer el [flujo de trabajo del equipo](docs/development/team-workflow.md).
+- Antes de cambiar comportamiento, crear un cambio en `openspec/changes/`.
+
+## Estado técnico
+
+- El backend parte de una copia independiente de [ICS2026-backend](https://github.com/agustinvallante/ICS2026-backend), commit `dc40f7cfa515a1425f8709c73ae917e9c004266a`.
+- El frontend se integrará desde [AgroFlow-Dashboard](https://github.com/GabrielBurieque/AgroFlow-Dashboard) una vez estabilizado el contrato inicial.
+- El backend heredado todavía conserva nombres y módulos del e-commerce original; no representa aún el dominio objetivo de AgroFlow.
+
+## Seguridad
+
+No se deben versionar claves, credenciales ni datos personales. La clave JWT debe configurarse mediante variables de entorno o secretos de usuario de .NET.

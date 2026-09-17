@@ -1,0 +1,66 @@
+name: Funcionalidad o cambio
+description: Proponer trabajo funcional vinculado con OpenSpec.
+title: "[Funcionalidad]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Antes de crear la tarea, revisá `openspec/specs/` y las decisiones pendientes.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Área responsable
+      options:
+        - Backend
+        - Frontend
+        - Compartida
+        - Documentación
+    validations:
+      required: true
+  - type: input
+    id: capability
+    attributes:
+      label: Capacidad OpenSpec
+      description: Ruta o nombre de la capacidad afectada.
+      placeholder: turnos-ciclo-de-vida
+    validations:
+      required: true
+  - type: input
+    id: use_case
+    attributes:
+      label: Caso de uso y reglas
+      description: Identificadores relacionados.
+      placeholder: CU-006, RN-026, RN-030A
+    validations:
+      required: true
+  - type: input
+    id: change
+    attributes:
+      label: Cambio OpenSpec
+      description: Identificador del cambio; usar "no aplica" solo si restaura una spec vigente.
+      placeholder: agregar-transicion-en-espera
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Resultado observable
+      description: Qué podrá hacer el usuario o qué comportamiento cambiará.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Criterios de aceptación
+      description: Escenarios verificables, incluyendo errores y permisos relevantes.
+      placeholder: |
+        - [ ] Escenario principal
+        - [ ] Validaciones y permisos
+        - [ ] Contrato y pruebas actualizados
+    validations:
+      required: true
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependencias o bloqueos
+      description: Contratos, decisiones abiertas u otras tareas necesarias.

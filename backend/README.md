@@ -4,6 +4,13 @@ Base técnica en .NET 8 reutilizada de [ICS2026-backend](https://github.com/agus
 
 La solución actual aporta una arquitectura por capas, Entity Framework Core, SQL Server, ASP.NET Core Identity, autenticación JWT, Swagger, CORS, health checks y manejo centralizado de errores. Los modelos de comercio electrónico (`Product`, `Order`, `Customer`) son temporales: servirán como referencia de implementación, pero deberán reemplazarse por el dominio de AgroFlow.
 
+Antes de modificar comportamiento, consultar:
+
+- [especificaciones vigentes](../openspec/specs/);
+- [documentación específica del backend](../docs/backend/README.md);
+- [contratos compartidos](../docs/contracts/README.md);
+- [decisiones abiertas](../docs/planning/open-decisions.md).
+
 ## Ejecutar una verificación
 
 ```powershell

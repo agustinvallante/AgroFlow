@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Documentación del proyecto
+    url: https://github.com/agustinvallante/AgroFlow/tree/main/docs
+    about: Revisá la fuente de verdad antes de crear una tarea.

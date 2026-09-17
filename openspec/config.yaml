@@ -1,0 +1,44 @@
+schema: spec-driven
+
+context: |
+  Producto: AgroFlow, sistema web para coordinar turnos y operaciones de ingreso
+  de camiones en un ingenio azucarero.
+
+  Estructura: monorepo con backend/ para la API ASP.NET Core .NET 8 y frontend/
+  para la aplicación React, TypeScript y Vite.
+
+  Fuente normativa de comportamiento: openspec/specs/.
+  Contrato HTTP normativo: docs/contracts/openapi.yaml.
+  Decisiones técnicas: docs/architecture/decisions/.
+  Modelo y vocabulario compartidos: docs/domain/.
+
+  El frontend y el backend deben implementar el mismo comportamiento observable.
+  Los artefactos se redactan en español, conservando SHALL y MUST como palabras
+  normativas requeridas por OpenSpec.
+
+rules:
+  proposal:
+    - "Declarar objetivo, alcance, no alcance y capacidades afectadas."
+    - "Identificar impacto en frontend, backend, persistencia, contrato API y pruebas."
+    - "Vincular los casos de uso de AgroFlow relacionados."
+  specs:
+    - "Describir comportamiento observable y no clases, tablas ni bibliotecas."
+    - "Usar encabezados exactos Requirement y Scenario y palabras normativas SHALL o MUST."
+    - "Cubrir éxito, validaciones, permisos, conflictos y errores relevantes."
+    - "Mantener una sola definición normativa de cada comportamiento."
+  design:
+    - "Explicar decisiones, alternativas, riesgos, migración y estrategia de pruebas."
+    - "Separar claramente responsabilidades de frontend, backend y contratos."
+  tasks:
+    - "Agrupar tareas por dependencias e indicar el área responsable."
+    - "Cada tarea debe incluir una forma concreta de verificar su finalización."
+
+operations:
+  apply:
+    guidance:
+      - "Ejecutar primero las verificaciones enfocadas y luego la integración completa."
+      - "No cambiar comportamiento fuera de las capacidades declaradas."
+  archive:
+    guidance:
+      - "No archivar cambios con tareas pendientes ni documentación divergente."
+      - "Resumir qué specs y contratos quedaron actualizados."
