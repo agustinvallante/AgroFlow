@@ -13,7 +13,7 @@ GitHub Projects son vistas de planificación, no repositorios de código. Una é
 
 | Campo | Valores iniciales |
 |---|---|
-| Estado | Backlog, Ready, In progress, In review, Blocked, Done |
+| Estado | Backlog, To do, In progress, In review, Done |
 | Área | Frontend, Backend, Shared, Docs/DevOps |
 | Capacidad | Nombre del directorio en `openspec/specs/` |
 | Caso de uso | CU-001 a CU-012 |
@@ -53,4 +53,6 @@ Los propietarios por ruta se incorporarán en `CODEOWNERS` cuando el equipo conf
 
 ## Comunicación de bloqueos
 
-Una tarea se marca `Blocked` cuando depende de una decisión abierta, un contrato no aprobado o una dependencia externa. El issue debe enlazar el bloqueo concreto; no se completa el vacío implementando una suposición local.
+Una tarea recibe la etiqueta `status:blocked` cuando depende de una decisión abierta, un contrato no aprobado o una dependencia externa. Conserva su estado actual y el issue debe enlazar el bloqueo concreto; no se completa el vacío implementando una suposición local.
+
+Las reglas de acceso, etiquetado, automatización de los tableros y CI/CD están detalladas en [Automatización de GitHub](github-automation.md).

@@ -1,6 +1,7 @@
 name: Funcionalidad o cambio
 description: Proponer trabajo funcional vinculado con OpenSpec.
 title: "[Funcionalidad]: "
+labels: ["enhancement"]
 body:
   - type: markdown
     attributes:

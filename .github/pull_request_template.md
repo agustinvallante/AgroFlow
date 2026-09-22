@@ -4,7 +4,7 @@
 
 ## Trazabilidad
 
-- Issue:
+- Issue que cierra (`Closes #<número>`):
 - Cambio OpenSpec:
 - Capacidades afectadas:
 - Casos de uso:

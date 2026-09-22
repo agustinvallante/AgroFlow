@@ -1,0 +1,31 @@
+area:backend:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "backend/**"
+          - "docs/backend/**"
+
+area:frontend:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "frontend/**"
+          - "docs/frontend/**"
+
+area:shared:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "openspec/**"
+          - "docs/architecture/**"
+          - "docs/contracts/**"
+          - "docs/domain/**"
+          - "docs/product/**"
+
+area:docs-devops:
+  - changed-files:
+      - any-glob-to-any-file:
+          - ".github/**"
+          - "docs/development/**"
+          - "docs/onboarding/**"
+          - "docs/operations/**"
+          - "docs/planning/**"
+          - "docs/reference/**"
+          - "*.md"

@@ -13,7 +13,8 @@ Este directorio es la entrada humana a la documentación. Los requisitos normati
 7. [Decisiones abiertas](planning/open-decisions.md)
 8. [Hoja de ruta](planning/implementation-roadmap.md)
 9. [Flujo de trabajo](development/team-workflow.md)
-10. [Definición de terminado](development/definition-of-done.md)
+10. [Automatización de GitHub](development/github-automation.md)
+11. [Definición de terminado](development/definition-of-done.md)
 
 ## Contenido
 

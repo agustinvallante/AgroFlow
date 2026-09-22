@@ -1,5 +1,7 @@
 # AgroFlow
 
+[![CI](https://github.com/agustinvallante/AgroFlow/actions/workflows/ci.yml/badge.svg)](https://github.com/agustinvallante/AgroFlow/actions/workflows/ci.yml)
+
 Proyecto académico de **Administración de Sistemas** para coordinar turnos y operaciones logísticas de la zafra azucarera. El objetivo es convertir el prototipo visual en una aplicación funcional con una API .NET, un frontend web y una integración controlada con WhatsApp mediante n8n.
 
 ## Organización del repositorio

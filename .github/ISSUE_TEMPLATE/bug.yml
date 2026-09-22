@@ -1,6 +1,7 @@
 name: Error
 description: Informar una diferencia entre el comportamiento esperado y el observado.
 title: "[Error]: "
+labels: ["bug"]
 body:
   - type: dropdown
     id: area

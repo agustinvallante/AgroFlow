@@ -1,0 +1,91 @@
+name: Issue triage
+
+on:
+  issues:
+    types: [opened, edited]
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  area-label:
+    name: Apply area label
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Map issue form area to a label
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const definitions = {
+              "area:backend": { color: "1D76DB", description: "Trabajo del backend y la API" },
+              "area:frontend": { color: "A371F7", description: "Trabajo de la aplicación frontend" },
+              "area:shared": { color: "0E8A16", description: "Trabajo transversal o de integración" },
+              "area:docs-devops": { color: "5319E7", description: "Documentación, CI/CD y operación" },
+            };
+
+            const body = context.payload.issue.body ?? "";
+            const areaMatch = body.match(/###\s+Área (?:responsable|observada)\s*\r?\n+\s*([^\r\n]+)/i);
+            if (!areaMatch) {
+              core.notice("El issue no contiene un área reconocible de las plantillas vigentes.");
+              return;
+            }
+
+            const area = areaMatch[1]
+              .trim()
+              .toLocaleLowerCase("es")
+              .normalize("NFD")
+              .replace(/\p{Diacritic}/gu, "");
+
+            const labelByArea = {
+              backend: "area:backend",
+              frontend: "area:frontend",
+              compartida: "area:shared",
+              integracion: "area:shared",
+              documentacion: "area:docs-devops",
+            };
+            const desiredLabel = labelByArea[area];
+            if (!desiredLabel) {
+              core.warning(`Área no contemplada: ${areaMatch[1]}`);
+              return;
+            }
+
+            const { owner, repo } = context.repo;
+            try {
+              await github.rest.issues.getLabel({ owner, repo, name: desiredLabel });
+            } catch (error) {
+              if (error.status !== 404) throw error;
+              const definition = definitions[desiredLabel];
+              await github.rest.issues.createLabel({
+                owner,
+                repo,
+                name: desiredLabel,
+                color: definition.color,
+                description: definition.description,
+              });
+            }
+
+            const currentLabels = context.payload.issue.labels
+              .map((label) => typeof label === "string" ? label : label.name)
+              .filter(Boolean);
+
+            for (const label of currentLabels) {
+              if (Object.hasOwn(definitions, label) && label !== desiredLabel) {
+                await github.rest.issues.removeLabel({
+                  owner,
+                  repo,
+                  issue_number: context.issue.number,
+                  name: label,
+                });
+              }
+            }
+
+            if (!currentLabels.includes(desiredLabel)) {
+              await github.rest.issues.addLabels({
+                owner,
+                repo,
+                issue_number: context.issue.number,
+                labels: [desiredLabel],
+              });
+            }
