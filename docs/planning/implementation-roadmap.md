@@ -23,6 +23,8 @@ La duración y capacidad de ventanas son configurables **por ingenio mediante da
 
 Al aprobar `B00` y el contrato inicial, el equipo debe descomponer el trabajo frontend por recorridos: acceso, datos maestros, turnos, operación, dashboard y estados de error. Cada porción necesita una fuente real de API, pruebas y documentación; no basta con conectar el prototipo a respuestas simuladas. El [flujo de trabajo del equipo](../development/team-workflow.md) describe cómo coordinar cambios compartidos entre ambos Projects.
 
+La fundación del frontend y su navegación se documentan en la [arquitectura del frontend](../architecture/frontend/frontend-architecture.md) y en [sus decisiones](../architecture/frontend/frontend-decisions.md); el frontend ejecutable aún no existe y los contratos publicados siguen siendo parciales.
+
 Completar las 38 issues backend no equivale por sí mismo a entregar el MVP. El candidato debe satisfacer la [especificación de aceptación](../../openspec/specs/aceptacion-del-mvp/spec.md) y todas las puertas de la [guía de aceptación](../product/mvp-acceptance.md), incluidas interfaz, n8n, persistencia, recuperación y demostración repetible.
 
 Cada comportamiento nuevo o modificado sigue el flujo de [ADR-002](../architecture/decisions/ADR-002-jerarquia-documental-y-openspec.md): cambio OpenSpec, contrato, implementación, pruebas y documentación coherentes. Una decisión abierta no se completa mediante una suposición local en un endpoint.

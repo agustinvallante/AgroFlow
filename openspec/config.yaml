@@ -5,7 +5,8 @@ context: |
   de camiones en un ingenio azucarero.
 
   Estructura: monorepo con backend/ para la API ASP.NET Core .NET 8 y frontend/
-  para la aplicación React, TypeScript y Vite.
+  para la aplicación objetivo en Next.js, TypeScript y App Router, con TanStack
+  Query para estado remoto y Zustand para estado efímero de interfaz.
 
   Fuente normativa de comportamiento: openspec/specs/.
   Contrato HTTP normativo: docs/contracts/openapi.yaml.

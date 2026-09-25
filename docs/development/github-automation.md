@@ -44,15 +44,19 @@ El workflow `CI` ejecuta cuatro controles coordinados:
 
 1. valida OpenSpec, OpenAPI y enlaces Markdown locales;
 2. restaura, compila y, cuando existan, prueba los proyectos .NET;
-3. instala, analiza, prueba y compila el frontend cuando esté incorporado;
+3. inspecciona `frontend/` y, solo si encuentra `package.json` junto con `package-lock.json`, ejecuta `npm ci`, los scripts opcionales de tipos, lint y pruebas, y luego `npm run build`;
 4. publica un resultado agregado estable llamado `Required checks`.
 
-La protección de `main` debe exigir `Required checks`, una aprobación y la resolución de conversaciones. El job informa expresamente si aún no existen pruebas backend o si el frontend todavía no fue importado; un aviso no debe confundirse con cobertura.
+Hoy `frontend/` contiene únicamente su README, por lo que el job frontend informa que el proyecto todavía no fue incorporado y no ejecuta instalación, pruebas ni build. Si apareciera código sin `package.json`, o un `package.json` sin lockfile, el job fallaría. Este comportamiento comprueba la presencia de una base ejecutable, pero no demuestra que existan funcionalidades frontend.
+
+La protección de `main` debe exigir `Required checks`, una aprobación y la resolución de conversaciones. El job también informa expresamente si aún no existen pruebas backend; un aviso no debe confundirse con cobertura.
 
 `Dependency review` rechaza dependencias nuevas con vulnerabilidades altas o críticas. Dependabot revisa semanalmente GitHub Actions y paquetes NuGet. La fuente npm se agregará cuando `frontend/` posea `package.json` y `package-lock.json`.
 
 ## Entrega y despliegue
 
-Cada push válido a `main` publica durante 14 días un artefacto compilado del backend y, cuando exista, `frontend/dist`. Esto constituye **entrega continua de artefactos**, no despliegue.
+Cada push válido a `main` publica durante 14 días un artefacto compilado del backend. El workflow actual también intenta publicar `frontend/dist` cuando detecta un proyecto frontend; esa ruta pertenece al supuesto anterior de una salida estática y todavía no se ejecuta porque la implementación frontend no existe.
 
-El despliegue automático se agregará después de aprobar proveedor, ambiente, dominio, base de datos, secretos y estrategia de migraciones. No se debe crear un workflow de despliegue vacío ni almacenar credenciales en el repositorio.
+La arquitectura objetivo es Next.js con BFF y sesión server-side aceptados; la topología de despliegue y los detalles operativos de la sesión siguen pendientes. Empaquetar un artefacto autónomo de Next.js queda como seguimiento futuro: aún no está aplicado al workflow ni debe interpretarse como una decisión de despliegue.
+
+La publicación de artefactos constituye **entrega continua**, no despliegue. El despliegue automático se agregará después de aprobar proveedor, ambiente, dominio, base de datos, secretos y estrategia de migraciones. No se debe crear un workflow de despliegue vacío ni almacenar credenciales en el repositorio.
