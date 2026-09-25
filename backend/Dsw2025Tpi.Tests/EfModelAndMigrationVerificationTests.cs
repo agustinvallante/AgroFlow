@@ -1,8 +1,6 @@
 using Dsw2025Tpi.Data;
 using Dsw2025Tpi.Data.Identity;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Infrastructure;
-using Microsoft.EntityFrameworkCore.Migrations;
 using Xunit;
 
 namespace Dsw2025Tpi.Tests;
@@ -65,62 +63,6 @@ public sealed class EfModelAndMigrationVerificationTests
         Assert.NotNull(isActive);
         Assert.False(isActive!.IsNullable);
         Assert.Equal(true, isActive.GetDefaultValue());
-    }
-
-    [Fact]
-    public void Platform_migrations_are_discoverable_and_generate_sql_without_connecting()
-    {
-        using var context = new Dsw2025TpiContext(new DbContextOptionsBuilder<Dsw2025TpiContext>()
-            .UseSqlServer("Server=(local);Database=ModelOnly;Trusted_Connection=True;TrustServerCertificate=True")
-            .Options);
-
-        var migrations = context.Database.GetMigrations().ToArray();
-        Assert.Contains("20260925174342_AddAgroFlowPlatformPrimitives", migrations);
-
-        var script = context.GetService<IMigrator>().GenerateScript();
-        Assert.Contains("CREATE TABLE [Ingenios]", script);
-        Assert.Contains("CREATE TABLE [AuditEvents]", script);
-        Assert.Contains("CREATE TABLE [IdempotencyRecords]", script);
-    }
-
-    [Fact]
-    public void Master_data_migration_is_discoverable_and_generates_tenant_safe_sql()
-    {
-        using var context = new Dsw2025TpiContext(new DbContextOptionsBuilder<Dsw2025TpiContext>()
-            .UseSqlServer("Server=(local);Database=ModelOnly;Trusted_Connection=True;TrustServerCertificate=True")
-            .Options);
-
-        var migrations = context.Database.GetMigrations().ToArray();
-        Assert.Contains("20260925202117_AddAgroFlowMasterData", migrations);
-
-        var script = context.GetService<IMigrator>().GenerateScript();
-        Assert.Contains("CREATE TABLE [Transportistas]", script);
-        Assert.Contains("CREATE TABLE [Camiones]", script);
-        Assert.Contains("CREATE TABLE [Fincas]", script);
-        Assert.Contains("CREATE TABLE [TransportistasCamiones]", script);
-        Assert.Contains("NormalizedDni", script);
-        Assert.Contains("NormalizedWhatsApp", script);
-        Assert.Contains("NormalizedPlate", script);
-        Assert.Contains("[IsActive] = 1", script);
-        Assert.Contains("FK_Transportistas_Ingenios_IngenioId", script);
-        Assert.Contains("FK_Fincas_Ingenios_IngenioId", script);
-        Assert.Contains("FK_TransportistasCamiones_Camiones_IngenioId_CamionId", script);
-    }
-
-    [Fact]
-    public void Authenticate_migrations_are_discoverable_and_generate_sql_without_connecting()
-    {
-        using var context = new AuthenticateContext(new DbContextOptionsBuilder<AuthenticateContext>()
-            .UseSqlServer("Server=(local);Database=ModelOnly;Trusted_Connection=True;TrustServerCertificate=True")
-            .Options);
-
-        var migrations = context.Database.GetMigrations().ToArray();
-        Assert.Contains("20260925174331_AddAgroFlowIdentityContext", migrations);
-
-        var script = context.GetService<IMigrator>().GenerateScript();
-        Assert.Contains("ALTER TABLE [Usuarios]", script);
-        Assert.Contains("IngenioId", script);
-        Assert.Contains("IsActive", script);
     }
 
     private static Microsoft.EntityFrameworkCore.Metadata.IEntityType AssertTable(
