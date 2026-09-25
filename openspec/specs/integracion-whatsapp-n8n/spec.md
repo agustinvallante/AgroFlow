@@ -22,6 +22,16 @@ Para solicitudes y consultas originadas en WhatsApp, AgroFlow SHALL identificar 
 - **WHEN** n8n solicita una operación
 - **THEN** AgroFlow la rechaza sin exponer datos de turnos o camiones
 
+### Requirement: Solicitud conversacional sin elección de franja
+
+n8n SHALL reunir el momento de corte y la carga estimada además de los datos requeridos para identificar al transportista, camión y finca cuando recibe una solicitud de turno. MUST NOT pedir una ventana preferida para el MVP y SHALL comunicar la ventana asignada por el backend únicamente después de su confirmación.
+
+#### Scenario: Solicitud válida desde WhatsApp
+
+- **GIVEN** un transportista identificado y un camión asociado
+- **WHEN** comunica una finca, un momento de corte y una carga estimada válidos
+- **THEN** n8n solicita el turno a la API sin elegir la franja y comunica la asignación persistida que recibe
+
 ### Requirement: Backend como fuente de verdad (RN-019, RN-037)
 
 El backend de AgroFlow SHALL determinar el estado vigente, quién debe ser notificado y qué cambió; n8n MUST limitarse a invocar la API y efectuar la comunicación mediante WhatsApp.

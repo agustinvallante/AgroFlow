@@ -32,6 +32,7 @@ El backend es la fuente operativa de verdad. El frontend y n8n presentan o trans
 - solicitud, asignación, consulta y cancelación de turnos;
 - máquina de estados del ciclo operativo;
 - prioridad y reserva de capacidad;
+- cola visual con todas las ventanas del día, incluso las vacías, y sus cupos restantes calculados por la API;
 - registro de interrupciones y reprogramación;
 - dashboard operativo diario;
 - integración con WhatsApp a través de n8n;
@@ -45,7 +46,9 @@ El backend es la fuente operativa de verdad. El frontend y n8n presentan o trans
 - integración con ERP;
 - analítica predictiva avanzada;
 - obligación de actualización mediante WebSockets;
-- optimización de rutas fuera del proceso de turnos.
+- optimización de rutas fuera del proceso de turnos;
+- edición desde la interfaz de la duración o el cupo de las ventanas: en el MVP se configuran por ingenio al preparar el ambiente; el calendario de recepción aún requiere una decisión específica;
+- cancelación de turnos por WhatsApp: el recorrido obligatorio la realiza un usuario interno autorizado.
 
 ## Criterio de alcance
 

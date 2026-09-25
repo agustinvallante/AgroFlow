@@ -1,36 +1,4 @@
-# Solicitud y asignación de turnos
-
-## Purpose
-
-Define el comportamiento vigente para solicitar, priorizar, asignar y confirmar turnos en CU-002. Los detalles todavía no aprobados se mantienen en `docs/planning/open-decisions.md`.
-
-## Requirements
-
-### Requirement: Asignación autoritativa en el backend (RN-008, RN-013)
-
-El backend de AgroFlow SHALL ser el único responsable de asignar turnos y MUST NOT informar un turno como confirmado antes de persistirlo correctamente.
-
-#### Scenario: Asignación persistida
-
-- **GIVEN** una solicitud válida con capacidad disponible
-- **WHEN** el backend asigna y persiste el turno
-- **THEN** AgroFlow devuelve la confirmación con el estado persistido
-
-#### Scenario: Falla de persistencia
-
-- **GIVEN** una solicitud que superó las validaciones
-- **WHEN** no puede persistirse la asignación
-- **THEN** AgroFlow no comunica el turno como confirmado ni mantiene una reserva aparente
-
-### Requirement: Ventana horaria obligatoria (RN-009)
-
-Todo turno confirmado SHALL poseer una ventana horaria de llegada.
-
-#### Scenario: Confirmación sin ventana
-
-- **GIVEN** una solicitud de turno válida
-- **WHEN** no existe una ventana que pueda asignarse
-- **THEN** AgroFlow no confirma un turno incompleto
+## MODIFIED Requirements
 
 ### Requirement: Factores de prioridad (RN-010, RN-011)
 
@@ -47,6 +15,18 @@ Cuando varias solicitudes elegibles compitan por capacidad, AgroFlow SHALL prior
 - **GIVEN** dos solicitudes elegibles con el mismo tiempo desde el corte
 - **WHEN** compiten por capacidad limitada
 - **THEN** AgroFlow atiende primero la de flota propia y, si ambas tienen el mismo tipo de flota, la registrada antes
+
+### Requirement: Alternativa ante falta de disponibilidad (RN-016)
+
+AgroFlow SHALL asignar automáticamente la primera ventana futura compatible con el calendario y el cupo del ingenio, las interrupciones vigentes y la política de prioridad, sin solicitar una preferencia de horario. Si una ventana está completa, SHALL continuar con la próxima compatible; MUST NOT confirmar un turno sin ventana.
+
+#### Scenario: Primera ventana sin cupo
+
+- **GIVEN** una solicitud elegible y una primera ventana compatible sin capacidad
+- **WHEN** existe una ventana posterior compatible con cupo
+- **THEN** AgroFlow asigna esa próxima ventana disponible sin pedir al solicitante una alternativa
+
+## ADDED Requirements
 
 ### Requirement: Datos mínimos de la solicitud
 
@@ -83,33 +63,3 @@ AgroFlow SHALL permitir que un operador o supervisor autorizado solicite un turn
 - **GIVEN** un operador o supervisor autorizado de un ingenio y datos válidos de transportista, camión y finca
 - **WHEN** solicita un turno desde la interfaz interna
 - **THEN** el backend asigna la próxima ventana compatible conforme a las mismas reglas aplicadas al canal conversacional
-
-### Requirement: Exclusión de turnos activos por camión (RN-012)
-
-AgroFlow MUST impedir que un mismo camión posea simultáneamente más de un turno activo.
-
-#### Scenario: Segundo turno activo
-
-- **GIVEN** un camión que ya posee un turno activo
-- **WHEN** se intenta confirmar otro turno activo para la misma patente
-- **THEN** AgroFlow rechaza la asignación sin consumir capacidad adicional
-
-### Requirement: Camión único y activo (RN-015)
-
-AgroFlow SHALL identificar al camión por una patente única y MUST verificar que esté activo antes de asignarle un turno.
-
-#### Scenario: Patente inexistente o inactiva
-
-- **GIVEN** una solicitud asociada a una patente inexistente o a un camión inactivo
-- **WHEN** el backend valida la solicitud
-- **THEN** AgroFlow la rechaza sin asignar una ventana
-
-### Requirement: Alternativa ante falta de disponibilidad (RN-016)
-
-AgroFlow SHALL asignar automáticamente la primera ventana futura compatible con el calendario y el cupo del ingenio, las interrupciones vigentes y la política de prioridad, sin solicitar una preferencia de horario. Si una ventana está completa, SHALL continuar con la próxima compatible; MUST NOT confirmar un turno sin ventana.
-
-#### Scenario: Primera ventana sin cupo
-
-- **GIVEN** una solicitud elegible y una primera ventana compatible sin capacidad
-- **WHEN** existe una ventana posterior compatible con cupo
-- **THEN** AgroFlow asigna esa próxima ventana disponible sin pedir al solicitante una alternativa

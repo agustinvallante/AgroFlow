@@ -12,10 +12,10 @@ AgroFlow coordina la asignación y el seguimiento de turnos para el ingreso de c
 
 | Actor o sistema | Relación con AgroFlow |
 |---|---|
-| Transportista | Solicita, consulta, actualiza o cancela turnos mediante el canal habilitado. En el MVP, el canal conversacional previsto es WhatsApp. |
-| Operador | Gestiona la operación diaria, consulta turnos y registra acciones operativas autorizadas. |
-| Supervisor o gerente | Monitorea la operación y accede a información acorde con sus permisos. |
-| Administrador autorizado | Mantiene datos maestros y accesos según la matriz de permisos que se apruebe. |
+| Transportista | Solicita y consulta turnos e informa `EN_CAMINO` mediante WhatsApp/n8n. La cancelación por ese canal no es obligatoria en el MVP. |
+| Operador | Gestiona los tres catálogos, crea y cancela turnos de su ingenio desde la interfaz interna y ejecuta las transiciones operativas autorizadas. |
+| Supervisor o gerente | El supervisor puede gestionar los tres catálogos y crear o cancelar turnos de su ingenio; el gerente monitorea según los permisos que aún deben completarse. |
+| Administrador autorizado | Mantiene accesos según la matriz de permisos que se apruebe; no sustituye los permisos ya confirmados para operador y supervisor. |
 | WhatsApp y su proveedor | Canal externo de mensajería. El proveedor y sus detalles técnicos todavía deben definirse. |
 | n8n | Adaptador entre el canal de mensajería y la API. Normaliza solicitudes y presenta respuestas; no decide reglas de negocio. |
 | Repositorio de datos | Conserva el estado operativo, las relaciones del dominio y la trazabilidad. La base técnica actual utiliza Entity Framework Core y SQL Server. |
@@ -85,7 +85,7 @@ La solución actual es una base reutilizada y todavía contiene nombres y modelo
 4. El backend valida, decide y persiste la operación.
 5. n8n presenta la respuesta del backend sin reinterpretar la regla de negocio.
 
-La autenticación del canal, la deduplicación y los reintentos son decisiones que deben quedar cerradas antes de implementar la integración productiva.
+La autenticación del canal, la deduplicación y los reintentos deben quedar cerrados para el ambiente de demostración antes de implementar su integración. Un proveedor de pruebas o adaptador reproducible puede emular el límite de WhatsApp; n8n y la API real siguen siendo parte del recorrido.
 
 ## Capacidades dentro del límite
 

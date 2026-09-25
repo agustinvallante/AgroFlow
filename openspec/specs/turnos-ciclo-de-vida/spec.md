@@ -60,7 +60,7 @@ AgroFlow MUST considerar un nuevo estado efectivo únicamente después de persis
 
 ### Requirement: Estados cancelables (RN-050, RN-051)
 
-AgroFlow SHALL permitir la cancelación solo desde `ASIGNADO`, `EN_CAMINO` o `EN_ESPERA` y MUST rechazarla desde `INGRESADO`, `EN_DESCARGA`, `FINALIZADO` o `CANCELADO`.
+AgroFlow SHALL permitir a operadores y supervisores autorizados del ingenio cancelar turnos solo desde `ASIGNADO`, `EN_CAMINO` o `EN_ESPERA` y MUST rechazarla desde `INGRESADO`, `EN_DESCARGA`, `FINALIZADO` o `CANCELADO`. Los demás permisos de cancelación continúan sujetos a `OD-007`.
 
 #### Scenario: Cancelación permitida
 

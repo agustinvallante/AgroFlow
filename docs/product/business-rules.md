@@ -10,6 +10,7 @@ La normativa vigente del producto reside en `openspec/specs/`. Si existe una dif
 
 - **Especificada:** la regla expresa un comportamiento normativo utilizable como base de escenarios OpenSpec.
 - **Decisión pendiente:** el PDF exige considerar el tema, pero deja abierta una decisión que impide cerrar su comportamiento exacto.
+- **Antecedente sustituido:** la formulación original se conserva para trazabilidad, pero una decisión posterior aprobada define otro comportamiento para el MVP. No se debe implementar el antecedente como si fuera vigente.
 
 ## CU-001 - Autenticación de Usuario
 
@@ -29,13 +30,13 @@ La normativa vigente del producto reside en `openspec/specs/`. Si existe una dif
 |---|---|---|---|
 | RN-008 | La asignación de turnos debe ser realizada exclusivamente por el backend de AgroFlow. | `turnos-solicitud-y-asignacion` | Especificada |
 | RN-009 | Todo turno debe poseer una ventana horaria de llegada. | `turnos-solicitud-y-asignacion` | Especificada |
-| RN-010 | La prioridad debe considerar el tiempo transcurrido desde el corte de la caña. | `turnos-solicitud-y-asignacion` | Decisión pendiente |
-| RN-011 | La prioridad debe contemplar la diferenciación entre flota propia y flota de terceros. | `turnos-solicitud-y-asignacion` | Decisión pendiente |
+| RN-010 | La prioridad debe considerar el tiempo transcurrido desde el corte de la caña. | `turnos-solicitud-y-asignacion` | Especificada |
+| RN-011 | La prioridad debe contemplar la diferenciación entre flota propia y flota de terceros. | `turnos-solicitud-y-asignacion` | Especificada |
 | RN-012 | Un mismo camión no puede poseer simultáneamente más de un turno activo. | `turnos-solicitud-y-asignacion` | Especificada |
 | RN-013 | Un turno solo puede informarse como confirmado cuando haya sido persistido correctamente por el backend. | `turnos-solicitud-y-asignacion` | Especificada |
 | RN-014 | En solicitudes originadas por WhatsApp, el transportista se identifica por el número telefónico del remitente. | `integracion-whatsapp-n8n` | Especificada |
 | RN-015 | El camión se identifica mediante una patente única y debe encontrarse activo. | `turnos-solicitud-y-asignacion` | Especificada |
-| RN-016 | Si la ventana solicitada no tiene disponibilidad, AgroFlow asigna automáticamente la próxima ventana disponible considerando las reglas de prioridad. | `turnos-solicitud-y-asignacion` | Decisión pendiente |
+| RN-016 | Si la ventana solicitada no tiene disponibilidad, AgroFlow asigna automáticamente la próxima ventana disponible considerando las reglas de prioridad. | `turnos-solicitud-y-asignacion` | Antecedente sustituido |
 
 ## CU-003 - Consultar Turno
 
@@ -134,7 +135,15 @@ La normativa vigente del producto reside en `openspec/specs/`. Si existe una dif
 
 ## Decisiones abiertas relacionadas
 
-- La fórmula o precedencia que combina RN-010 y RN-011 todavía debe aprobarse.
-- RN-016 fija el comportamiento de respaldo cuando una ventana solicitada no tiene disponibilidad, pero sigue pendiente decidir si el transportista elige una franja preferida o si AgroFlow asigna siempre la próxima ventana.
-- La cardinalidad transportista-camión permanece pendiente. RN-017 conserva su estado **Especificada** porque la restricción de autorización es inequívoca; la cardinalidad y el diseño de la asociación son una decisión de modelo separada.
-- RN-033 está especificada como obligación de reprogramar, aunque su resultado concreto depende de la política de prioridad aún pendiente.
+Las siguientes decisiones fueron aprobadas después del PDF y se documentan en [ADR-004](../architecture/decisions/ADR-004-politicas-operativas-del-mvp.md). No modifican el texto de la columna «Regla original»:
+
+- `OD-001` concreta RN-010 y RN-011: mayor tiempo desde el corte primero; flota propia antes que terceros ante igualdad; solicitud más antigua como siguiente desempate. Las validaciones del momento de corte y la concurrencia permanecen abiertas en `OD-005` y `OD-006`.
+- `OD-003` sustituye el supuesto de RN-016 sobre una ventana solicitada: en el MVP nadie elige franja preferida; el backend asigna siempre la próxima compatible. RN-016 se conserva únicamente como antecedente de relevamiento.
+- `OD-002` acota la asociación requerida por RN-017: un camión puede tener solo un transportista autorizado activo a la vez. RN-017 sigue **Especificada** como restricción de consulta; la gestión detallada de asociaciones permanece abierta en `OD-013`.
+- `OD-004` dispone que duración y cupo son configurables por ingenio con datos de arranque; el seed demo usará 30 minutos y 2 camiones por ventana. Calendario, zona horaria y límites siguen abiertos.
+- `OD-005` añade fecha y hora de corte y carga estimada a la solicitud, además de transportista, camión y finca; formatos, unidades y validaciones siguen abiertos.
+- `OD-007` y `OD-013` aprueban listado, alta, edición e inhabilitación de los tres catálogos por operador o supervisor del ingenio, y creación/cancelación interna de turnos por esos roles. Campos editables, asociaciones y permisos restantes siguen abiertos.
+- `OD-012` añade al MVP una cola visual con franjas vacías y cupos restantes provenientes de la API. Las fórmulas de indicadores, fecha operativa y refresco aún no están cerrados.
+- RN-033 continúa especificada como obligación de reprogramar con la prioridad aprobada, pero el resultado exacto depende también del calendario, capacidad y estrategia de concurrencia pendientes en `OD-004` y `OD-006`.
+
+El [registro de decisiones](../planning/open-decisions.md) distingue cada política resuelta de los detalles que aún bloquean escenarios verificables.

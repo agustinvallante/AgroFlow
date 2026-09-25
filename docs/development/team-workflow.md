@@ -2,31 +2,32 @@
 
 ## Un repositorio, dos áreas de trabajo
 
-El código permanece en un monorepo con `frontend/` y `backend/`. OpenSpec, contratos, issues y decisiones son compartidos. La separación del trabajo se realizará mediante responsables por ruta y, cuando el equipo los cree, dos GitHub Projects:
+El código permanece en un monorepo con `frontend/` y `backend/`. OpenSpec, contratos y decisiones son compartidos. La separación de la planificación ya utiliza dos GitHub Projects:
 
-- **AgroFlow — Frontend**, filtrado por tareas del área frontend;
-- **AgroFlow — Backend**, filtrado por tareas del área backend.
+- [**AgroFlow — Frontend**](https://github.com/users/agustinvallante/projects/1), para tareas del área frontend;
+- [**AgroFlow — Backend**](https://github.com/users/agustinvallante/projects/2), para tareas del área backend.
 
-GitHub Projects son vistas de planificación, no repositorios de código. Una épica transversal se define una sola vez y puede tener subtareas por área visibles en ambos tableros.
+GitHub Projects son tableros de planificación, no repositorios de código. Las decisiones y el contrato compartidos no se copian como fuentes normativas separadas para cada tablero. Una necesidad transversal puede descomponerse en issues por área y enlazarse, manteniendo una sola especificación por capacidad.
 
-## Campos recomendados para los Projects
+Al preparar esta guía, el Project Backend contiene **38 issues `B00`–`B07` y `B10`–`B39`, todas en Backlog**. Son tareas preparadas para refinar y tomar; no indican endpoints implementados. El Project Frontend aún no tiene issues de implementación planificadas. La [hoja de ruta](../planning/implementation-roadmap.md) describe las dependencias lógicas entre las del backend.
 
-| Campo | Valores iniciales |
+## Estados y metadatos
+
+| Mecanismo | Uso |
 |---|---|
-| Estado | Backlog, To do, In progress, In review, Done |
-| Área | Frontend, Backend, Shared, Docs/DevOps |
-| Capacidad | Nombre del directorio en `openspec/specs/` |
-| Caso de uso | CU-001 a CU-012 |
-| Prioridad | Alta, Media, Baja |
-| Entrega | Hito o demo objetivo |
+| Estado del Project | `Backlog`, `To do`, `In progress`, `In review`, `Done`. |
+| Etiqueta de área | `area:backend`, `area:frontend`, `area:shared` o `area:docs-devops`, según el trabajo real. |
+| Trazabilidad del issue | Capacidad de `openspec/specs/`, casos `CU-*`, reglas `RN-*`, dependencias y puerta `MVP-G*` cuando correspondan. |
+
+No se debe asumir que Área, Capacidad, Caso de uso, Prioridad o Entrega existan como campos personalizados del Project. Si el equipo quiere añadirlos, debe definir valores y mantenimiento antes de depender de ellos para automatizaciones o filtros.
 
 ## De una necesidad a código
 
-1. Crear un issue con la plantilla de funcionalidad o error.
+1. Crear o tomar un issue del área correspondiente con la plantilla de funcionalidad o error. Las `Bxx` existentes permanecen en Backlog hasta que el equipo las refine y priorice.
 2. Vincular capacidad, caso de uso y reglas `RN-*`.
 3. Confirmar que ninguna decisión pendiente bloquee el resultado.
 4. Para comportamiento nuevo o modificado, crear `openspec/changes/<id>/`.
-5. Revisar propuesta, escenarios, contrato y tareas con todas las áreas afectadas.
+5. Revisar propuesta, escenarios, contrato OpenAPI y tareas con todas las áreas afectadas. Las rutas en títulos de issues backend son propuestas, no contrato aprobado, hasta cerrar `B00`.
 6. Crear una rama corta y desarrollar la porción asignada.
 7. Abrir un pull request y completar la plantilla.
 8. Integrar solo cuando cumpla la definición de terminado.
@@ -38,7 +39,7 @@ Ejemplo para “cancelar turno”:
 - issue o épica compartida: comportamiento CU-011 y cambio OpenSpec;
 - tarea backend: autorización, transición, transacción, capacidad y pruebas;
 - tarea frontend: acción, confirmación, estados de carga/error y pruebas;
-- tarea de integración, si aplica: intención de WhatsApp y respuesta;
+- integración conversacional de cancelación solo si se aprueba explícitamente como ampliación mediante OpenSpec; no forma parte del MVP vigente;
 - una sola especificación y un solo contrato para todas las tareas.
 
 ## Ramas y revisiones
