@@ -2,15 +2,17 @@
 
 La secuencia prioriza dependencias y demostraciones verticales. Las fechas y responsables se asignarán en GitHub Projects; este documento define el orden lógico, no un calendario cerrado.
 
+El frontend todavía no está implementado. Su arquitectura objetivo se prepara primero como fundación técnica; ninguna funcionalidad debe conectarse hasta que OpenAPI publique las rutas correspondientes y estén aprobadas las decisiones que bloquean esa capacidad. El prototipo es referencia visual y no se importa como base de código.
+
 ## Etapa 0 — Alineación
 
 - aprobar OD-001 a OD-008 o limitar explícitamente el alcance de la primera demo;
 - acordar matriz de roles, vocabulario y definición de turno activo;
 - retirar del backend heredado el dominio de e-commerce y renombrar la solución;
-- importar el frontend prototipo conservando su diseño, sin datos simulados como fuente de verdad;
-- aprobar el primer contrato OpenAPI y la estrategia de ambientes.
+- crear la fundación ejecutable del frontend según la [arquitectura canónica](../architecture/frontend/frontend-architecture.md), sin importar el prototipo ni implementar capacidades funcionales;
+- aprobar el primer contrato OpenAPI, las decisiones bloqueantes de la primera porción vertical y la estrategia de ambientes.
 
-**Salida verificable:** proyecto compila, las specs validan y frontend y backend comparten un contrato base.
+**Salida verificable:** las bases ejecutables compilan, las specs validan y frontend y backend comparten un contrato base aprobado. La existencia de la fundación frontend no habilita por sí sola funcionalidades sin contrato o decisiones aprobadas.
 
 ## Etapa 1 — Plataforma y acceso
 

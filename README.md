@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/agustinvallante/AgroFlow/actions/workflows/ci.yml/badge.svg)](https://github.com/agustinvallante/AgroFlow/actions/workflows/ci.yml)
 
-Proyecto académico de **Administración de Sistemas** para coordinar turnos y operaciones logísticas de la zafra azucarera. El objetivo es convertir el prototipo visual en una aplicación funcional con una API .NET, un frontend web y una integración controlada con WhatsApp mediante n8n.
+Proyecto académico de **Administración de Sistemas** para coordinar turnos y operaciones logísticas de la zafra azucarera. El objetivo es construir una aplicación funcional con una API .NET, un frontend web y una integración controlada con WhatsApp mediante n8n. El prototipo visual es material de referencia y no constituye una implementación ni una fuente normativa.
 
 ## Organización del repositorio
 
@@ -42,7 +42,8 @@ Los documentos académicos originales son fuentes históricas. Una vez incorpora
 ## Estado técnico
 
 - El backend parte de una copia independiente de [ICS2026-backend](https://github.com/agustinvallante/ICS2026-backend), commit `dc40f7cfa515a1425f8709c73ae917e9c004266a`.
-- El frontend se integrará desde [AgroFlow-Dashboard](https://github.com/GabrielBurieque/AgroFlow-Dashboard) una vez estabilizado el contrato inicial.
+- La arquitectura objetivo del frontend es Next.js con TypeScript, App Router, TanStack Query y Zustand; está documentada en la [arquitectura canónica del frontend](docs/architecture/frontend/frontend-architecture.md).
+- El frontend todavía no está implementado. [AgroFlow-Dashboard](https://github.com/GabrielBurieque/AgroFlow-Dashboard) se conserva únicamente como referencia visual y no se importará como fuente de comportamiento, contratos ni datos.
 - El backend heredado todavía conserva nombres y módulos del e-commerce original; no representa aún el dominio objetivo de AgroFlow.
 
 ## Seguridad
