@@ -1,38 +1,38 @@
-# Decisiones abiertas
+# Registro de decisiones del MVP
 
-Este registro impide que una ambigüedad se convierta accidentalmente en código. Una decisión permanece **pendiente** hasta que el equipo la aprueba, registra su fundamento en un ADR o cambio OpenSpec y actualiza las capacidades afectadas.
+Este registro distingue los acuerdos ya tomados de los detalles que todavía impiden cerrar un contrato o escenario verificable. Una respuesta parcial **no** autoriza a completar el resto por suposición. Las decisiones acordadas el 2026-09-25 se fundamentan en [ADR-004](../architecture/decisions/ADR-004-politicas-operativas-del-mvp.md) y deben reflejarse en las capacidades OpenSpec afectadas.
 
-## Decisiones expresamente abiertas en el relevamiento
+## Decisiones surgidas del relevamiento
 
-| ID | Decisión | Alternativas o preguntas | Bloquea | Estado |
+| ID | Tema | Acuerdo del MVP | Pendiente concreto | Estado |
 |---|---|---|---|---|
-| OD-001 | Fórmula de prioridad | Definir precedencia, pesos y desempates entre tiempo desde el corte, flota propia y flota de terceros. | Motor de asignación y reprogramación | Pendiente |
-| OD-002 | Cardinalidad transportista-camión | Confirmar si la relación es uno a muchos o muchos a muchos. Se requiere una asociación explícita en cualquier caso. | Modelo de datos y autorizaciones | Pendiente |
-| OD-003 | Elección de ventana | Definir si el transportista expresa una preferencia o si AgroFlow asigna siempre la próxima ventana. El fallback de RN-016 ya exige la próxima compatible cuando la solicitada no tiene lugar. | Conversación de WhatsApp, UI y contrato de solicitud | Pendiente |
+| OD-001 | Prioridad | Entre solicitudes elegibles que compiten por capacidad, primero va la de mayor tiempo transcurrido desde el corte de la caña. Ante igualdad, va la flota propia antes que la de terceros; si persiste la igualdad, va la solicitud registrada antes. No se usan pesos. | Definir en el contrato el formato y la validación del momento de corte (`OD-005`) y la concurrencia de solicitudes (`OD-006`). | Política resuelta; dependencias técnicas abiertas |
+| OD-002 | Asociación transportista-camión | Un camión puede tener **un solo transportista autorizado activo** a la vez. La asociación es explícita y su cambio no debe reescribir los turnos históricos. | Definir los campos y el mecanismo de gestión de asociaciones dentro de `OD-013`. | Cardinalidad activa resuelta; gestión pendiente |
+| OD-003 | Selección de ventana | AgroFlow asigna siempre la **próxima ventana disponible compatible**, calculada por el backend; ni el transportista ni el usuario interno eligen una ventana preferida en el MVP. | Aplicar la capacidad y calendario aprobados en `OD-004` y la protección contra carreras de `OD-006`. | Política resuelta; dependencias técnicas abiertas |
 
-## Decisiones técnicas derivadas necesarias
+La redacción original de `RN-016` contemplaba una ventana solicitada. Se conserva literalmente en la [matriz histórica](../product/business-rules.md), pero la política vigente para el MVP es la de `OD-003`; no debe agregarse un campo `ventanaPreferida` al contrato por interpretar el PDF de forma aislada.
 
-Estas preguntas no sustituyen reglas del PDF; son detalles necesarios para poder implementarlas y verificarlas.
+## Decisiones técnicas y de alcance derivadas
 
-| ID | Decisión | Resultado que debe documentarse | Bloquea | Estado |
+| ID | Tema | Acuerdo del MVP o resultado requerido | Pendiente concreto | Estado |
 |---|---|---|---|---|
-| OD-004 | Modelo de capacidad | Duración de una ventana, capacidad por ingenio, calendario, zona horaria y tratamiento de límites horarios. | Asignación, cancelación e interrupciones | Pendiente |
-| OD-005 | Datos mínimos de una solicitud | Campos obligatorios, formatos, momento de corte y validaciones de finca, camión y carga. | Contrato de alta de turno | Pendiente |
-| OD-006 | Concurrencia e idempotencia | Estrategia para evitar sobreasignación y duplicados; clave idempotente y respuesta de reintentos. | API de mutaciones e integración | Pendiente |
-| OD-007 | Matriz de roles y permisos | Roles válidos y operaciones permitidas para operador, supervisor, gerente y administración. | Autorización y navegación | Pendiente |
-| OD-008 | Seguridad del canal n8n | Autenticación entre servicios, validación del remitente, firma, correlación, reintentos y deduplicación. | Integración con WhatsApp | Pendiente |
-| OD-009 | Auditoría y conservación | Eventos auditables, actor, motivo, retención y acceso al historial. | Operaciones críticas y cumplimiento | Pendiente |
-| OD-010 | Entrega de notificaciones | Proveedor, plantillas, estados de entrega, reintentos y tratamiento de fallas. | Interrupciones y cancelaciones | Pendiente |
-| OD-011 | Operación y calidad de servicio | Medición del objetivo de disponibilidad, observabilidad, copias de seguridad, recuperación y tratamiento de datos personales. | Puesta en producción | Pendiente |
-| OD-012 | Indicadores y refresco del dashboard | Fórmulas de cada indicador, fecha operativa e intervalo de actualización periódica. | Dashboard funcional | Pendiente |
-| OD-013 | Alcance de gestión de datos maestros | Definir para transportistas, camiones, fincas y asociaciones las operaciones del MVP, sus campos editables y qué actores pueden ejecutarlas. | Contratos y pantallas de CU-009, CU-010 y CU-012 | Pendiente |
+| OD-004 | Capacidad y ventanas | Duración y cupo configurables **por ingenio mediante datos de arranque**; no se editarán desde la pantalla Configuración en el MVP. El conjunto de demostración usará ventanas de **30 minutos** y **2 camiones** por ventana. Estos valores son datos demo, no constantes de negocio. | Calendario y horario de atención por ingenio, zona horaria, tratamiento de límites, horizonte de búsqueda y ausencia de capacidad. | Parcialmente resuelta |
+| OD-005 | Datos mínimos de solicitud | Además del transportista, camión y finca, exigir **fecha y hora de corte** y **carga estimada**. No se solicita ventana preferida. | Formato, unidad de carga, rangos, momento válido de corte, relación con el ingenio y demás validaciones de cada dato. | Parcialmente resuelta |
+| OD-006 | Concurrencia e idempotencia | Definir una estrategia para evitar sobreasignación y duplicados; clave idempotente y respuesta de reintentos. | Política completa, sin decisión aprobada aún. | Pendiente |
+| OD-007 | Matriz de roles y permisos | **Operador y supervisor del ingenio** pueden listar, dar de alta, editar e inhabilitar transportistas, camiones y fincas. También pueden **crear y cancelar turnos desde la interfaz interna**, siempre dentro de su ingenio y respetando las validaciones del backend. | Permisos restantes de gerente/administración, gestión de asociaciones, lectura de otros recursos y matriz completa de operaciones. | Parcialmente resuelta |
+| OD-008 | Seguridad del canal n8n | Definir autenticación entre servicios, validación del remitente, firma, correlación, reintentos y deduplicación. | Política completa, sin decisión aprobada aún. | Pendiente |
+| OD-009 | Auditoría y conservación | Definir eventos auditables, actor, motivo, retención y acceso al historial. | Política completa, sin decisión aprobada aún. | Pendiente |
+| OD-010 | Entrega de notificaciones | Definir proveedor, plantillas, estados de entrega, reintentos y tratamiento de fallas. | Política completa, sin decisión aprobada aún. | Pendiente |
+| OD-011 | Operación y calidad de servicio | Definir observabilidad, copias de seguridad, recuperación, tratamiento de datos personales y cómo se medirá la disponibilidad. | Política mínima para la entrega académica y objetivos productivos posteriores. | Pendiente |
+| OD-012 | Indicadores y cola del dashboard | La cola visual del MVP **incluye franjas vacías y cupos restantes**, calculados con datos de la API para el ingenio autorizado. No se exige editar duración, cupo o calendario desde Configuración. | Fórmula de cada indicador, fecha operativa y zona horaria, horizonte y formato de las franjas, e intervalo de actualización periódica. | Parcialmente resuelta |
+| OD-013 | Gestión de datos maestros | Transportistas, camiones y fincas tendrán **listado, alta, edición e inhabilitación** en el MVP; no se requiere eliminación física. Se aplican los permisos parciales de `OD-007`. | Campos editables y sus validaciones, gestión de asociaciones transportista-camión y restricciones adicionales por historial o turnos activos. | Parcialmente resuelta |
 
-## Cómo cerrar una decisión
+## Cómo cerrar un detalle pendiente
 
-1. Reunir a las áreas afectadas y documentar alternativas y restricciones.
-2. Elegir una opción y registrar sus consecuencias en un ADR cuando sea arquitectónica.
-3. Crear o actualizar el cambio correspondiente en `openspec/changes/`.
-4. Actualizar contrato, specs, pruebas y tareas relacionadas en el mismo pull request.
-5. Cambiar el estado de esta tabla a **Resuelta** y enlazar la decisión resultante.
+1. Identificar la capacidad y los recorridos afectados; no implementar el vacío con una suposición.
+2. Acordar la opción con el equipo y registrar sus consecuencias en un ADR cuando sea arquitectónica.
+3. Crear o actualizar `openspec/changes/` y consolidar el comportamiento aprobado en `openspec/specs/`.
+4. Actualizar contrato, pruebas y tareas relacionadas en el mismo pull request.
+5. Cambiar el estado de esta tabla solo cuando ya exista una respuesta verificable y enlazada.
 
-No se debe marcar como terminada una tarea cuya conducta depende de una decisión pendiente.
+Una tarea no se considera terminada si depende de uno de los detalles que siguen pendientes.

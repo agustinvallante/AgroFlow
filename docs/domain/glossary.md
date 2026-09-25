@@ -14,7 +14,7 @@ Período anual de cosecha y procesamiento de la caña de azúcar. Puede utilizar
 
 ### Transportista
 
-Persona o entidad habilitada para operar uno o más camiones. La cardinalidad definitiva entre transportista y camión está pendiente de decisión; el sistema utilizará una asociación explícita para no fijarla accidentalmente.
+Persona o entidad habilitada para operar uno o más camiones mediante asociaciones explícitas. En el MVP, un camión puede tener como máximo un transportista autorizado **activo** a la vez; las asociaciones revocadas conservan su historial.
 
 ### Camión
 
@@ -26,7 +26,7 @@ Origen o procedencia de la carga. En el MVP contiene una referencia descriptiva 
 
 ### Turno
 
-Reserva operativa para que un camión sea recibido por un ingenio en una ventana determinada. Incluye actor solicitante, camión, finca, prioridad, estado, fechas y trazabilidad.
+Reserva operativa para que un camión sea recibido por un ingenio en una ventana determinada. La solicitud identifica transportista, camión y finca e informa fecha/hora de corte y carga estimada. El turno conserva prioridad, estado, fechas y trazabilidad. El formato y la unidad exacta de la carga estimada siguen pendientes de contrato.
 
 ### Turno activo
 
@@ -34,11 +34,11 @@ Turno que todavía puede influir en la operación o consumir capacidad. La defin
 
 ### Ventana horaria
 
-Intervalo de recepción con capacidad limitada. Su duración, capacidad y forma de selección deben definirse antes de implementar el motor de asignación.
+Intervalo de recepción con capacidad limitada. AgroFlow asigna automáticamente la próxima ventana compatible; el transportista no elige una franja en el MVP. Duración y cupo se configuran por ingenio mediante datos de arranque, sin edición desde la interfaz en esta etapa. El escenario de demostración usa ventanas de 30 minutos y dos camiones de cupo, sin convertir esos valores en reglas fijas del producto. El calendario de recepción, la zona horaria y sus límites requieren una decisión adicional.
 
 ### Prioridad
 
-Orden relativo utilizado para asignar capacidad. Debe considerar tiempo desde el corte y tipo de flota; la fórmula, pesos y desempates siguen pendientes de aprobación.
+Orden relativo utilizado para asignar capacidad: mayor tiempo transcurrido desde el corte primero; a igualdad, flota propia antes que flota de terceros; si persiste el empate, fecha/hora de solicitud como desempate estable. Los detalles de medición y tratamiento de datos inválidos se cierran en el contrato y las pruebas.
 
 ### Interrupción operativa
 

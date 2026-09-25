@@ -16,6 +16,10 @@ AgroFlow/
 
 OpenSpec no reemplaza las carpetas de código. `backend/` y `frontend/` permanecen separados para que cada equipo trabaje con claridad, mientras `openspec/specs/` define el comportamiento común que ambos deben respetar.
 
+## Organización del trabajo
+
+El código y los issues viven en este repositorio. Los tableros [AgroFlow — Backend](https://github.com/users/agustinvallante/projects/2) y [AgroFlow — Frontend](https://github.com/users/agustinvallante/projects/1) separan la planificación por área; no son repositorios distintos. El backlog del backend desglosa tareas de base compartida, endpoints del MVP y la integración n8n. Antes de implementar rutas propuestas en esos issues, hay que cerrar el [contrato inicial y las decisiones pendientes](https://github.com/agustinvallante/AgroFlow/issues/7) en OpenSpec y OpenAPI.
+
 ## Fuente de verdad
 
 La jerarquía documental del proyecto es:
@@ -35,6 +39,7 @@ Los documentos académicos originales son fuentes históricas. Una vez incorpora
 - Usar la [guía de aceptación del MVP](docs/product/mvp-acceptance.md) para saber qué resultado es suficiente y qué evidencia conservar.
 - Revisar el [catálogo de casos de uso](docs/product/use-case-catalog.md).
 - Consultar la [matriz de 61 reglas de negocio](docs/product/business-rules.md).
+- Leer las [políticas operativas del MVP](docs/architecture/decisions/ADR-004-politicas-operativas-del-mvp.md) y distinguirlas de los detalles todavía abiertos.
 - Resolver las [decisiones abiertas](docs/planning/open-decisions.md) antes de implementar los puntos bloqueados.
 - Leer el [flujo de trabajo del equipo](docs/development/team-workflow.md).
 - Antes de cambiar comportamiento, crear un cambio en `openspec/changes/`.

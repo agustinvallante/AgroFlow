@@ -16,6 +16,8 @@ Este directorio es la entrada humana a la documentación. Los requisitos normati
 10. [Automatización de GitHub](development/github-automation.md)
 11. [Definición de terminado](development/definition-of-done.md)
 
+Las políticas de prioridad, ventanas, asociaciones, alcance de catálogos y cola visual aprobadas para el MVP están resumidas en [ADR-004](architecture/decisions/ADR-004-politicas-operativas-del-mvp.md). Los detalles no aprobados permanecen identificados en [decisiones abiertas](planning/open-decisions.md).
+
 ## Contenido
 
 - `product/`: problema, alcance, actores, casos de uso y trazabilidad con las fuentes académicas.

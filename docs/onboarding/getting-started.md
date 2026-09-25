@@ -42,9 +42,10 @@ openspec validate --all --strict --no-interactive
 
 ## 4. Elegir una tarea
 
-- Elegir un issue en el Project del área correspondiente.
+- Elegir un issue en [AgroFlow — Backend](https://github.com/users/agustinvallante/projects/2) o [AgroFlow — Frontend](https://github.com/users/agustinvallante/projects/1). Son dos tableros del mismo repositorio.
 - Confirmar capacidad y criterios de aceptación.
 - Revisar dependencias y decisiones abiertas.
+- Para el backend, comenzar por el [contrato y las decisiones del recorrido MVP](https://github.com/agustinvallante/AgroFlow/issues/7); las rutas de los issues por endpoint son propuestas hasta su aprobación en OpenAPI.
 - Seguir [el flujo del equipo](../development/team-workflow.md).
 
 ## 5. Pedir revisión

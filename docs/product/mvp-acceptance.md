@@ -25,14 +25,14 @@ El [catálogo de casos de uso](use-case-catalog.md) y la [matriz de reglas de ne
 
 | ID | Puerta | Resultado mínimo observable | Evidencia mínima |
 |---|---|---|---|
-| MVP-G01 | Preparación reproducible | Desde un clon limpio se configuran dependencias, migraciones y datos demo sin editar registros manualmente. | Guía ejecutada por otra persona y registro de los comandos o pipeline exitoso. |
+| MVP-G01 | Preparación reproducible | Desde un clon limpio se configuran dependencias, migraciones, ventanas por ingenio y datos demo sin editar registros manualmente. | Guía ejecutada por otra persona y registro de los comandos o pipeline exitoso. |
 | MVP-G02 | Acceso y segregación | Un usuario activo ingresa con su rol; un token inválido o expirado y el acceso a otro ingenio son rechazados por la API. | Pruebas de autenticación, rol y aislamiento más una comprobación integrada desde la interfaz. |
-| MVP-G03 | Datos maestros | Los transportistas, teléfonos, camiones, tipos de flota, fincas y asociaciones necesarios se preparan de forma reproducible y persisten. Se aplican las reglas aprobadas de identidad, actividad, autorización e historial y las entidades inactivas no habilitan turnos nuevos. | Pruebas de la capacidad `datos-maestros`, preparación repetible y una operación de gestión representativa según el alcance que resuelva `OD-013`. |
-| MVP-G04 | Solicitud y asignación | Una solicitud válida obtiene una ventana persistida; prioridad, capacidad, asociación y turno activo único se aplican en el backend. Los reintentos no duplican la operación. | Pruebas de éxito, falta de capacidad, duplicado, concurrencia e idempotencia más un turno creado de extremo a extremo. |
+| MVP-G03 | Datos maestros | Transportistas, teléfonos, camiones, tipos de flota, fincas y asociaciones se preparan y persisten. El alcance acordado incluye listado, alta, edición e inhabilitación de los tres catálogos, con historial preservado; las entidades inactivas no habilitan turnos nuevos. | Pruebas de identidad, permisos, operaciones de gestión, asociación e inhabilitación, además de preparación repetible y una operación representativa en la interfaz. |
+| MVP-G04 | Solicitud y asignación | Una solicitud válida con corte y carga estimada obtiene automáticamente la próxima ventana disponible y persistida conforme a la política aprobada; prioridad, capacidad, asociación y turno activo único se aplican en el backend. Los reintentos no duplican la operación. | Pruebas de éxito, falta de capacidad, duplicado, concurrencia e idempotencia más un turno creado de extremo a extremo. |
 | MVP-G05 | Consulta, ciclo y cancelación | El mismo turno aparece en listado, detalle y filtros; recorre `ASIGNADO → EN_CAMINO → EN_ESPERA → INGRESADO → EN_DESCARGA → FINALIZADO`. Otro turno puede cancelarse, libera capacidad y queda consultable como `CANCELADO`. | Pruebas de transiciones válidas e inválidas, terminalidad y liberación de capacidad, más ambos recorridos integrados. |
-| MVP-G06 | Dashboard operativo | Los indicadores del día y la interrupción visible provienen de la API y coinciden exactamente con un conjunto de datos conocido del ingenio del usuario. | Comparación de resultados esperados contra API y pantalla; la actualización periódica puede usar polling. |
+| MVP-G06 | Dashboard y franjas operativas | Los indicadores del día, la interrupción visible y las franjas, incluidas las vacías y sus cupos restantes, provienen de la API y coinciden con datos conocidos del ingenio del usuario. | Comparación de resultados esperados contra API y pantalla con ventanas ocupadas y vacías; la actualización periódica puede usar polling. |
 | MVP-G07 | Interrupciones | Una interrupción activa reprograma los turnos `ASIGNADO` afectados, identifica sin reprogramar automáticamente los `EN_CAMINO`/`EN_ESPERA` afectados y no altera los que ya ingresaron al proceso. | Pruebas por estado y recorrido integrado con dashboard y destinatarios determinados por el backend. |
-| MVP-G08 | WhatsApp y n8n | Solicitud, consulta y aviso `EN_CAMINO` pasan por n8n hacia la API real; al menos una interrupción genera una notificación para un destinatario determinado por el backend. Las respuestas reflejan solo operaciones persistidas y los reintentos no duplican cambios. | Flujo exportable de n8n, contrato de integración y ejecución reproducible con proveedor de pruebas o adaptador que emule el límite de WhatsApp. |
+| MVP-G08 | WhatsApp y n8n | Solicitud, consulta y aviso `EN_CAMINO` pasan por n8n hacia la API real; al menos una interrupción genera una notificación para un destinatario determinado por el backend. Las respuestas reflejan solo operaciones persistidas y los reintentos no duplican cambios. | Flujo n8n exportado, **importable** y ejecutado de nuevo, contrato de integración y prueba reproducible con proveedor de pruebas o adaptador que emule el límite de WhatsApp. |
 | MVP-G09 | Contrato e integración | OpenAPI documenta los endpoints usados y frontend, API y n8n comparten modelos, estados y errores compatibles. | Validación del contrato, pruebas de contrato o integración y ausencia de respuestas simuladas en los recorridos obligatorios. |
 | MVP-G10 | Calidad, seguridad y trazabilidad | Cada escenario que integra el perfil obligatorio tiene una prueba automatizada o un paso manual justificado; no hay secretos ni datos personales reales en el repositorio. | Matriz requisito–escenario–evidencia, verificaciones exitosas y revisión de configuración y repositorio. |
 | MVP-G11 | Auditoría y recuperación | Las mutaciones críticas conservan actor, momento y resultado según la política aprobada; el respaldo y la restauración de los datos de aceptación se ejecutan sin exponer información sensible. | Pruebas de auditoría y registro de un ejercicio exitoso de respaldo/restauración conforme a `OD-009` y al subconjunto académico de `OD-011`. |
@@ -44,16 +44,16 @@ El estado de estas puertas debe mantenerse en el proyecto de trabajo o en el act
 
 Este guion hace visible el recorrido principal; no reemplaza las pruebas de variantes y errores exigidas por las especificaciones.
 
-1. Preparar el ambiente desde un clon limpio, aplicar migraciones y cargar datos demo documentados.
+1. Preparar el ambiente desde un clon limpio, aplicar migraciones y cargar datos demo documentados. La configuración inicial de demostración utiliza ventanas de 30 minutos y dos camiones por ventana, como valores configurables por ingenio, no constantes de dominio.
 2. Iniciar sesión como usuario interno del ingenio A.
 3. Preparar los datos maestros mediante el mecanismo documentado, ejecutar una operación de gestión aprobada y comprobar que una entidad inactiva no puede usarse para un turno nuevo.
-4. Solicitar un turno con datos válidos y mostrar la ventana, prioridad y estado persistidos.
+4. Solicitar un turno con datos válidos, fecha/hora de corte y carga estimada; mostrar la próxima ventana asignada, prioridad y estado persistidos.
 5. Consultar ese turno en listado, detalle y un filtro relevante del frontend.
 6. Consultarlo mediante el flujo controlado de WhatsApp/n8n y comprobar que devuelve el mismo estado.
 7. Informar `EN_CAMINO` mediante ese canal; continuar como operador por `EN_ESPERA`, `INGRESADO`, `EN_DESCARGA` y `FINALIZADO`.
 8. Crear un segundo turno, cancelarlo desde un estado permitido y demostrar que conserva su historial y libera capacidad.
 9. Preparar turnos en estados diferentes, registrar una interrupción, mostrar el tratamiento que corresponde a cada uno y entregar por el canal controlado una notificación indicada por la API.
-10. Abrir el dashboard y contrastar sus indicadores y alerta de interrupción con los datos conocidos.
+10. Abrir el dashboard y contrastar indicadores, alerta de interrupción, franjas vacías y cupos restantes con los datos conocidos.
 11. Intentar acceder a un recurso del ingenio B con el usuario del ingenio A y mostrar el rechazo del backend.
 12. Reiniciar la aplicación y comprobar que los estados ya confirmados continúan disponibles.
 
@@ -63,10 +63,11 @@ Para la segunda ejecución se restaura el conjunto de datos mediante el mecanism
 
 - Usar un proveedor de pruebas o un adaptador reproducible que emule el contrato de entrada y salida de WhatsApp, manteniendo n8n, la API real y la idempotencia del flujo. Una llamada manual a un paso interno de n8n no reemplaza el canal.
 - Actualizar el dashboard mediante polling en lugar de WebSockets.
-- Adoptar políticas simples y deterministas de prioridad, capacidad y desempate, una vez aprobadas y documentadas.
+- Aplicar políticas simples y deterministas de prioridad, capacidad y desempate, conforme a las decisiones documentadas en OpenSpec y el contrato aprobado.
 - Mantener una sola topología y un solo ambiente de demostración documentados.
 - Usar datos demo ficticios y controlados, cargados mediante seed o un procedimiento repetible.
 - Mostrar una operación representativa de cada CRUD durante la exposición, siempre que las restantes variantes estén cubiertas por pruebas.
+- Configurar duración y cupo por ingenio al iniciar el ambiente; el calendario de recepción debe acordarse en `OD-004` antes de demostrar la asignación. La edición desde la pantalla de Configuración del prototipo no es requisito del MVP.
 
 Estas simplificaciones reducen complejidad de infraestructura o presentación; no eliminan reglas funcionales vigentes.
 
@@ -97,19 +98,11 @@ Mientras permanezca fuera del alcance vigente, la aceptación no exige:
 
 Los dos últimos objetivos requieren una línea base, instrumentación y tiempo de observación. Para el MVP alcanza con definir cómo se medirán y conservar los datos necesarios; no corresponde afirmar todavía que fueron alcanzados.
 
-## Decisiones que deben cerrarse
+## Acuerdos y detalles que deben cerrarse
 
-Antes de aceptar el MVP debe existir una respuesta aprobada para toda decisión que afecte un recorrido obligatorio:
+El equipo confirmó para el MVP: prioridad por mayor tiempo desde el corte, flota propia como primer desempate y solicitud registrada antes como desempate final; un solo transportista activo autorizado por camión; asignación automática de la próxima ventana; duración y cupo configurables por ingenio con datos demo de 30 minutos y dos camiones; corte y carga estimada en la solicitud; listado, alta, edición e inhabilitación de los tres catálogos; y gestión interna de catálogos, creación y cancelación de turnos por operador y supervisor del ingenio. El fundamento está en [ADR-004](../architecture/decisions/ADR-004-politicas-operativas-del-mvp.md); las reglas verificables pertenecen a OpenSpec y el contrato HTTP debe incorporarlas antes de implementar los endpoints afectados.
 
-- `OD-001` a `OD-006`: prioridad, relación transportista-camión, ventana, capacidad, solicitud e idempotencia;
-- `OD-007`: roles y permisos;
-- `OD-008` y `OD-010`: seguridad y entrega en el canal n8n/WhatsApp, al menos para el ambiente elegido;
-- `OD-009`: auditoría mínima y conservación del historial;
-- `OD-012`: fórmulas y refresco del dashboard;
-- `OD-011`: configuración segura, registro de errores, respaldo y recuperación mínimos para la entrega. La acreditación de un SLO productivo puede quedar para una etapa posterior.
-- `OD-013`: operaciones y campos de gestión que completarán CU-009, CU-010 y CU-012 sin asumir un CRUD desde el prototipo.
-
-La fuente para ver el estado y el procedimiento de cierre es el [registro de decisiones abiertas](../planning/open-decisions.md).
+Estas respuestas no completan por sí solas la matriz de roles, los campos y formatos, la zona horaria y límites del calendario, la estrategia de concurrencia/idempotencia, la seguridad y entrega del canal, la auditoría, las fórmulas del dashboard ni la recuperación. Cualquier detalle que afecte un recorrido obligatorio debe resolverse o excluirse formalmente mediante OpenSpec antes de aceptar el MVP. El estado y procedimiento de cierre se mantienen en el [registro de decisiones](../planning/open-decisions.md); la [issue `B00`](https://github.com/agustinvallante/AgroFlow/issues/7) coordina el contrato inicial y las decisiones que bloquean al backend.
 
 ## Registro de evidencia
 

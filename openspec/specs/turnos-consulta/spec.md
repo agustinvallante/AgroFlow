@@ -8,7 +8,7 @@ Define las consultas de transportistas y usuarios internos para CU-003, CU-004 y
 
 ### Requirement: Consulta autorizada del transportista (RN-017)
 
-AgroFlow MUST permitir que un transportista consulte únicamente turnos de camiones que esté autorizado a utilizar, sin fijar aquí la cardinalidad de esa asociación.
+AgroFlow MUST permitir que un transportista consulte únicamente turnos de camiones para los que posea la asociación autorizada pertinente. Cada camión MUST tener como máximo un transportista activo, de acuerdo con `datos-maestros`.
 
 #### Scenario: Camión no autorizado
 
