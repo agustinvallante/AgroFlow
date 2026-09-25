@@ -19,6 +19,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Dsw2025Tpi.Domain\Dsw2025Tpi.Domain.csproj" />
+    <ProjectReference Include="..\Dsw2025Tpi.Api\Dsw2025Tpi.Api.csproj" />
   </ItemGroup>
 
 </Project>

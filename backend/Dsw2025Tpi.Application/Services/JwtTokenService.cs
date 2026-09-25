@@ -17,7 +17,13 @@ namespace Dsw2025Tpi.Application.Services
             _logger = logger;
         }
 
-        public string GenerateToken(string username, string role, string customerId)
+        public const string IngenioIdClaimType = "ingenioId";
+
+        public string GenerateToken(
+            string username,
+            string role,
+            string customerId,
+            Guid? effectiveIngenioId = null)
         {
             _logger.LogInformation("Generando token JWT para el usuario: {Username} con rol: {role}", username, role);
 
@@ -26,13 +32,18 @@ namespace Dsw2025Tpi.Application.Services
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(keyText));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
-            var claims = new[]
+            var claims = new List<Claim>
             {
-            new Claim(JwtRegisteredClaimNames.Sub, username),
-            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-            new Claim(ClaimTypes.Role, role),
-            new Claim("customerId", customerId)
-        };
+                new(JwtRegisteredClaimNames.Sub, username),
+                new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+                new(ClaimTypes.Role, role),
+                new("customerId", customerId)
+            };
+
+            if (effectiveIngenioId.HasValue)
+            {
+                claims.Add(new Claim(IngenioIdClaimType, effectiveIngenioId.Value.ToString("D")));
+            }
 
             var token = new JwtSecurityToken(
                 issuer: jwtConfig["Issuer"],

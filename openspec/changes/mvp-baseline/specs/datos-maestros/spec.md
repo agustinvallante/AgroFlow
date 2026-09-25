@@ -26,13 +26,19 @@ Solo una asociación activa entre entidades activas SHALL habilitar al transport
 
 ### Requirement: Gestión acotada de transportistas
 
-AgroFlow SHALL permitir listar, consultar, crear, editar los campos `nombre`, `DNI` y `WhatsApp`, inhabilitar y reactivar transportistas. El DNI y el número de WhatsApp SHALL ser identificadores únicos globales de la plataforma. AgroFlow MUST NOT eliminar físicamente un transportista con historia y SHALL aplicar la unicidad global también al crear, editar o reactivar.
+AgroFlow SHALL permitir listar, consultar, crear, editar los campos `nombre`, `DNI` y `WhatsApp`, inhabilitar y reactivar transportistas. El DNI SHALL normalizarse a su representación de solo dígitos para comparar identidad; MUST rechazarse un valor sin dígitos. El DNI y el número de WhatsApp SHALL ser identificadores únicos globales de la plataforma. AgroFlow MUST NOT eliminar físicamente un transportista con historia y SHALL aplicar la unicidad global también al crear, editar o reactivar.
 
 #### Scenario: Alta de transportista con campos válidos
 
 - **GIVEN** un nombre, DNI y número de WhatsApp válidos y no utilizados
 - **WHEN** un usuario autorizado registra al transportista
 - **THEN** AgroFlow lo conserva activo y disponible para asociaciones de su ingenio
+
+#### Scenario: Normalización de DNI
+
+- **GIVEN** un DNI que contiene dígitos y separadores
+- **WHEN** AgroFlow crea o actualiza el transportista
+- **THEN** AgroFlow usa únicamente los dígitos del DNI para comparar su identidad y rechaza un DNI sin dígitos
 
 #### Scenario: Conflicto de transportista dentro del mismo ingenio
 

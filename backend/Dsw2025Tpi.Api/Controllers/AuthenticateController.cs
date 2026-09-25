@@ -1,9 +1,11 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Dsw2025Tpi.Api.Contract;
 using Dsw2025Tpi.Application.Services;
 using Dsw2025Tpi.Application.Dtos;
 using Dsw2025Tpi.Domain.Interfaces;
 using Dsw2025Tpi.Domain.Entities;
+using Dsw2025Tpi.Data.Identity;
 
 namespace Dsw2025Tpi.Api.Controllers
 {
@@ -11,16 +13,18 @@ namespace Dsw2025Tpi.Api.Controllers
     [Route("/api/auth")]
     public class AuthenticateController : ControllerBase
     {
-        private readonly UserManager<IdentityUser> _userManager;
-        private readonly SignInManager<IdentityUser> _signInManager;
+        private const string InvalidCredentialsMessage = "Credenciales inválidas.";
+
+        private readonly UserManager<AgroFlowUser> _userManager;
+        private readonly SignInManager<AgroFlowUser> _signInManager;
         private readonly JwtTokenService _jwtTokenService;
         private readonly RoleManager<IdentityRole> _roleManager;
         private readonly ILogger<AuthenticateController> _logger;
         private readonly IRepository _repository;
 
         public AuthenticateController(
-            UserManager<IdentityUser> userManager,
-            SignInManager<IdentityUser> signInManager,
+            UserManager<AgroFlowUser> userManager,
+            SignInManager<AgroFlowUser> signInManager,
             JwtTokenService jwtTokenService,
             RoleManager<IdentityRole> roleManager,
             ILogger<AuthenticateController> logger,
@@ -38,17 +42,23 @@ namespace Dsw2025Tpi.Api.Controllers
         public async Task<IActionResult> Login([FromBody] LoginModel request)
         {
             var user = await _userManager.FindByNameAsync(request.Username);
-            if (user == null) return Unauthorized("Usuario incorrecto.");
+            if (user == null || !user.IsActive)
+            {
+                return Unauthorized(InvalidCredentialsMessage);
+            }
 
             var result = await _signInManager.CheckPasswordSignInAsync(user, request.Password, false);
-            if (!result.Succeeded) return Unauthorized("Contraseña incorrecta.");
+            if (!result.Succeeded)
+            {
+                return Unauthorized(InvalidCredentialsMessage);
+            }
 
             var userRoles = await _userManager.GetRolesAsync(user);
             // OJO: Asegúrate de que los roles en BD coincidan con mayúsculas/minúsculas
             var role = userRoles.FirstOrDefault() ?? "USER";
 
             Guid? customerId = null;
-            string customerName = user.UserName;
+            string? customerName = user.UserName;
 
             // Comparamos ignorando mayúsculas para evitar errores tontos
             if (role.ToUpper() == "USER")
@@ -66,21 +76,21 @@ namespace Dsw2025Tpi.Api.Controllers
                 }
             }
 
-            // Aquí pasamos el ID al token. Si es null, pasamos cadena vacía.
-            var token = _jwtTokenService.GenerateToken(request.Username, role, customerId?.ToString() ?? "");
+            var token = _jwtTokenService.GenerateToken(
+                user.UserName ?? user.Id,
+                role,
+                customerId?.ToString() ?? "",
+                user.IngenioId);
 
-            return Ok(new
-            {
-                Token = token,
-                UserInfo = new
-                {
-                    Email = user.Email,
-                    IdentityId = user.Id,
-                    CustomerId = customerId,
-                    Name = customerName,
-                    Role = role
-                }
-            });
+            return Ok(new LoginResponse(
+                token,
+                new LoginUserInfo(
+                    user.Email,
+                    user.Id,
+                    customerId,
+                    customerName,
+                    role,
+                    user.IngenioId)));
         }
 
         [HttpPost("register")]
@@ -92,7 +102,7 @@ namespace Dsw2025Tpi.Api.Controllers
                 return Conflict("El email ya está registrado en el sistema.");
             }
 
-            var user = new IdentityUser { UserName = model.Username, Email = model.Email };
+            var user = new AgroFlowUser { UserName = model.Username, Email = model.Email };
             var result = await _userManager.CreateAsync(user, model.Password);
 
             if (!result.Succeeded) return BadRequest(result.Errors);

@@ -9,8 +9,13 @@ public sealed class Transportista : EntityBase
     public Transportista(Guid ingenioId, string name, string dni, string whatsApp)
     {
         IngenioId = MasterDataValidation.RequireIngenioId(ingenioId);
-        Apply(name, dni, whatsApp);
+        Name = MasterDataValidation.RequireText(name, nameof(name));
+        DNI = MasterDataValidation.RequireText(dni, nameof(dni));
+        NormalizedDni = NormalizeDni(DNI);
+        WhatsApp = MasterDataValidation.RequireText(whatsApp, nameof(whatsApp));
+        NormalizedWhatsApp = NormalizeWhatsApp(WhatsApp);
         IsActive = true;
+        CreatedAtUtc = DateTime.UtcNow;
     }
 
     public Guid IngenioId { get; private set; }
@@ -20,26 +25,66 @@ public sealed class Transportista : EntityBase
     public string WhatsApp { get; private set; } = string.Empty;
     public string NormalizedWhatsApp { get; private set; } = string.Empty;
     public bool IsActive { get; private set; }
+    public DateTime CreatedAtUtc { get; private set; }
+    public DateTime? InactivatedAtUtc { get; private set; }
 
-    public void Update(string name, string dni, string whatsApp) => Apply(name, dni, whatsApp);
-
-    public void Inactivate() => IsActive = false;
-
-    public void Reactivate() => IsActive = true;
-
-    private void Apply(string name, string dni, string whatsApp)
+    public void Update(string name, string dni, string whatsApp)
     {
         var validatedName = MasterDataValidation.RequireText(name, nameof(name));
         var validatedDni = MasterDataValidation.RequireText(dni, nameof(dni));
-        var normalizedDni = MasterDataValidation.NormalizeDigits(validatedDni, nameof(dni));
+        var normalizedDni = NormalizeDni(validatedDni);
         var validatedWhatsApp = MasterDataValidation.RequireText(whatsApp, nameof(whatsApp));
-        var normalizedWhatsApp = MasterDataValidation.NormalizeDigits(validatedWhatsApp, nameof(whatsApp));
+        var normalizedWhatsApp = NormalizeWhatsApp(validatedWhatsApp);
 
         Name = validatedName;
         DNI = validatedDni;
         NormalizedDni = normalizedDni;
         WhatsApp = validatedWhatsApp;
         NormalizedWhatsApp = normalizedWhatsApp;
+    }
+
+    public void UpdateContactDetails(string name, string dni, string whatsapp)
+    {
+        var validatedName = MasterDataValidation.RequireText(name, nameof(name));
+        var validatedDni = MasterDataValidation.RequireText(dni, nameof(dni));
+        var normalizedDni = NormalizeDni(validatedDni);
+        var validatedWhatsApp = MasterDataValidation.RequireText(whatsapp, nameof(whatsapp));
+        var normalizedWhatsApp = NormalizeWhatsApp(validatedWhatsApp);
+
+        Name = validatedName;
+        DNI = validatedDni;
+        NormalizedDni = normalizedDni;
+        WhatsApp = validatedWhatsApp;
+        NormalizedWhatsApp = normalizedWhatsApp;
+    }
+
+    public void Inactivate() => IsActive = false;
+
+    public void Inactivate(DateTime occurredAtUtc)
+    {
+        MasterDataValidation.EnsureUtc(occurredAtUtc, nameof(occurredAtUtc));
+        IsActive = false;
+        InactivatedAtUtc = occurredAtUtc;
+    }
+
+    public void Reactivate()
+    {
+        IsActive = true;
+        InactivatedAtUtc = null;
+    }
+
+    internal static void EnsureUtc(DateTime value, string parameterName) =>
+        MasterDataValidation.EnsureUtc(value, parameterName);
+
+    public static string NormalizeDni(string value) =>
+        MasterDataValidation.NormalizeDigits(
+            MasterDataValidation.RequireText(value, nameof(value)), nameof(value));
+
+    public static string NormalizeWhatsApp(string value)
+    {
+        var trimmed = MasterDataValidation.RequireText(value, nameof(value));
+        return new string(trimmed.Where(character =>
+            !char.IsWhiteSpace(character) && character is not '-' and not '(' and not ')' and not '.').ToArray());
     }
 }
 
@@ -68,5 +113,13 @@ internal static class MasterDataValidation
         return normalized.Length == 0
             ? throw new ArgumentException("Value must contain letters or digits.", parameterName)
             : normalized;
+    }
+
+    internal static void EnsureUtc(DateTime value, string parameterName)
+    {
+        if (value.Kind != DateTimeKind.Utc)
+        {
+            throw new ArgumentException("Timestamp must be UTC.", parameterName);
+        }
     }
 }

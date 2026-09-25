@@ -1,7 +1,11 @@
+using Dsw2025Tpi.Api.Authorization;
 using Dsw2025Tpi.Api.NewFolder;
+using Dsw2025Tpi.Api.Services;
 using Dsw2025Tpi.Application.Services;
+using Dsw2025Tpi.Application.MasterData;
 using Dsw2025Tpi.Data;
 using Dsw2025Tpi.Data.Helper;
+using Dsw2025Tpi.Data.Identity;
 using Dsw2025Tpi.Data.Repositories;
 using Dsw2025Tpi.Domain.Entities;
 using Dsw2025Tpi.Domain.Interfaces;
@@ -80,8 +84,8 @@ public class Program
             options.UseSqlServer(builder.Configuration.GetConnectionString("Dsw2025TpiEntities"));
         });
 
-        // --- AQUÍ ESTÁ EL CAMBIO ---
-        builder.Services.AddIdentity<IdentityUser, IdentityRole>(options =>
+        // --- AQUï¿½ ESTï¿½ EL CAMBIO ---
+        builder.Services.AddIdentity<AgroFlowUser, IdentityRole>(options =>
         {
             options.Password = new PasswordOptions
             {
@@ -125,11 +129,15 @@ public class Program
         });
 
         builder.Services.AddSingleton<JwtTokenService>();
-        builder.Services.AddAuthorization();
+        builder.Services.AddAgroFlowAuthorizationPolicies();
+        builder.Services.AddHttpContextAccessor();
+        builder.Services.AddScoped<ITenantContext, HttpTenantContext>();
 
         builder.Services.AddScoped<IRepository, EfRepository>();
         builder.Services.AddScoped<ProductsManagementService>();
         builder.Services.AddScoped<OrdersManagementService>();
+        builder.Services.AddScoped<IMasterDataUnitOfWork, EfMasterDataUnitOfWork>();
+        builder.Services.AddScoped<MasterDataService>();
 
         builder.Services.AddCors(options =>
         {
@@ -152,13 +160,22 @@ public class Program
 
             try
             {
-                var userManager = services.GetRequiredService<UserManager<IdentityUser>>();
+                var userManager = services.GetRequiredService<UserManager<AgroFlowUser>>();
                 var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
 
                 string adminRole = "Admin";
                 string userRole = "User";
 
-                // Crear roles si no existen
+                foreach (var role in AgroFlowRoles.All)
+                {
+                    if (!await roleManager.RoleExistsAsync(role))
+                    {
+                        await roleManager.CreateAsync(new IdentityRole(role));
+                        Console.WriteLine($"Rol '{role}' creado.");
+                    }
+                }
+
+                // Crear roles heredados si no existen
                 if (!await roleManager.RoleExistsAsync(adminRole))
                 {
                     await roleManager.CreateAsync(new IdentityRole(adminRole));
@@ -187,7 +204,7 @@ public class Program
                             var adminUser = await userManager.FindByNameAsync(adminData.Username);
                             if (adminUser == null)
                             {
-                                adminUser = new IdentityUser
+                                adminUser = new AgroFlowUser
                                 {
                                     UserName = adminData.Username,
                                     Email = adminData.Email,
