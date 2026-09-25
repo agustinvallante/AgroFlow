@@ -3,9 +3,606 @@ info:
   title: AgroFlow API
   version: 0.1.0
   description: >-
-    Contrato base del backend de AgroFlow. Los endpoints se incorporarán a medida
-    que sus capacidades y decisiones queden aprobadas mediante OpenSpec.
+    Versioned API for authenticated, tenant-scoped master-data operations.
 servers:
   - url: http://localhost:5000
-    description: Desarrollo local
-paths: {}
+    description: Development
+security:
+  - bearerAuth: []
+paths:
+  /api/v1/drivers:
+    get:
+      operationId: listDrivers
+      summary: List drivers
+      description: Lists drivers in the authenticated ingenio, optionally filtered by activity.
+      parameters:
+        - $ref: '#/components/parameters/active'
+      responses:
+        '200':
+          description: Driver list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DriverResponse'
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createDriver
+      summary: Create a driver
+      parameters:
+        - $ref: '#/components/parameters/idempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DriverInput' }
+      responses:
+        '201':
+          description: Driver created
+          headers:
+            Location:
+              schema: { type: string }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MutationReceipt' }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Problem' }
+        '500': { $ref: '#/components/responses/Problem' }
+  /api/v1/drivers/{id}:
+    parameters:
+      - $ref: '#/components/parameters/id'
+    get:
+      operationId: getDriver
+      summary: Get a driver
+      responses:
+        '200':
+          description: Driver
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DriverResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '500': { $ref: '#/components/responses/Problem' }
+    put:
+      operationId: updateDriver
+      summary: Update a driver
+      parameters:
+        - $ref: '#/components/parameters/idempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DriverInput' }
+      responses:
+        '200':
+          description: Driver updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MutationReceipt' }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+        '500': { $ref: '#/components/responses/Problem' }
+  /api/v1/drivers/{id}/inactivation:
+    parameters:
+      - $ref: '#/components/parameters/id'
+    post:
+      operationId: inactivateDriver
+      summary: Inactivate a driver
+      parameters:
+        - $ref: '#/components/parameters/idempotencyKey'
+      responses:
+        '200':
+          description: Driver inactivated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MutationReceipt' }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+        '500': { $ref: '#/components/responses/Problem' }
+  /api/v1/drivers/{id}/reactivation:
+    parameters:
+      - $ref: '#/components/parameters/id'
+    post:
+      operationId: reactivateDriver
+      summary: Reactivate a driver
+      parameters:
+        - $ref: '#/components/parameters/idempotencyKey'
+      responses:
+        '200':
+          description: Driver reactivated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MutationReceipt' }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+        '500': { $ref: '#/components/responses/Problem' }
+  /api/v1/trucks:
+    get:
+      operationId: listTrucks
+      summary: List trucks
+      description: Lists trucks in the authenticated ingenio, optionally filtered by activity.
+      parameters:
+        - $ref: '#/components/parameters/active'
+      responses:
+        '200':
+          description: Truck list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TruckResponse'
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createTruck
+      summary: Create a truck
+      parameters:
+        - $ref: '#/components/parameters/idempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TruckInput' }
+      responses:
+        '201':
+          description: Truck created
+          headers:
+            Location:
+              schema: { type: string }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MutationReceipt' }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Problem' }
+        '500': { $ref: '#/components/responses/Problem' }
+  /api/v1/trucks/{id}:
+    parameters:
+      - $ref: '#/components/parameters/id'
+    get:
+      operationId: getTruck
+      summary: Get a truck
+      responses:
+        '200':
+          description: Truck
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TruckResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '500': { $ref: '#/components/responses/Problem' }
+    put:
+      operationId: updateTruck
+      summary: Update a truck
+      parameters:
+        - $ref: '#/components/parameters/idempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TruckInput' }
+      responses:
+        '200':
+          description: Truck updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MutationReceipt' }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+        '500': { $ref: '#/components/responses/Problem' }
+  /api/v1/trucks/{id}/inactivation:
+    parameters:
+      - $ref: '#/components/parameters/id'
+    post:
+      operationId: inactivateTruck
+      summary: Inactivate a truck
+      parameters:
+        - $ref: '#/components/parameters/idempotencyKey'
+      responses:
+        '200':
+          description: Truck inactivated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MutationReceipt' }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+        '500': { $ref: '#/components/responses/Problem' }
+  /api/v1/trucks/{id}/reactivation:
+    parameters:
+      - $ref: '#/components/parameters/id'
+    post:
+      operationId: reactivateTruck
+      summary: Reactivate a truck
+      parameters:
+        - $ref: '#/components/parameters/idempotencyKey'
+      responses:
+        '200':
+          description: Truck reactivated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MutationReceipt' }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+        '500': { $ref: '#/components/responses/Problem' }
+  /api/v1/farms:
+    get:
+      operationId: listFarms
+      summary: List farms
+      description: Lists farms in the authenticated ingenio, optionally filtered by activity.
+      parameters:
+        - $ref: '#/components/parameters/active'
+      responses:
+        '200':
+          description: Farm list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FarmResponse'
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createFarm
+      summary: Create a farm
+      parameters:
+        - $ref: '#/components/parameters/idempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/FarmInput' }
+      responses:
+        '201':
+          description: Farm created
+          headers:
+            Location:
+              schema: { type: string }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MutationReceipt' }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Problem' }
+        '500': { $ref: '#/components/responses/Problem' }
+  /api/v1/farms/{id}:
+    parameters:
+      - $ref: '#/components/parameters/id'
+    get:
+      operationId: getFarm
+      summary: Get a farm
+      responses:
+        '200':
+          description: Farm
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FarmResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '500': { $ref: '#/components/responses/Problem' }
+    put:
+      operationId: updateFarm
+      summary: Update a farm
+      parameters:
+        - $ref: '#/components/parameters/idempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/FarmInput' }
+      responses:
+        '200':
+          description: Farm updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MutationReceipt' }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+        '500': { $ref: '#/components/responses/Problem' }
+  /api/v1/farms/{id}/inactivation:
+    parameters:
+      - $ref: '#/components/parameters/id'
+    post:
+      operationId: inactivateFarm
+      summary: Inactivate a farm
+      parameters:
+        - $ref: '#/components/parameters/idempotencyKey'
+      responses:
+        '200':
+          description: Farm inactivated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MutationReceipt' }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+        '500': { $ref: '#/components/responses/Problem' }
+  /api/v1/farms/{id}/reactivation:
+    parameters:
+      - $ref: '#/components/parameters/id'
+    post:
+      operationId: reactivateFarm
+      summary: Reactivate a farm
+      parameters:
+        - $ref: '#/components/parameters/idempotencyKey'
+      responses:
+        '200':
+          description: Farm reactivated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MutationReceipt' }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+        '500': { $ref: '#/components/responses/Problem' }
+  /api/v1/driver-truck-associations:
+    get:
+      operationId: listDriverTruckAssociations
+      summary: List driver-truck associations
+      description: Lists associations in the authenticated ingenio, optionally filtered by activity.
+      parameters:
+        - $ref: '#/components/parameters/active'
+      responses:
+        '200':
+          description: Association list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AssociationResponse'
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createDriverTruckAssociation
+      summary: Create a driver-truck association
+      parameters:
+        - $ref: '#/components/parameters/idempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AssociationInput' }
+      responses:
+        '201':
+          description: Association created
+          headers:
+            Location:
+              schema: { type: string }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MutationReceipt' }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+        '500': { $ref: '#/components/responses/Problem' }
+  /api/v1/driver-truck-associations/{id}:
+    parameters:
+      - $ref: '#/components/parameters/id'
+    get:
+      operationId: getDriverTruckAssociation
+      summary: Get a driver-truck association
+      responses:
+        '200':
+          description: Association
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AssociationResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '500': { $ref: '#/components/responses/Problem' }
+  /api/v1/driver-truck-associations/{id}/inactivation:
+    parameters:
+      - $ref: '#/components/parameters/id'
+    post:
+      operationId: inactivateDriverTruckAssociation
+      summary: Inactivate a driver-truck association
+      parameters:
+        - $ref: '#/components/parameters/idempotencyKey'
+      responses:
+        '200':
+          description: Association inactivated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MutationReceipt' }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+        '500': { $ref: '#/components/responses/Problem' }
+  /api/v1/driver-truck-associations/{id}/reactivation:
+    parameters:
+      - $ref: '#/components/parameters/id'
+    post:
+      operationId: reactivateDriverTruckAssociation
+      summary: Reactivate a driver-truck association
+      parameters:
+        - $ref: '#/components/parameters/idempotencyKey'
+      responses:
+        '200':
+          description: Association reactivated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MutationReceipt' }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+        '500': { $ref: '#/components/responses/Problem' }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    id:
+      name: id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    active:
+      name: active
+      in: query
+      required: false
+      schema: { type: boolean }
+    idempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema: { type: string, minLength: 1, maxLength: 200 }
+  schemas:
+    DriverInput:
+      type: object
+      additionalProperties: false
+      required: [name, dni, whatsApp]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 160 }
+        dni: { type: string, minLength: 1, maxLength: 40 }
+        whatsApp: { type: string, minLength: 1, maxLength: 40 }
+    TruckInput:
+      type: object
+      additionalProperties: false
+      required: [plate, fleetType]
+      properties:
+        plate: { type: string, minLength: 1, maxLength: 30 }
+        fleetType: { type: string, enum: [PROPIA, TERCEROS] }
+    FarmInput:
+      type: object
+      additionalProperties: false
+      required: [code, name, locationReference]
+      properties:
+        code: { type: string, minLength: 1, maxLength: 40 }
+        name: { type: string, minLength: 1, maxLength: 160 }
+        locationReference: { type: string, minLength: 1, maxLength: 300 }
+    AssociationInput:
+      type: object
+      additionalProperties: false
+      required: [driverId, truckId]
+      properties:
+        driverId: { type: string, format: uuid }
+        truckId: { type: string, format: uuid }
+    MasterDataResponse:
+      type: object
+      required: [id, name, code, identifier, secondaryIdentifier, isActive, createdAtUtc, inactivatedAtUtc]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        code: { type: [string, 'null'] }
+        identifier: { type: [string, 'null'] }
+        secondaryIdentifier: { type: [string, 'null'] }
+        isActive: { type: boolean }
+        createdAtUtc: { type: string, format: date-time }
+        inactivatedAtUtc: { type: [string, 'null'], format: date-time }
+    DriverResponse:
+      allOf:
+        - $ref: '#/components/schemas/MasterDataResponse'
+        - type: object
+          properties:
+            name: { type: string, description: Driver name }
+            code: { type: 'null', description: Not used for drivers }
+            identifier: { type: [string, 'null'], description: DNI }
+            secondaryIdentifier: { type: [string, 'null'], description: WhatsApp number }
+    TruckResponse:
+      allOf:
+        - $ref: '#/components/schemas/MasterDataResponse'
+        - type: object
+          properties:
+            name: { type: string, description: Plate as provided }
+            code: { type: [string, 'null'], description: Fleet type }
+            identifier: { type: [string, 'null'], description: Normalized plate }
+            secondaryIdentifier: { type: 'null', description: Not used for trucks }
+    FarmResponse:
+      allOf:
+        - $ref: '#/components/schemas/MasterDataResponse'
+        - type: object
+          properties:
+            name: { type: string, description: Farm name }
+            code: { type: [string, 'null'], description: Farm code }
+            identifier: { type: [string, 'null'], description: Location reference }
+            secondaryIdentifier: { type: 'null', description: Not used for farms }
+    AssociationResponse:
+      type: object
+      required: [id, driverId, truckId, isActive, createdAtUtc, inactivatedAtUtc]
+      properties:
+        id: { type: string, format: uuid }
+        driverId: { type: string, format: uuid }
+        truckId: { type: string, format: uuid }
+        isActive: { type: boolean }
+        createdAtUtc: { type: string, format: date-time }
+        inactivatedAtUtc: { type: [string, 'null'], format: date-time }
+    MutationReceipt:
+      type: object
+      additionalProperties: false
+      required: [resourceId, resourceType, outcome]
+      properties:
+        resourceId: { type: string, format: uuid }
+        resourceType: { type: string, enum: [driver, truck, farm, association] }
+        outcome: { type: string, enum: [created, updated, inactivated, reactivated] }
+    Problem:
+      type: object
+      properties:
+        type: { type: string, format: uri-reference }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        instance: { type: string }
+        code: { type: string }
+  responses:
+    Problem:
+      description: The request failed with an RFC 7807-compatible problem response.
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    Unauthorized:
+      description: The authentication handler rejected the request. The response has no body.
+    Forbidden:
+      description: The authorization handler rejected the request. The response has no body.
