@@ -17,7 +17,168 @@ tags:
   - name: Salud
   - name: Turnos
 
-paths: {}
+paths:
+  /health:
+    get:
+      tags: [Salud]
+      operationId: obtenerSalud
+      summary: Comprobar la salud técnica de la API
+      responses:
+        '200':
+          description: La API está disponible.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+        '503':
+          description: La API no puede atender la demo.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+
+  /api/v1/appointments:
+    post:
+      tags: [Turnos]
+      operationId: crearTurno
+      summary: Crear y asignar un turno
+      description: >-
+        Crea un turno resolviendo el teléfono del transportista, la patente del
+        camión y el código de finca existentes en el seed, y asigna la primera
+        ventana futura con cupo. No requiere consultas de datos maestros, no
+        recibe UUIDs y no admite una ventana preferida.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAppointmentRequest'
+      responses:
+        '201':
+          description: Turno creado, asignado y persistido.
+          headers:
+            Location:
+              description: URL del detalle del turno creado.
+              schema:
+                type: string
+                format: uri-reference
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Appointment'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '404':
+          $ref: '#/components/responses/ReferenceNotFound'
+        '409':
+          $ref: '#/components/responses/BusinessConflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    get:
+      tags: [Turnos]
+      operationId: listarTurnos
+      summary: Listar y filtrar turnos
+      description: >-
+        Sin filtros devuelve los turnos de la fecha local actual del ingenio
+        sembrado. Los filtros se combinan con AND y el resultado se ordena por
+        inicio de ventana ascendente. El filtro phone permite la consulta de
+        CU-003 desde el teléfono del mensaje entrante.
+      parameters:
+        - name: date
+          in: query
+          description: Fecha local de la ventana. Por defecto, la fecha local actual.
+          schema:
+            type: string
+            format: date
+        - name: status
+          in: query
+          description: Estado vigente del turno.
+          schema:
+            $ref: '#/components/schemas/AppointmentStatus'
+        - name: truckPlate
+          in: query
+          description: Patente completa; la comparación ignora mayúsculas y separadores.
+          schema:
+            type: string
+            minLength: 6
+            maxLength: 10
+            examples: [AF123BC]
+        - name: phone
+          in: query
+          description: >-
+            Teléfono completo del transportista en formato E.164. Permite que n8n
+            consulte desde el número del remitente sin resolver antes su UUID.
+          schema:
+            type: string
+            pattern: '^\+[1-9][0-9]{7,14}$'
+            examples: ['+5493815550101']
+      responses:
+        '200':
+          description: Turnos que cumplen todos los filtros.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AppointmentSummary'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/v1/appointments/{id}:
+    parameters:
+      - $ref: '#/components/parameters/AppointmentId'
+    get:
+      tags: [Turnos]
+      operationId: obtenerTurno
+      summary: Consultar el detalle vigente de un turno
+      responses:
+        '200':
+          description: Estado y datos vigentes del turno.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Appointment'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '404':
+          $ref: '#/components/responses/AppointmentNotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/v1/appointments/{id}/transitions:
+    parameters:
+      - $ref: '#/components/parameters/AppointmentId'
+    post:
+      tags: [Turnos]
+      operationId: transicionarTurno
+      summary: Avanzar o cancelar un turno
+      description: >-
+        Aplica el siguiente estado de la secuencia operativa o CANCELADO desde un
+        estado cancelable. La respuesta se emite después de persistir el cambio.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransitionAppointmentRequest'
+      responses:
+        '200':
+          description: Transición persistida.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Appointment'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '404':
+          $ref: '#/components/responses/AppointmentNotFound'
+        '409':
+          $ref: '#/components/responses/BusinessConflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
 
 components:
   parameters:
