@@ -1,11 +1,331 @@
 openapi: 3.1.0
 info:
   title: AgroFlow API
-  version: 0.1.0
+  version: 0.2.0
   description: >-
-    Contrato base del backend de AgroFlow. Los endpoints se incorporarán a medida
-    que sus capacidades y decisiones queden aprobadas mediante OpenSpec.
+    Contrato HTTP canónico para la demo local de turnos básicos aprobada en la
+    issue #49. El perfil local opera con un único ingenio sembrado y sin
+    autenticación; no representa el contrato de seguridad ni el alcance completo
+    del MVP.
 servers:
   - url: http://localhost:5000
-    description: Desarrollo local
+    description: API ejecutada en el host local
+  - url: http://host.docker.internal:5000
+    description: API del host vista desde n8n en Docker Desktop
+
+tags:
+  - name: Salud
+  - name: Turnos
+
 paths: {}
+
+components:
+  parameters:
+    AppointmentId:
+      name: id
+      in: path
+      required: true
+      description: Identificador del turno.
+      schema:
+        type: string
+        format: uuid
+
+  schemas:
+    HealthResponse:
+      type: object
+      additionalProperties: false
+      required: [status]
+      properties:
+        status:
+          type: string
+          const: Healthy
+
+    CreateAppointmentRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - carrierPhone
+        - truckPlate
+        - farmCode
+        - cutAt
+        - estimatedLoadTons
+      properties:
+        carrierPhone:
+          type: string
+          pattern: '^\+[1-9][0-9]{7,14}$'
+          description: >-
+            Teléfono ficticio del transportista activo provisto por el seed, en
+            formato E.164.
+        truckPlate:
+          type: string
+          minLength: 6
+          maxLength: 10
+          description: Patente del camión activo y asociado al transportista.
+        farmCode:
+          type: string
+          minLength: 1
+          maxLength: 50
+          pattern: '^[A-Za-z0-9][A-Za-z0-9_-]*$'
+          description: Código estable de una finca activa provista por el seed.
+        cutAt:
+          type: string
+          format: date-time
+          description: Momento de corte con desplazamiento horario explícito.
+        estimatedLoadTons:
+          type: number
+          format: double
+          exclusiveMinimum: 0
+          description: Carga estimada expresada en toneladas.
+      examples:
+        - carrierPhone: '+5493815550101'
+          truckPlate: AF123BC
+          farmCode: FINCA-NORTE
+          cutAt: '2026-09-28T05:30:00-03:00'
+          estimatedLoadTons: 28.5
+
+    TransitionAppointmentRequest:
+      type: object
+      additionalProperties: false
+      required: [newStatus]
+      properties:
+        newStatus:
+          $ref: '#/components/schemas/AppointmentStatus'
+      examples:
+        - newStatus: EN_CAMINO
+        - newStatus: CANCELADO
+
+    AppointmentStatus:
+      type: string
+      enum:
+        - ASIGNADO
+        - EN_CAMINO
+        - EN_ESPERA
+        - INGRESADO
+        - EN_DESCARGA
+        - FINALIZADO
+        - CANCELADO
+
+    EntityReference:
+      type: object
+      additionalProperties: false
+      required: [id, name]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          minLength: 1
+
+    TruckReference:
+      type: object
+      additionalProperties: false
+      required: [id, plate]
+      properties:
+        id:
+          type: string
+          format: uuid
+        plate:
+          type: string
+          minLength: 6
+          maxLength: 10
+
+    AppointmentWindow:
+      type: object
+      additionalProperties: false
+      required: [startAt, endAt]
+      properties:
+        startAt:
+          type: string
+          format: date-time
+        endAt:
+          type: string
+          format: date-time
+
+    AppointmentSummary:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - truck
+        - window
+        - status
+      properties:
+        id:
+          type: string
+          format: uuid
+        truck:
+          $ref: '#/components/schemas/TruckReference'
+        window:
+          $ref: '#/components/schemas/AppointmentWindow'
+        status:
+          $ref: '#/components/schemas/AppointmentStatus'
+
+    Appointment:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - carrier
+        - truck
+        - farm
+        - cutAt
+        - estimatedLoadTons
+        - window
+        - status
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        carrier:
+          $ref: '#/components/schemas/EntityReference'
+        truck:
+          $ref: '#/components/schemas/TruckReference'
+        farm:
+          $ref: '#/components/schemas/EntityReference'
+        cutAt:
+          type: string
+          format: date-time
+        estimatedLoadTons:
+          type: number
+          format: double
+          exclusiveMinimum: 0
+        window:
+          $ref: '#/components/schemas/AppointmentWindow'
+        status:
+          $ref: '#/components/schemas/AppointmentStatus'
+        createdAt:
+          type: string
+          format: date-time
+
+    ProblemDetails:
+      type: object
+      additionalProperties: false
+      required: [type, title, status, code, traceId]
+      properties:
+        type:
+          type: string
+          format: uri-reference
+          examples: ['about:blank']
+        title:
+          type: string
+        status:
+          type: integer
+          minimum: 400
+          maximum: 599
+        detail:
+          type: string
+        instance:
+          type: string
+          format: uri-reference
+        code:
+          type: string
+          description: Código estable para consumidores.
+          enum:
+            - VALIDATION_ERROR
+            - REFERENCE_NOT_FOUND
+            - APPOINTMENT_NOT_FOUND
+            - ACTIVE_APPOINTMENT_EXISTS
+            - NO_CAPACITY
+            - INVALID_TRANSITION
+            - INTERNAL_ERROR
+        traceId:
+          type: string
+          minLength: 1
+        errors:
+          type: object
+          description: Errores por campo; vacío o ausente para errores no asociados a campos.
+          additionalProperties:
+            type: array
+            items:
+              type: string
+
+  responses:
+    ValidationError:
+      description: La solicitud, parámetro o filtro no cumple el contrato.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+          example:
+            type: 'about:blank'
+            title: Solicitud inválida
+            status: 400
+            code: VALIDATION_ERROR
+            traceId: 00-demo-trace
+            errors:
+              estimatedLoadTons:
+                - Debe ser mayor que cero.
+
+    ReferenceNotFound:
+      description: >-
+        El carrierPhone, truckPlate o farmCode no existe en los datos sembrados,
+        no está activo o no cumple la asociación requerida.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+          example:
+            type: 'about:blank'
+            title: Referencia inexistente
+            status: 404
+            code: REFERENCE_NOT_FOUND
+            traceId: 00-demo-trace
+
+    AppointmentNotFound:
+      description: No existe un turno con ese identificador.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+          example:
+            type: 'about:blank'
+            title: Turno inexistente
+            status: 404
+            code: APPOINTMENT_NOT_FOUND
+            traceId: 00-demo-trace
+
+    BusinessConflict:
+      description: >-
+        La operación contradice el estado vigente, existe otro turno activo para
+        el camión o no hay capacidad local disponible.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+          examples:
+            invalidTransition:
+              value:
+                type: 'about:blank'
+                title: Transición inválida
+                status: 409
+                code: INVALID_TRANSITION
+                traceId: 00-demo-trace
+            activeAppointment:
+              value:
+                type: 'about:blank'
+                title: El camión ya posee un turno activo
+                status: 409
+                code: ACTIVE_APPOINTMENT_EXISTS
+                traceId: 00-demo-trace
+            noCapacity:
+              value:
+                type: 'about:blank'
+                title: No hay capacidad disponible
+                status: 409
+                code: NO_CAPACITY
+                traceId: 00-demo-trace
+
+    InternalError:
+      description: Error inesperado sin exposición de detalles internos.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+          example:
+            type: 'about:blank'
+            title: Error interno
+            status: 500
+            code: INTERNAL_ERROR
+            traceId: 00-demo-trace
