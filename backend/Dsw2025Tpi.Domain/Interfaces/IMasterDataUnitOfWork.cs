@@ -8,6 +8,7 @@ public interface IMasterDataUnitOfWork
     Task<IReadOnlyList<Camion>> ListCamiones(Guid ingenioId, bool? active, CancellationToken cancellationToken);
     Task<IReadOnlyList<Finca>> ListFincas(Guid ingenioId, bool? active, CancellationToken cancellationToken);
     Task<IReadOnlyList<TransportistaCamion>> ListAssociations(Guid ingenioId, bool? active, CancellationToken cancellationToken);
+    Task<IReadOnlyList<ActiveTruckAssociationProjection>> ListActiveTrucksForTransportista(Guid ingenioId, Guid transportistaId, CancellationToken cancellationToken);
     Task<Transportista?> FindTransportista(Guid ingenioId, Guid id, CancellationToken cancellationToken);
     Task<Camion?> FindCamion(Guid ingenioId, Guid id, CancellationToken cancellationToken);
     Task<Finca?> FindFinca(Guid ingenioId, Guid id, CancellationToken cancellationToken);
@@ -31,6 +32,8 @@ public interface IMasterDataUnitOfWork
     Task<IMasterDataTransaction> BeginTransaction(CancellationToken cancellationToken);
     Task Commit(CancellationToken cancellationToken);
 }
+
+public sealed record ActiveTruckAssociationProjection(Guid CamionId, string Plate, string FleetType, bool AssociationIsActive, bool TruckIsActive);
 
 public sealed record TransportistaIdentifierConflicts(bool DniInUseInIngenio, bool WhatsAppInUseInIngenio, bool UsedGlobally);
 public sealed record CamionPlateConflicts(bool InUseInIngenio, bool UsedGlobally);

@@ -24,6 +24,26 @@ public sealed class EfMasterDataUnitOfWork(Dsw2025TpiContext context) : IMasterD
         context.TransportistasCamiones.AsNoTracking().Where(x => x.IngenioId == ingenioId && (!active.HasValue || x.IsActive == active.Value))
             .OrderBy(x => x.CreatedAtUtc).ToListAsync(cancellationToken).ContinueWith<IReadOnlyList<TransportistaCamion>>(task => task.Result, cancellationToken);
 
+    public async Task<IReadOnlyList<ActiveTruckAssociationProjection>> ListActiveTrucksForTransportista(
+        Guid ingenioId, Guid transportistaId, CancellationToken cancellationToken)
+    {
+        var driverExists = await context.Transportistas.AsNoTracking()
+            .AnyAsync(x => x.IngenioId == ingenioId && x.Id == transportistaId, cancellationToken);
+        if (!driverExists) return Array.Empty<ActiveTruckAssociationProjection>();
+
+        return await context.TransportistasCamiones.AsNoTracking()
+            .Where(x => x.IngenioId == ingenioId && x.TransportistaId == transportistaId && x.IsActive)
+            .OrderBy(x => x.Camion.Plate)
+            .ThenBy(x => x.CamionId)
+            .Select(x => new ActiveTruckAssociationProjection(
+                x.CamionId,
+                x.Camion.Plate,
+                x.Camion.FleetType,
+                x.IsActive,
+                x.Camion.IsActive))
+            .ToListAsync(cancellationToken);
+    }
+
     public Task<Transportista?> FindTransportista(Guid ingenioId, Guid id, CancellationToken cancellationToken) =>
         context.Transportistas.SingleOrDefaultAsync(x => x.IngenioId == ingenioId && x.Id == id, cancellationToken);
     public Task<Camion?> FindCamion(Guid ingenioId, Guid id, CancellationToken cancellationToken) =>

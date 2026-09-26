@@ -229,6 +229,50 @@ public sealed class MasterDataServiceTests
     }
 
     [Fact]
+    public async Task Active_truck_projection_maps_details_states_and_only_returns_current_tenant_active_associations()
+    {
+        var store = new FakeMasterDataUnitOfWork();
+        var tenantId = Guid.NewGuid();
+        var foreignTenantId = Guid.NewGuid();
+        var localDriver = new Transportista(tenantId, "Local Driver", "DNI 201", "+54 11 201");
+        var foreignDriver = new Transportista(foreignTenantId, "Foreign Driver", "DNI 202", "+54 11 202");
+        var activeTruck = new Camion(tenantId, "ZZ123AA", Camion.FleetTypePropia);
+        var inactiveTruck = new Camion(tenantId, "AA456BB", Camion.FleetTypeTerceros);
+        inactiveTruck.Inactivate(DateTime.UtcNow);
+        var foreignTruck = new Camion(foreignTenantId, "FF789GG", Camion.FleetTypePropia);
+        store.Add(localDriver);
+        store.Add(foreignDriver);
+        store.Add(activeTruck);
+        store.Add(inactiveTruck);
+        store.Add(foreignTruck);
+        var activeAssociation = new TransportistaCamion(localDriver, activeTruck);
+        var inactiveTruckAssociation = new TransportistaCamion(localDriver, inactiveTruck);
+        var revokedAssociation = new TransportistaCamion(localDriver, new Camion(tenantId, "CC111DD", Camion.FleetTypePropia));
+        revokedAssociation.Inactivate(DateTime.UtcNow);
+        store.Add(activeAssociation);
+        store.Add(inactiveTruckAssociation);
+        store.Add(revokedAssociation);
+        store.Add(new TransportistaCamion(foreignDriver, foreignTruck));
+        var service = Service(store, tenantId, "actor-1");
+
+        var rows = await service.ActiveTrucksForTransportista(localDriver.Id, CancellationToken.None);
+        var foreignRows = await service.ActiveTrucksForTransportista(foreignDriver.Id, CancellationToken.None);
+
+        Assert.Collection(rows.OrderBy(x => x.Plate),
+            row => Assert.Equal(new TransportistaActiveTruck(inactiveTruck.Id, "AA456BB", Camion.FleetTypeTerceros, true, false), row),
+            row => Assert.Equal(new TransportistaActiveTruck(activeTruck.Id, "ZZ123AA", Camion.FleetTypePropia, true, true), row));
+        Assert.Empty(foreignRows);
+    }
+
+    [Fact]
+    public async Task Active_truck_projection_returns_empty_for_unknown_transportista()
+    {
+        var service = Service(new FakeMasterDataUnitOfWork(), Guid.NewGuid(), "actor-1");
+
+        Assert.Empty(await service.ActiveTrucksForTransportista(Guid.NewGuid(), CancellationToken.None));
+    }
+
+    [Fact]
     public async Task Active_association_conflict_lookup_is_scoped_to_the_effective_tenant()
     {
         var store = new FakeMasterDataUnitOfWork();
@@ -258,7 +302,7 @@ public sealed class MasterDataServiceTests
 
     private sealed record TestTenantContext(Guid IngenioId, string ActorIdentity) : ITenantContext;
 
-    private sealed class FakeMasterDataUnitOfWork : IMasterDataUnitOfWork
+    internal sealed class FakeMasterDataUnitOfWork : IMasterDataUnitOfWork
     {
         public List<Transportista> Transportistas { get; } = [];
         public List<Camion> Camiones { get; } = [];
@@ -274,6 +318,18 @@ public sealed class MasterDataServiceTests
         public Task<IReadOnlyList<Camion>> ListCamiones(Guid ingenioId, bool? active, CancellationToken ct) => Task.FromResult<IReadOnlyList<Camion>>(Camiones.Where(x => x.IngenioId == ingenioId && (!active.HasValue || x.IsActive == active)).ToArray());
         public Task<IReadOnlyList<Finca>> ListFincas(Guid ingenioId, bool? active, CancellationToken ct) => Task.FromResult<IReadOnlyList<Finca>>(Fincas.Where(x => x.IngenioId == ingenioId && (!active.HasValue || x.IsActive == active)).ToArray());
         public Task<IReadOnlyList<TransportistaCamion>> ListAssociations(Guid ingenioId, bool? active, CancellationToken ct) => Task.FromResult<IReadOnlyList<TransportistaCamion>>(Associations.Where(x => x.IngenioId == ingenioId && (!active.HasValue || x.IsActive == active)).ToArray());
+        public Task<IReadOnlyList<ActiveTruckAssociationProjection>> ListActiveTrucksForTransportista(Guid ingenioId, Guid transportistaId, CancellationToken ct)
+        {
+            if (!Transportistas.Any(x => x.IngenioId == ingenioId && x.Id == transportistaId))
+                return Task.FromResult<IReadOnlyList<ActiveTruckAssociationProjection>>(Array.Empty<ActiveTruckAssociationProjection>());
+            IReadOnlyList<ActiveTruckAssociationProjection> rows = Associations
+                .Where(x => x.IngenioId == ingenioId && x.TransportistaId == transportistaId && x.IsActive)
+                .OrderBy(x => x.Camion.Plate)
+                .ThenBy(x => x.CamionId)
+                .Select(x => new ActiveTruckAssociationProjection(x.CamionId, x.Camion.Plate, x.Camion.FleetType, x.IsActive, x.Camion.IsActive))
+                .ToArray();
+            return Task.FromResult(rows);
+        }
         public Task<Transportista?> FindTransportista(Guid ingenioId, Guid id, CancellationToken ct) => Task.FromResult(Transportistas.SingleOrDefault(x => x.IngenioId == ingenioId && x.Id == id));
         public Task<Camion?> FindCamion(Guid ingenioId, Guid id, CancellationToken ct) => Task.FromResult(Camiones.SingleOrDefault(x => x.IngenioId == ingenioId && x.Id == id));
         public Task<Finca?> FindFinca(Guid ingenioId, Guid id, CancellationToken ct) => Task.FromResult(Fincas.SingleOrDefault(x => x.IngenioId == ingenioId && x.Id == id));

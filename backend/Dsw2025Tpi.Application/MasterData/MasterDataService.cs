@@ -13,6 +13,7 @@ public sealed record FarmData(string Code, string Name, string LocationReference
 public sealed record AssociationData(Guid DriverId, Guid TruckId);
 public sealed record MasterDataItem(Guid Id, Guid IngenioId, string Name, string? Code, string? Identifier, string? SecondaryIdentifier, bool IsActive, DateTime CreatedAtUtc, DateTime? InactivatedAtUtc);
 public sealed record AssociationItem(Guid Id, Guid DriverId, Guid TruckId, bool IsActive, DateTime CreatedAtUtc, DateTime? InactivatedAtUtc);
+public sealed record TransportistaActiveTruck(Guid CamionId, string Plate, string FleetType, bool AssociationIsActive, bool TruckIsActive);
 public sealed record MutationReceipt(Guid ResourceId, string ResourceType, string Outcome);
 
 public sealed class MasterDataConflictException(string code, string message) : Exception(message)
@@ -34,6 +35,11 @@ public sealed class MasterDataService(IMasterDataUnitOfWork unitOfWork, ITenantC
         (await unitOfWork.ListAssociations(tenant.IngenioId, active, ct)).Select(AssociationItemOf).ToArray();
     public async Task<AssociationItem> GetAssociation(Guid id, CancellationToken ct) =>
         AssociationItemOf(await unitOfWork.FindAssociation(tenant.IngenioId, id, ct) ?? throw NotFound());
+
+    public async Task<IReadOnlyList<TransportistaActiveTruck>> ActiveTrucksForTransportista(Guid transportistaId, CancellationToken ct) =>
+        (await unitOfWork.ListActiveTrucksForTransportista(tenant.IngenioId, transportistaId, ct))
+            .Select(x => new TransportistaActiveTruck(x.CamionId, x.Plate, x.FleetType, x.AssociationIsActive, x.TruckIsActive))
+            .ToArray();
 
     public async Task<MasterDataItem> GetDriver(Guid id, CancellationToken ct) => DriverItem(await FindDriver(id, ct));
     public async Task<MasterDataItem> GetTruck(Guid id, CancellationToken ct) => TruckItem(await FindTruck(id, ct));
