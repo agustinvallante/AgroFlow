@@ -6,7 +6,7 @@
 
 El frontend del MVP será una aplicación web interna para operar y observar AgroFlow. Los **transportistas no usan esta aplicación**: solicitan, consultan e informan `EN_CAMINO` por **WhatsApp mediante n8n**, según [`integracion-whatsapp-n8n`](../../openspec/specs/integracion-whatsapp-n8n/spec.md). El backend conserva identidad efectiva, autorización, aislamiento por ingenio, reglas y estado persistido, como establece [ADR-003](../architecture/decisions/ADR-003-backend-fuente-de-verdad.md).
 
-**El frontend todavía no tiene una aplicación ejecutable:** `frontend/` contiene solo su README. El contrato OpenAPI ya publica rutas de datos maestros para `drivers`, `trucks`, `farms` y `driver-truck-associations`, incluidas respuestas de recibo de mutación. No publica todavía autenticación/sesión/contexto ni listado o detalle de turnos, así que esa porción vertical no puede conectarse a contratos. El estado de OpenAPI es parcial, no vacío.
+**El frontend todavía no tiene una aplicación ejecutable:** `frontend/` contiene solo su README. OpenAPI contiene rutas borrador únicamente para los tres catálogos (`drivers`, `trucks` y `farms`), con listas, detalles, altas, actualizaciones e inactivaciones; los nombres y campos requieren revisión B00 y no son un contrato aprobado. Las rutas/acciones de asociaciones y reactivación siguen pendientes; el modelo/servicio y la proyección interna B38 se conservan, pero su contrato externo sigue pendiente. Tampoco hay rutas de autenticación/sesión/contexto ni listado o detalle de turnos, así que esa porción vertical no puede conectarse a contratos. El estado de OpenAPI es parcial, no vacío.
 
 La aplicación de migraciones SQL Server permanece diferida por decisión explícita del usuario. El trabajo de interfaz no debe llenar las brechas de backend o contrato con mocks presentados como datos reales; no se usarán mocks para completar flujos operativos.
 
@@ -143,7 +143,7 @@ Mientras no existan la aplicación frontend ejecutable y contratos OpenAPI aprob
 - listado, filtros o detalle de turnos;
 - transiciones, cancelación o liberación de capacidad;
 - dashboard e interrupciones;
-- gestión de los catálogos conectada a la UI, aunque sus contratos de API ya están disponibles; la gestión de asociaciones sigue pendiente y no se afirma como interfaz disponible;
+- gestión de los catálogos conectada a la UI: existen rutas borrador, pero nombres y campos requieren revisión B00 antes de tratar el contrato como aprobado; la gestión de asociaciones y la reactivación siguen pendientes y no se afirman como interfaz disponible;
 - auditoría o estados de notificación;
 - tipos generados, adaptadores, pruebas de contrato o E2E reales.
 
@@ -206,7 +206,7 @@ Esta recomendación no convierte la porción de lectura en el MVP completo: las 
 - validar que contrato y specs expresen el mismo comportamiento;
 - incluir casos negativos, concurrencia e idempotencia cuando correspondan.
 
-**Estado actual:** OpenAPI ya contiene rutas de datos maestros y recibos de mutación. La porción de autenticación/contexto y turnos requiere rutas aprobadas y verificadas; esas rutas todavía no existen.
+**Estado actual:** OpenAPI contiene rutas borrador solo para los tres catálogos; nombres y campos requieren revisión B00. Asociaciones y reactivación siguen pendientes; el modelo/servicio y la proyección interna B38 se conservan, pero su contrato externo sigue pendiente. También sigue pendiente la porción de autenticación/contexto y turnos, que requiere rutas aprobadas y verificadas.
 
 ### Fase 3 — Crear la fundación ejecutable Next.js
 

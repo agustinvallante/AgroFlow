@@ -6,7 +6,9 @@ info:
     Contrato HTTP canónico para la demo local de turnos básicos aprobada en la
     issue #49. El perfil local opera con un único ingenio sembrado y sin
     autenticación; no representa el contrato de seguridad ni el alcance completo
-    del MVP.
+    del MVP. Las rutas de catálogos de datos maestros autenticadas son un borrador:
+    sus nombres y campos editables requieren acuerdo B00/OD-013, y la política de
+    Idempotency-Key requiere aprobación OD-006; no son un contrato aprobado.
 servers:
   - url: http://localhost:5000
     description: API ejecutada en el host local
@@ -292,26 +294,6 @@ paths:
         '404': { $ref: '#/components/responses/Problem' }
         '409': { $ref: '#/components/responses/Problem' }
         '500': { $ref: '#/components/responses/Problem' }
-  /api/v1/drivers/{id}/reactivation:
-    parameters:
-      - $ref: '#/components/parameters/id'
-    post:
-      operationId: reactivateDriver
-      summary: Reactivate a driver
-      parameters:
-        - $ref: '#/components/parameters/idempotencyKey'
-      responses:
-        '200':
-          description: Driver reactivated
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/MutationReceipt' }
-        '400': { $ref: '#/components/responses/Problem' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '404': { $ref: '#/components/responses/Problem' }
-        '409': { $ref: '#/components/responses/Problem' }
-        '500': { $ref: '#/components/responses/Problem' }
   /api/v1/trucks:
     get:
       operationId: listTrucks
@@ -414,26 +396,6 @@ paths:
         '404': { $ref: '#/components/responses/Problem' }
         '409': { $ref: '#/components/responses/Problem' }
         '500': { $ref: '#/components/responses/Problem' }
-  /api/v1/trucks/{id}/reactivation:
-    parameters:
-      - $ref: '#/components/parameters/id'
-    post:
-      operationId: reactivateTruck
-      summary: Reactivate a truck
-      parameters:
-        - $ref: '#/components/parameters/idempotencyKey'
-      responses:
-        '200':
-          description: Truck reactivated
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/MutationReceipt' }
-        '400': { $ref: '#/components/responses/Problem' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '404': { $ref: '#/components/responses/Problem' }
-        '409': { $ref: '#/components/responses/Problem' }
-        '500': { $ref: '#/components/responses/Problem' }
   /api/v1/farms:
     get:
       operationId: listFarms
@@ -527,127 +489,6 @@ paths:
       responses:
         '200':
           description: Farm inactivated
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/MutationReceipt' }
-        '400': { $ref: '#/components/responses/Problem' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '404': { $ref: '#/components/responses/Problem' }
-        '409': { $ref: '#/components/responses/Problem' }
-        '500': { $ref: '#/components/responses/Problem' }
-  /api/v1/farms/{id}/reactivation:
-    parameters:
-      - $ref: '#/components/parameters/id'
-    post:
-      operationId: reactivateFarm
-      summary: Reactivate a farm
-      parameters:
-        - $ref: '#/components/parameters/idempotencyKey'
-      responses:
-        '200':
-          description: Farm reactivated
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/MutationReceipt' }
-        '400': { $ref: '#/components/responses/Problem' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '404': { $ref: '#/components/responses/Problem' }
-        '409': { $ref: '#/components/responses/Problem' }
-        '500': { $ref: '#/components/responses/Problem' }
-  /api/v1/driver-truck-associations:
-    get:
-      operationId: listDriverTruckAssociations
-      summary: List driver-truck associations
-      description: Lists associations in the authenticated ingenio, optionally filtered by activity.
-      parameters:
-        - $ref: '#/components/parameters/active'
-      responses:
-        '200':
-          description: Association list
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/AssociationResponse'
-        '400': { $ref: '#/components/responses/Problem' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '500': { $ref: '#/components/responses/Problem' }
-    post:
-      operationId: createDriverTruckAssociation
-      summary: Create a driver-truck association
-      parameters:
-        - $ref: '#/components/parameters/idempotencyKey'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: '#/components/schemas/AssociationInput' }
-      responses:
-        '201':
-          description: Association created
-          headers:
-            Location:
-              schema: { type: string }
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/MutationReceipt' }
-        '400': { $ref: '#/components/responses/Problem' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '404': { $ref: '#/components/responses/Problem' }
-        '409': { $ref: '#/components/responses/Problem' }
-        '500': { $ref: '#/components/responses/Problem' }
-  /api/v1/driver-truck-associations/{id}:
-    parameters:
-      - $ref: '#/components/parameters/id'
-    get:
-      operationId: getDriverTruckAssociation
-      summary: Get a driver-truck association
-      responses:
-        '200':
-          description: Association
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/AssociationResponse' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '404': { $ref: '#/components/responses/Problem' }
-        '500': { $ref: '#/components/responses/Problem' }
-  /api/v1/driver-truck-associations/{id}/inactivation:
-    parameters:
-      - $ref: '#/components/parameters/id'
-    post:
-      operationId: inactivateDriverTruckAssociation
-      summary: Inactivate a driver-truck association
-      parameters:
-        - $ref: '#/components/parameters/idempotencyKey'
-      responses:
-        '200':
-          description: Association inactivated
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/MutationReceipt' }
-        '400': { $ref: '#/components/responses/Problem' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '404': { $ref: '#/components/responses/Problem' }
-        '409': { $ref: '#/components/responses/Problem' }
-        '500': { $ref: '#/components/responses/Problem' }
-  /api/v1/driver-truck-associations/{id}/reactivation:
-    parameters:
-      - $ref: '#/components/parameters/id'
-    post:
-      operationId: reactivateDriverTruckAssociation
-      summary: Reactivate a driver-truck association
-      parameters:
-        - $ref: '#/components/parameters/idempotencyKey'
-      responses:
-        '200':
-          description: Association reactivated
           content:
             application/json:
               schema: { $ref: '#/components/schemas/MutationReceipt' }
@@ -925,13 +766,6 @@ components:
         code: { type: string, minLength: 1, maxLength: 40 }
         name: { type: string, minLength: 1, maxLength: 160 }
         locationReference: { type: string, minLength: 1, maxLength: 300 }
-    AssociationInput:
-      type: object
-      additionalProperties: false
-      required: [driverId, truckId]
-      properties:
-        driverId: { type: string, format: uuid }
-        truckId: { type: string, format: uuid }
     MasterDataResponse:
       type: object
       required: [id, name, code, identifier, secondaryIdentifier, isActive, createdAtUtc, inactivatedAtUtc]
@@ -971,24 +805,14 @@ components:
             code: { type: [string, 'null'], description: Farm code }
             identifier: { type: [string, 'null'], description: Location reference }
             secondaryIdentifier: { type: 'null', description: Not used for farms }
-    AssociationResponse:
-      type: object
-      required: [id, driverId, truckId, isActive, createdAtUtc, inactivatedAtUtc]
-      properties:
-        id: { type: string, format: uuid }
-        driverId: { type: string, format: uuid }
-        truckId: { type: string, format: uuid }
-        isActive: { type: boolean }
-        createdAtUtc: { type: string, format: date-time }
-        inactivatedAtUtc: { type: [string, 'null'], format: date-time }
     MutationReceipt:
       type: object
       additionalProperties: false
       required: [resourceId, resourceType, outcome]
       properties:
         resourceId: { type: string, format: uuid }
-        resourceType: { type: string, enum: [driver, truck, farm, association] }
-        outcome: { type: string, enum: [created, updated, inactivated, reactivated] }
+        resourceType: { type: string, enum: [driver, truck, farm] }
+        outcome: { type: string, enum: [created, updated, inactivated] }
     Problem:
       type: object
       properties:

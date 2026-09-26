@@ -10,12 +10,10 @@ public static class AgroFlowRoles
     public const string Gerente = "GERENTE";
     public const string Administrador = "ADMINISTRADOR";
 
-    public static readonly string[] All =
+    public static readonly string[] ApprovedInternalLogin =
     [
         Operador,
-        Supervisor,
-        Gerente,
-        Administrador
+        Supervisor
     ];
 }
 
@@ -23,7 +21,9 @@ public static class AgroFlowPolicies
 {
     public const string Read = "AgroFlow.Read";
     public const string OperationalMutation = "AgroFlow.OperationalMutation";
-    public const string MasterDataAndCapacityManagement = "AgroFlow.MasterDataAndCapacityManagement";
+    public const string CatalogManagement = "AgroFlow.CatalogManagement";
+    public const string AssociationManagement = "AgroFlow.AssociationManagement";
+    public const string UnapprovedOperation = "AgroFlow.UnapprovedOperation";
     public const string AuditRead = "AgroFlow.AuditRead";
     public const string NotificationRetry = "AgroFlow.NotificationRetry";
     public const string UserRoleAdministration = "AgroFlow.UserRoleAdministration";
@@ -32,28 +32,20 @@ public static class AgroFlowPolicies
     {
         services.AddAuthorization(options =>
         {
-            options.AddPolicy(Read, policy => policy.RequireRole(AgroFlowRoles.All));
+            options.AddPolicy(Read, policy => policy.RequireRole(AgroFlowRoles.ApprovedInternalLogin));
             options.AddPolicy(
                 OperationalMutation,
-                policy => policy.RequireRole(
-                    AgroFlowRoles.Operador,
-                    AgroFlowRoles.Supervisor,
-                    AgroFlowRoles.Administrador));
+                policy => policy.RequireRole(AgroFlowRoles.ApprovedInternalLogin));
             options.AddPolicy(
-                MasterDataAndCapacityManagement,
-                policy => policy.RequireRole(AgroFlowRoles.Supervisor, AgroFlowRoles.Administrador));
+                CatalogManagement,
+                policy => policy.RequireRole(AgroFlowRoles.ApprovedInternalLogin));
+            options.AddPolicy(AssociationManagement, policy => policy.RequireAssertion(_ => false));
+            options.AddPolicy(UnapprovedOperation, policy => policy.RequireAssertion(_ => false));
             options.AddPolicy(
                 AuditRead,
-                policy => policy.RequireRole(
-                    AgroFlowRoles.Supervisor,
-                    AgroFlowRoles.Gerente,
-                    AgroFlowRoles.Administrador));
-            options.AddPolicy(
-                NotificationRetry,
-                policy => policy.RequireRole(AgroFlowRoles.Supervisor, AgroFlowRoles.Administrador));
-            options.AddPolicy(
-                UserRoleAdministration,
-                policy => policy.RequireRole(AgroFlowRoles.Administrador));
+                policy => policy.RequireAssertion(_ => false));
+            options.AddPolicy(NotificationRetry, policy => policy.RequireAssertion(_ => false));
+            options.AddPolicy(UserRoleAdministration, policy => policy.RequireAssertion(_ => false));
         });
 
         return services;

@@ -32,7 +32,7 @@ Una mutación permanecerá pendiente hasta recibir confirmación del backend. No
 
 ### Contrato HTTP
 
-La integración seguirá OpenAPI primero: comportamiento aprobado, contrato publicado, tipos derivados, adaptador probado y recién luego conexión de la vista. OpenAPI ya publica rutas de datos maestros (`drivers`, `trucks`, `farms` y `driver-truck-associations`) y recibos de mutación, pero todavía no tiene rutas de autenticación/sesión/contexto ni de listado/detalle de turnos. Este cambio no define nombres, métodos, DTO ni errores para esos flujos ausentes.
+La integración seguirá OpenAPI primero: comportamiento aprobado, contrato publicado, tipos derivados, adaptador probado y recién luego conexión de la vista. OpenAPI contiene rutas borrador únicamente para los tres catálogos (`drivers`, `trucks` y `farms`), con listas, detalles, altas, actualizaciones e inactivaciones; sus nombres y campos requieren revisión B00 y no constituyen un contrato aprobado. Las rutas/acciones de asociaciones y reactivación siguen pendientes; el modelo/servicio y la proyección interna B38 se conservan, pero su contrato externo sigue pendiente. Tampoco hay rutas de autenticación/sesión/contexto ni de listado/detalle de turnos. Este cambio no define nombres, métodos, DTO ni errores para esos flujos ausentes.
 
 ### Sesión y autorización
 

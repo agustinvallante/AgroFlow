@@ -102,7 +102,7 @@ No almacenará tokens, permisos, pertenencia al ingenio, turnos, indicadores ni 
 
 ## Integración con la API
 
-[`docs/contracts/openapi.yaml`](../../contracts/openapi.yaml) publica actualmente rutas de datos maestros para `drivers`, `trucks`, `farms` y `driver-truck-associations`, incluidas respuestas de recibo de mutación. Todavía no publica rutas de autenticación, sesión, contexto de usuario ni listado o detalle de turnos. Esta base no define endpoints para esas capacidades ni adapta el prototipo a rutas hipotéticas.
+[`docs/contracts/openapi.yaml`](../../contracts/openapi.yaml) contiene actualmente rutas borrador solo para los tres catálogos: `drivers`, `trucks` y `farms` (listas, detalles, altas, actualizaciones e inactivaciones). Sus nombres y campos requieren revisión B00 y no deben tratarse como contrato aprobado. Las rutas/acciones de asociaciones y reactivación siguen pendientes; el modelo/servicio y la proyección interna B38 se conservan, pero su contrato externo sigue pendiente. Tampoco hay rutas de autenticación, sesión, contexto de usuario ni listado o detalle de turnos. Esta base no define endpoints para esas capacidades ni adapta el prototipo a rutas hipotéticas.
 
 La integración seguirá este orden:
 

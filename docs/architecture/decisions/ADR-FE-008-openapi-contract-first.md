@@ -6,7 +6,7 @@
 
 ## Contexto
 
-La API normativa se documenta en `docs/contracts/openapi.yaml`. Actualmente publica rutas de gestión de datos maestros (`drivers`, `trucks`, `farms` y sus asociaciones); todavía no publica las operaciones de autenticación/sesión/contexto ni el listado y detalle de turnos preparados para la primera porción frontend. El prototipo y otros materiales de referencia no tienen autoridad para definir endpoints. Escribir clientes contra rutas ausentes crearía contratos paralelos.
+La API normativa se documenta en `docs/contracts/openapi.yaml`. Actualmente contiene rutas borrador solo para los tres catálogos (`drivers`, `trucks` y `farms`), con operaciones de lista, detalle, alta, actualización e inactivación; sus nombres y campos requieren revisión B00 y no deben considerarse contrato aprobado. Las rutas/acciones de asociaciones y reactivación siguen pendientes; el modelo/servicio y la proyección interna B38 se conservan, pero su contrato externo sigue pendiente. Tampoco están publicadas las operaciones de autenticación/sesión/contexto ni el listado y detalle de turnos preparados para la primera porción frontend. El prototipo y otros materiales de referencia no tienen autoridad para definir endpoints. Escribir clientes contra rutas ausentes crearía contratos paralelos.
 
 ## Decisión
 
