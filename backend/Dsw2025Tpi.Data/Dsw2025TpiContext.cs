@@ -168,7 +168,7 @@ public class Dsw2025TpiContext : DbContext
             eb.Property(x => x.IsActive).IsRequired();
             eb.Property(x => x.CreatedAtUtc).HasColumnType("datetime2").IsRequired();
             eb.Property(x => x.InactivatedAtUtc).HasColumnType("datetime2");
-            eb.HasIndex(x => new { x.IngenioId, x.TransportistaId, x.CamionId })
+            eb.HasIndex(x => new { x.IngenioId, x.CamionId })
                 .IsUnique()
                 .HasFilter("[IsActive] = 1");
             eb.HasOne(x => x.Transportista)

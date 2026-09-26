@@ -13,6 +13,7 @@ public interface IMasterDataUnitOfWork
     Task<Finca?> FindFinca(Guid ingenioId, Guid id, CancellationToken cancellationToken);
     Task<TransportistaCamion?> FindAssociation(Guid ingenioId, Guid id, CancellationToken cancellationToken);
     Task<TransportistaCamion?> FindAssociation(Guid ingenioId, Guid driverId, Guid truckId, bool activeOnly, CancellationToken cancellationToken);
+    Task<TransportistaCamion?> FindActiveAssociationForTruck(Guid ingenioId, Guid truckId, CancellationToken cancellationToken);
     Task<TransportistaIdentifierConflicts> FindTransportistaIdentifierConflicts(Guid ingenioId, string normalizedDni, string normalizedWhatsApp, Guid? exceptId, CancellationToken cancellationToken);
     Task<CamionPlateConflicts> FindCamionPlateConflicts(Guid ingenioId, string normalizedPlate, Guid? exceptId, CancellationToken cancellationToken);
     Task<bool> HasFincaCode(Guid ingenioId, string code, Guid? exceptId, CancellationToken cancellationToken);

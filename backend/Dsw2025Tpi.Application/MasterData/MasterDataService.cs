@@ -142,8 +142,9 @@ public sealed class MasterDataService(IMasterDataUnitOfWork unitOfWork, ITenantC
         var driver = await unitOfWork.FindTransportista(tenant.IngenioId, data.DriverId, ct);
         var truck = await unitOfWork.FindCamion(tenant.IngenioId, data.TruckId, ct);
         if (driver is null || truck is null || !driver.IsActive || !truck.IsActive) throw NotFound();
-        if (await unitOfWork.FindAssociation(tenant.IngenioId, data.DriverId, data.TruckId, activeOnly: true, ct) is not null)
-            throw Conflict("duplicate_association", "An active association already exists.");
+        var activeTruckAssociation = await unitOfWork.FindActiveAssociationForTruck(tenant.IngenioId, truck.Id, ct);
+        if (activeTruckAssociation is not null)
+            throw Conflict("duplicate_association", "The truck already has an active transportista association.");
         var entity = new TransportistaCamion(driver, truck);
         unitOfWork.Add(entity);
         return AssociationItemOf(entity);
@@ -155,8 +156,9 @@ public sealed class MasterDataService(IMasterDataUnitOfWork unitOfWork, ITenantC
         if (active)
         {
             if (!entity.Transportista.IsActive || !entity.Camion.IsActive) throw Conflict("inactive_endpoint", "Both associated resources must be active.");
-            var duplicate = await unitOfWork.FindAssociation(tenant.IngenioId, entity.TransportistaId, entity.CamionId, activeOnly: true, ct);
-            if (duplicate is not null && duplicate.Id != entity.Id) throw Conflict("duplicate_association", "An active association already exists.");
+            var activeTruckAssociation = await unitOfWork.FindActiveAssociationForTruck(tenant.IngenioId, entity.CamionId, ct);
+            if (activeTruckAssociation is not null && activeTruckAssociation.Id != entity.Id)
+                throw Conflict("duplicate_association", "The truck already has an active transportista association.");
             entity.Reactivate();
         }
         else entity.Inactivate(DateTime.UtcNow);

@@ -35,6 +35,9 @@ public sealed class EfMasterDataUnitOfWork(Dsw2025TpiContext context) : IMasterD
             .SingleOrDefaultAsync(x => x.IngenioId == ingenioId && x.Id == id, cancellationToken);
     public Task<TransportistaCamion?> FindAssociation(Guid ingenioId, Guid driverId, Guid truckId, bool activeOnly, CancellationToken cancellationToken) =>
         context.TransportistasCamiones.SingleOrDefaultAsync(x => x.IngenioId == ingenioId && x.TransportistaId == driverId && x.CamionId == truckId && (!activeOnly || x.IsActive), cancellationToken);
+    public Task<TransportistaCamion?> FindActiveAssociationForTruck(Guid ingenioId, Guid truckId, CancellationToken cancellationToken) =>
+        context.TransportistasCamiones.AsNoTracking()
+            .SingleOrDefaultAsync(x => x.IngenioId == ingenioId && x.CamionId == truckId && x.IsActive, cancellationToken);
 
     public async Task<TransportistaIdentifierConflicts> FindTransportistaIdentifierConflicts(
         Guid ingenioId, string normalizedDni, string normalizedWhatsApp, Guid? exceptId, CancellationToken cancellationToken)

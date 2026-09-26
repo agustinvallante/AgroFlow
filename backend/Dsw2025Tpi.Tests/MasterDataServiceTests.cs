@@ -151,6 +151,108 @@ public sealed class MasterDataServiceTests
         Assert.Empty(store.Associations);
     }
 
+    [Fact]
+    public async Task Truck_can_have_only_one_active_association_but_keeps_inactive_history()
+    {
+        var store = new FakeMasterDataUnitOfWork();
+        var ingenioId = Guid.NewGuid();
+        var firstDriver = new Transportista(ingenioId, "Driver One", "DNI 101", "+54 11 101");
+        var secondDriver = new Transportista(ingenioId, "Driver Two", "DNI 102", "+54 11 102");
+        var thirdDriver = new Transportista(ingenioId, "Driver Three", "DNI 103", "+54 11 103");
+        var truck = new Camion(ingenioId, "AA123BB", Camion.FleetTypePropia);
+        store.Add(firstDriver);
+        store.Add(secondDriver);
+        store.Add(thirdDriver);
+        store.Add(truck);
+        var service = Service(store, ingenioId, "actor-1");
+
+        await service.CreateAssociation(new AssociationData(firstDriver.Id, truck.Id), "association-1", CancellationToken.None);
+        var conflict = await Assert.ThrowsAsync<MasterDataConflictException>(() =>
+            service.CreateAssociation(new AssociationData(secondDriver.Id, truck.Id), "association-2", CancellationToken.None));
+        Assert.Equal("duplicate_association", conflict.Code);
+        Assert.Single(store.Associations, association => association.IsActive);
+
+        await service.SetAssociationActive(store.Associations[0].Id, false, "association-off-1", CancellationToken.None);
+        await service.CreateAssociation(new AssociationData(secondDriver.Id, truck.Id), "association-3", CancellationToken.None);
+        await service.SetAssociationActive(store.Associations[1].Id, false, "association-off-2", CancellationToken.None);
+        await service.CreateAssociation(new AssociationData(thirdDriver.Id, truck.Id), "association-4", CancellationToken.None);
+
+        Assert.Equal(3, store.Associations.Count);
+        Assert.All(store.Associations.Take(2), association => Assert.False(association.IsActive));
+        Assert.True(store.Associations[2].IsActive);
+    }
+
+    [Fact]
+    public async Task Inactive_association_can_be_reactivated_when_truck_has_no_other_active_association()
+    {
+        var store = new FakeMasterDataUnitOfWork();
+        var ingenioId = Guid.NewGuid();
+        var driver = new Transportista(ingenioId, "Driver One", "DNI 101", "+54 11 101");
+        var truck = new Camion(ingenioId, "AA123BB", Camion.FleetTypePropia);
+        store.Add(driver);
+        store.Add(truck);
+        var service = Service(store, ingenioId, "actor-1");
+
+        await service.CreateAssociation(new AssociationData(driver.Id, truck.Id), "association-1", CancellationToken.None);
+        var association = store.Associations.Single();
+        await service.SetAssociationActive(association.Id, false, "association-off", CancellationToken.None);
+        await service.SetAssociationActive(association.Id, true, "association-on", CancellationToken.None);
+
+        Assert.True(association.IsActive);
+        Assert.Null(association.InactivatedAtUtc);
+    }
+
+    [Fact]
+    public async Task Reactivation_is_rejected_when_another_driver_has_the_active_truck_association()
+    {
+        var store = new FakeMasterDataUnitOfWork();
+        var ingenioId = Guid.NewGuid();
+        var firstDriver = new Transportista(ingenioId, "Driver One", "DNI 101", "+54 11 101");
+        var secondDriver = new Transportista(ingenioId, "Driver Two", "DNI 102", "+54 11 102");
+        var truck = new Camion(ingenioId, "AA123BB", Camion.FleetTypePropia);
+        store.Add(firstDriver);
+        store.Add(secondDriver);
+        store.Add(truck);
+        var service = Service(store, ingenioId, "actor-1");
+
+        await service.CreateAssociation(new AssociationData(firstDriver.Id, truck.Id), "association-1", CancellationToken.None);
+        var historical = store.Associations.Single();
+        await service.SetAssociationActive(historical.Id, false, "association-off", CancellationToken.None);
+        await service.CreateAssociation(new AssociationData(secondDriver.Id, truck.Id), "association-2", CancellationToken.None);
+
+        var conflict = await Assert.ThrowsAsync<MasterDataConflictException>(() =>
+            service.SetAssociationActive(historical.Id, true, "association-on", CancellationToken.None));
+
+        Assert.Equal("duplicate_association", conflict.Code);
+        Assert.False(historical.IsActive);
+        Assert.Single(store.Associations, association => association.IsActive);
+    }
+
+    [Fact]
+    public async Task Active_association_conflict_lookup_is_scoped_to_the_effective_tenant()
+    {
+        var store = new FakeMasterDataUnitOfWork();
+        var currentTenant = Guid.NewGuid();
+        var foreignTenant = Guid.NewGuid();
+        var foreignDriver = new Transportista(foreignTenant, "Private Driver", "DNI 101", "+54 11 101");
+        var foreignTruck = new Camion(foreignTenant, "AA123BB", Camion.FleetTypePropia);
+        var foreignAssociation = new TransportistaCamion(foreignDriver, foreignTruck);
+        store.Add(foreignDriver);
+        store.Add(foreignTruck);
+        store.Add(foreignAssociation);
+        var localDriver = new Transportista(currentTenant, "Local Driver", "DNI 102", "+54 11 102");
+        var localTruck = new Camion(currentTenant, "CC456DD", Camion.FleetTypeTerceros);
+        store.Add(localDriver);
+        store.Add(localTruck);
+        var service = Service(store, currentTenant, "actor-1");
+
+        var receipt = await service.CreateAssociation(new AssociationData(localDriver.Id, localTruck.Id), "association-1", CancellationToken.None);
+
+        Assert.Equal(localDriver.Id, store.Associations.Single(association => association.Id == receipt.ResourceId).TransportistaId);
+        Assert.Equal(2, store.Associations.Count(association => association.IsActive));
+        Assert.DoesNotContain("Private Driver", System.Text.Json.JsonSerializer.Serialize(receipt));
+    }
+
     private static MasterDataService Service(FakeMasterDataUnitOfWork unitOfWork, Guid ingenioId, string actor) =>
         new(unitOfWork, new TestTenantContext(ingenioId, actor));
 
@@ -177,6 +279,7 @@ public sealed class MasterDataServiceTests
         public Task<Finca?> FindFinca(Guid ingenioId, Guid id, CancellationToken ct) => Task.FromResult(Fincas.SingleOrDefault(x => x.IngenioId == ingenioId && x.Id == id));
         public Task<TransportistaCamion?> FindAssociation(Guid ingenioId, Guid id, CancellationToken ct) => Task.FromResult(Associations.SingleOrDefault(x => x.IngenioId == ingenioId && x.Id == id));
         public Task<TransportistaCamion?> FindAssociation(Guid ingenioId, Guid driverId, Guid truckId, bool activeOnly, CancellationToken ct) => Task.FromResult(Associations.SingleOrDefault(x => x.IngenioId == ingenioId && x.TransportistaId == driverId && x.CamionId == truckId && (!activeOnly || x.IsActive)));
+        public Task<TransportistaCamion?> FindActiveAssociationForTruck(Guid ingenioId, Guid truckId, CancellationToken ct) => Task.FromResult(Associations.SingleOrDefault(x => x.IngenioId == ingenioId && x.CamionId == truckId && x.IsActive));
         public Task<TransportistaIdentifierConflicts> FindTransportistaIdentifierConflicts(Guid ingenioId, string dni, string whatsApp, Guid? exceptId, CancellationToken ct)
         {
             var candidates = Transportistas.Where(x => x.Id != exceptId);

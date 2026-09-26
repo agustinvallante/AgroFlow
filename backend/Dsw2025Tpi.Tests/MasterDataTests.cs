@@ -101,12 +101,16 @@ public sealed class MasterDataTests
         Assert.Null(finca.FindProperty("Longitude"));
 
         var association = AssertEntity(model, typeof(TransportistaCamion), "TransportistasCamiones");
-        var activePairIndex = AssertUniqueIndex(
+        var activeTruckIndex = AssertUniqueIndex(
             association,
             nameof(TransportistaCamion.IngenioId),
-            nameof(TransportistaCamion.TransportistaId),
             nameof(TransportistaCamion.CamionId));
-        Assert.Equal("[IsActive] = 1", activePairIndex.GetFilter());
+        Assert.Equal("[IsActive] = 1", activeTruckIndex.GetFilter());
+        Assert.DoesNotContain(association.GetIndexes(), index =>
+            index.IsUnique && index.GetFilter() == "[IsActive] = 1" && index.Properties.Select(property => property.Name).SequenceEqual(new[]
+            {
+                nameof(TransportistaCamion.IngenioId), nameof(TransportistaCamion.TransportistaId), nameof(TransportistaCamion.CamionId)
+            }));
         Assert.Equal(2, association.GetForeignKeys().Count());
         var transportistaAssociationFk = Assert.Single(association.GetForeignKeys(), foreignKey =>
             foreignKey.Properties.Select(property => property.Name).SequenceEqual(new[]
