@@ -1,13 +1,11 @@
 using Dsw2025Tpi.Api.Authorization;
-using Dsw2025Tpi.Api.NewFolder;
 using Dsw2025Tpi.Api.Services;
+using Dsw2025Tpi.Api.NewFolder;
 using Dsw2025Tpi.Application.Services;
 using Dsw2025Tpi.Application.MasterData;
 using Dsw2025Tpi.Data;
-using Dsw2025Tpi.Data.Helper;
 using Dsw2025Tpi.Data.Identity;
 using Dsw2025Tpi.Data.Repositories;
-using Dsw2025Tpi.Domain.Entities;
 using Dsw2025Tpi.Domain.Interfaces;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
@@ -15,7 +13,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
-using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace Dsw2025Tpi.Api;
@@ -153,102 +150,17 @@ public class Program
 
         var app = builder.Build();
 
-        //para crear los roles y cargar los administradores desde el archivo JSON
-        using (var scope = app.Services.CreateScope())
+        // Ensure only currently approved internal login roles exist; no users or business data are seeded here.
+        if (!app.Environment.IsEnvironment("Testing"))
         {
-            var services = scope.ServiceProvider;
-
-            try
+            using var scope = app.Services.CreateScope();
+            var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+            foreach (var role in AgroFlowRoles.ApprovedInternalLogin)
             {
-                var userManager = services.GetRequiredService<UserManager<AgroFlowUser>>();
-                var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
-
-                string adminRole = "Admin";
-                string userRole = "User";
-
-                foreach (var role in AgroFlowRoles.All)
+                if (!await roleManager.RoleExistsAsync(role))
                 {
-                    if (!await roleManager.RoleExistsAsync(role))
-                    {
-                        await roleManager.CreateAsync(new IdentityRole(role));
-                        Console.WriteLine($"Rol '{role}' creado.");
-                    }
+                    await roleManager.CreateAsync(new IdentityRole(role));
                 }
-
-                // Crear roles heredados si no existen
-                if (!await roleManager.RoleExistsAsync(adminRole))
-                {
-                    await roleManager.CreateAsync(new IdentityRole(adminRole));
-                    Console.WriteLine($"Rol '{adminRole}' creado.");
-                }
-                if (!await roleManager.RoleExistsAsync(userRole))
-                {
-                    await roleManager.CreateAsync(new IdentityRole(userRole));
-                    Console.WriteLine($"Rol '{userRole}' creado.");
-                }
-
-
-                string jsonFilePath = Path.Combine(AppContext.BaseDirectory, "admins.json");
-                if (File.Exists(jsonFilePath))
-                {
-                    string json = await File.ReadAllTextAsync(jsonFilePath);
-                    var adminsToSeed = JsonSerializer.Deserialize<List<AdminUser>>(json, new JsonSerializerOptions
-                    {
-                        PropertyNameCaseInsensitive = true,
-                    });
-
-                    if (adminsToSeed != null)
-                    {
-                        foreach (var adminData in adminsToSeed)
-                        {
-                            var adminUser = await userManager.FindByNameAsync(adminData.Username);
-                            if (adminUser == null)
-                            {
-                                adminUser = new AgroFlowUser
-                                {
-                                    UserName = adminData.Username,
-                                    Email = adminData.Email,
-                                    EmailConfirmed = true
-                                };
-                                var createResult = await userManager.CreateAsync(adminUser, adminData.Password);
-
-                                if (createResult.Succeeded)
-                                {
-                                    await userManager.AddToRoleAsync(adminUser, adminRole);
-                                    Console.WriteLine($"Admin '{adminData.Username}' creado con rol '{adminRole}'.");
-                                }
-                                else
-                                {
-                                    Console.WriteLine($" Error al crear admin '{adminData.Username}':");
-                                    foreach (var error in createResult.Errors)
-                                    {
-                                        Console.WriteLine($"- {error.Description}");
-                                    }
-                                }
-                            }
-                            else
-                            {
-
-                                if (!await userManager.IsInRoleAsync(adminUser, adminRole))
-                                {
-                                    await userManager.AddToRoleAsync(adminUser, adminRole);
-                                    Console.WriteLine($"Rol '{adminRole}' asignado a usuario existente '{adminUser.UserName}'.");
-                                }
-                            }
-                        }
-                    }
-                }
-                else
-                {
-                    Console.WriteLine($" Archivo 'admins.json' no encontrado en: {jsonFilePath}");
-                }
-                var context = services.GetRequiredService<Dsw2025TpiContext>();
-                context.Seedwork<Customer>("customers.json");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine(" Error durante la carga de administradores:");
-                Console.WriteLine(ex.ToString());
             }
         }
         // Configure the HTTP request pipeline.
