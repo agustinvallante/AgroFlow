@@ -13,9 +13,14 @@ servers:
   - url: http://host.docker.internal:5000
     description: API del host vista desde n8n en Docker Desktop
 
+# La demo local no incluye autenticación. El MVP completo definirá su propio esquema.
+security: []
+
 tags:
   - name: Salud
+    description: Disponibilidad técnica de la API local.
   - name: Turnos
+    description: Alta, consulta y ciclo de vida mínimo de turnos.
 
 paths:
   /health:
