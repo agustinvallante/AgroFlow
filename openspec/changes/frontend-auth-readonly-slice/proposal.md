@@ -44,7 +44,7 @@ Esta preparación hace visibles las dependencias que deben resolverse en conjunt
 - modificar especificaciones vigentes o `docs/contracts/openapi.yaml`; las rutas de datos maestros existentes son independientes y no cubren esta porción;
 - definir nombres o métodos de endpoints, DTO, parámetros concretos o esquemas de seguridad;
 - definir nuevos códigos o correspondencias de estado y error;
-- cerrar nombres de roles o su matriz de permisos;
+- completar la matriz de roles y permisos: OpenSpec ya aprueba que operador/supervisor gestionen los tres catálogos y creen/cancelen turnos en su ingenio; permisos restantes y visibilidad por rol de las rutas propuestas siguen pendientes de B00/OD-007;
 - fijar intervalos de polling;
 - decidir TTL, custodia del JWT, atributos completos de cookie y dominios, renovación, revocación, cierre, protección CSRF, proveedor o diseño de almacenamiento, topología multi-instancia, despliegue o comportamiento ante fallas;
 - importar o modificar el prototipo.

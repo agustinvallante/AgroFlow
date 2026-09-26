@@ -38,13 +38,13 @@ La integración seguirá OpenAPI primero: comportamiento aprobado, contrato publ
 
 OpenSpec exige JWT para usuarios internos. El modelo aceptado es un identificador opaco en cookie `HttpOnly` y una sesión del lado servidor en el BFF de Next.js. No hay implementación: TTL, CSRF, dominio y atributos de cookie, almacenamiento, renovación y despliegue siguen pendientes.
 
-El backend siempre autorizará. La UI podrá adaptar la experiencia una vez aprobada OD-007, sin transformarse en barrera de seguridad. El ingenio efectivo provendrá de la identidad confirmada por el backend.
+El backend siempre autorizará. La UI puede reflejar los permisos ya normativos: operador y supervisor pueden gestionar los tres catálogos y crear/cancelar turnos dentro de su ingenio. Las visibilidades y permisos adicionales de OD-007 siguen pendientes de B00; la UI no será una barrera de seguridad ni fuente de autorización. El ingenio efectivo provendrá de la identidad confirmada por el backend.
 
 ### Errores y refresco
 
 La única semántica HTTP vigente reconocida por este diseño es `401 Unauthorized` para un token expirado en un recurso protegido, según la especificación de acceso y autorización. No se generaliza ese código a otros casos. Toda otra correspondencia entre estados HTTP, categorías de experiencia y recuperación esperará al contrato OpenAPI aprobado. Sin fijar esas semánticas pendientes, el frontend no transformará una operación rechazada o fallida en un éxito local ni expondrá información sensible.
 
-El dashboard podrá usar polling porque la especificación vigente no exige WebSockets; OD-012 deberá fijar intervalo, indicadores y fecha operativa.
+El dashboard podrá usar polling porque la especificación vigente no exige WebSockets. OD-012 ya aprueba obtener de la API las franjas vacías y los cupos restantes; sus fórmulas, fecha operativa/zona horaria, horizonte y cadencia de refresco siguen pendientes. No se fijan defaults.
 
 ### Diseño visual, configuración y observabilidad
 
@@ -67,7 +67,7 @@ Solo configuración explícitamente pública podrá llegar al bundle del navegad
 
 | Riesgo | Mitigación documental |
 |---|---|
-| Confundir el modelo BFF aceptado con una implementación disponible | ADR-FE-006 y la matriz distinguen la decisión aceptada de sus dependencias operativas y de la ausencia de código. |
+| Confundir el modelo BFF aceptado con una implementación disponible o las aprobaciones parciales con permisos completos | ADR-FE-006 y la matriz distinguen la decisión aceptada de sus dependencias operativas y de la ausencia de código; OpenSpec conserva los permisos parciales vigentes de OD-007/012/013, mientras los restantes siguen pendientes de B00. |
 | Duplicar reglas en la UI | Límites explícitos y referencia a ADR-003 y plataforma/segregación. |
 | Integrar contra endpoints imaginados | ADR-FE-008 exige contrato OpenAPI previo. |
 | Mezclar mocks con datos reales | Requisito observable de identificación y separación de simulaciones. |

@@ -29,7 +29,7 @@ El backend conserva las reglas, la persistencia, la identidad efectiva, los perm
 | Confirmada | Puede orientar la futura implementación. | Next.js, App Router, organización por capacidad, TanStack Query para estado remoto, Zustand para estado de UI, contrato OpenAPI primero. |
 | Confirmada con dependencia | El modelo está aprobado, pero no puede implementarse hasta congelar contratos o decisiones operativas asociados. | Identificador opaco en cookie `HttpOnly` y sesión del lado servidor en el BFF de Next.js. |
 | Propuesta | Recomendación que requiere aprobación antes de implementarse. | Sistema visual inicial. |
-| Bloqueante pendiente | Impide completar un flujo funcional o fijar una configuración. | Detalles operativos y contrato de sesión, forma de errores, intervalo del dashboard (OD-012), decisiones de negocio todavía no aprobadas. OD-007 fue aprobado por el usuario como parte de la línea base abierta; no es normativo hasta que se archive `mvp-baseline`. |
+| Bloqueante pendiente | Impide completar un flujo funcional o fijar una configuración. | Detalles operativos y contrato de sesión, forma de errores, fórmulas/fecha operativa/refresco del dashboard (OD-012), y permisos aún abiertos. La porción aprobada de OD-007 —operador y supervisor pueden gestionar los tres catálogos y crear/cancelar turnos en su ingenio— ya es normativa en OpenSpec; la matriz restante, incluidos gerente/administración y asociaciones, sigue pendiente. |
 
 La matriz completa está en [decisiones del frontend](frontend-decisions.md).
 
@@ -90,7 +90,7 @@ TanStack Query será el mecanismo de estado remoto en componentes cliente. Sus c
 - Una mutación solo se mostrará como confirmada después de una respuesta exitosa del backend.
 - La invalidación o actualización de caché seguirá el contrato de la capacidad.
 - No se aplicarán actualizaciones optimistas a estados operativos críticos salvo una decisión posterior con reconciliación explícita.
-- El polling del dashboard será configurable cuando se resuelva OD-012; no se fija un intervalo en esta base.
+- El polling del dashboard es una opción; OD-012 aún debe fijar su cadencia, además de fórmulas, fecha operativa/zona horaria y horizonte. No se fija un intervalo en esta base.
 
 Ver [ADR-FE-004](../decisions/ADR-FE-004-tanstack-query.md) y [ADR-FE-010](../decisions/ADR-FE-010-dashboard-refresh.md).
 
@@ -129,7 +129,7 @@ OpenSpec exige JWT para usuarios internos, pero no define todavía cómo la capa
 
 La aceptación de este modelo no afirma que exista implementación ni elige un proveedor de almacenamiento. Antes de escribir código deben congelarse la forma de los endpoints y DTO, el TTL de la sesión, la custodia servidor del JWT, la renovación, la revocación, el cierre, los controles CSRF, los atributos y dominios de cookies, el almacenamiento del lado servidor, el comportamiento con múltiples instancias, el despliegue y el comportamiento ante fallas. Ver [ADR-FE-006](../decisions/ADR-FE-006-auth-session.md) y el [cambio preparatorio de autenticación y consultas](../../../openspec/changes/frontend-auth-readonly-slice/proposal.md).
 
-El BFF se limita a mediar la sesión. La navegación puede ocultar o deshabilitar acciones para mejorar la experiencia, pero el backend siempre decide roles, acceso al ingenio, autorización y reglas de turnos. OD-007 está aprobado por el usuario en la línea base abierta, aunque todavía no es normativo hasta el archivo de `mvp-baseline`. El contexto de ingenio deriva de la identidad confirmada por el backend; no de un parámetro libre, una variable pública ni un filtro del navegador. Ver [ADR-FE-007](../decisions/ADR-FE-007-roles-autorizacion.md) y la especificación de [plataforma y segregación](../../../openspec/specs/plataforma-y-segregacion/spec.md).
+El BFF se limita a mediar la sesión. La navegación puede ocultar o deshabilitar acciones para mejorar la experiencia, pero el backend siempre decide roles, acceso al ingenio, autorización y reglas de turnos. OpenSpec ya establece como normativo el permiso de operador y supervisor para listar, crear, editar e inhabilitar los tres catálogos, y crear/cancelar turnos dentro de su ingenio. Los permisos de gerente/administración, la gestión de asociaciones y el resto de la matriz OD-007 siguen pendientes; no se infieren desde la UI. El contexto de ingenio deriva de la identidad confirmada por el backend; no de un parámetro libre, una variable pública ni un filtro del navegador. Ver [ADR-FE-007](../decisions/ADR-FE-007-roles-autorizacion.md) y la especificación de [plataforma y segregación](../../../openspec/specs/plataforma-y-segregacion/spec.md).
 
 ## Manejo de errores
 
@@ -181,9 +181,9 @@ Para reemplazar un mock:
 
 ## Decisiones que bloquean implementación funcional
 
-- La implementación normativa de OD-007 queda pendiente del archivo de `mvp-baseline`; la decisión ya fue aprobada por el usuario dentro de esa línea base abierta.
+- Solo los permisos restantes de OD-007 bloquean las experiencias correspondientes. La autorización de operador/supervisor para gestión básica de los tres catálogos y creación/cancelación de turnos dentro de su ingenio ya está en OpenSpec; otras acciones/roles y gestión de asociaciones permanecen pendientes.
 - OD-011: operación, calidad de servicio y observabilidad productiva.
-- OD-012: indicadores, fecha operativa e intervalo de refresco.
+- OD-012 está parcialmente resuelta: franjas vacías y capacidad restante provienen de la API; fórmulas de indicadores, fecha operativa/zona horaria, horizonte y cadencia de refresco siguen pendientes.
 - Los detalles operativos y el contrato del modelo de sesión aceptado en [ADR-FE-006](../decisions/ADR-FE-006-auth-session.md): endpoints, TTL, custodia del JWT, renovación, revocación, cierre, CSRF, cookies/dominios, almacenamiento del lado servidor, múltiples instancias, despliegue y comportamiento ante fallas.
 - Los contratos de endpoints, DTO, seguridad y errores aún ausentes en OpenAPI.
 - Las demás decisiones de negocio enumeradas en [`open-decisions.md`](../../planning/open-decisions.md) según la capacidad elegida.

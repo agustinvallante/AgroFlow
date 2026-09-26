@@ -52,7 +52,7 @@ Las decisiones confirmadas y propuestas están resumidas en [`frontend-decisions
 
 Permanecen bloqueantes:
 
-- OD-007 para roles y permisos concretos;
+- OD-007 permanece parcialmente abierto: el catálogo de operador/supervisor (listar, crear, editar e inhabilitar transportistas, camiones y fincas) y los permisos para crear/cancelar turnos internos ya están aprobados en las specs vigentes y ADR-004; la matriz restante de roles y permisos, incluidas las asociaciones, sigue pendiente de B00/OD-007/OD-013;
 - OD-011 para observabilidad y calidad de servicio productivas;
 - OD-012 para indicadores, fecha operativa e intervalo de refresco;
 - detalles operativos y contrato de sesión web, además de los controles asociados;

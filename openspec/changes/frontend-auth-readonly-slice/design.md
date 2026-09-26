@@ -59,7 +59,7 @@ No se implementará un adaptador ni una vista conectada para esta porción hasta
 | Despliegue | Runtime, dominios, TLS, conectividad BFF-backend y comportamiento durante despliegues o reinicios. | El modelo no funciona como exportación exclusivamente estática. |
 | Fallas de sesión | Comportamiento ante indisponibilidad o pérdida del almacenamiento, del BFF o del backend. | Evita estados ambiguos, accesos incorrectos y falsa confirmación de sesión. |
 | Contexto | Forma y vigencia de identidad, rol e ingenio efectivo. | Impide inventar datos o confiar en selección local. |
-| Roles | Matriz de roles y permisos. | La UI no puede fijar visibilidad funcional ni la API completar autorización sin esa decisión. |
+| Roles | Completar la matriz y acordar visibilidad de cada ruta por rol en B00. OpenSpec ya autoriza a operador/supervisor a gestionar transportistas, camiones y fincas y a crear/cancelar turnos dentro de su ingenio; no define permisos completos para las rutas de esta porción ni para gerente/administración. | La UI no puede inferir otras visibilidades y la API conserva la autorización efectiva. |
 | Fechas | Fecha operativa, zona horaria, serialización y límites. | El listado por defecto y el filtro por fecha deben ser inequívocos. |
 | Consultas | Forma de lista, filtros y detalle, incluidos campos y límites. | Frontend y backend necesitan un contrato único y verificable. |
 | Errores | Categorías, forma, correspondencias y recuperación permitida. | Evita inferencias incompatibles y filtración de información. |
@@ -102,7 +102,7 @@ Todos los puntos deben estar resueltos y revisados antes de modificar OpenAPI o 
 
 ### Roles y autorización
 
-- [ ] Resolver y aprobar la matriz de roles y permisos sin completarla desde el frontend.
+- [ ] Resolver en B00 la matriz restante y visibilidad de rutas sin completarlas desde el frontend; conservar como vigentes los permisos parciales ya establecidos en OpenSpec para operador/supervisor.
 - [ ] Definir qué datos de autorización necesita la experiencia web y cuál es su fuente.
 - [ ] Separar adaptación visual de autorización efectiva en cada operación del backend.
 - [ ] Definir comportamiento ante cambios de rol o pérdida de permiso durante una sesión.

@@ -1,78 +1,38 @@
-# Propuesta: baseline funcional del MVP
+# Propuesta: corrección documental del baseline de PR #47
 
 ## Objetivo
 
-Formalizar como cambio OpenSpec revisable el baseline del MVP de AgroFlow aprobado por el usuario, de modo que la implementación posterior disponga de reglas deterministas para permisos, datos maestros, asignación, operación, monitoreo, integración y garantías transversales.
+Este cambio es un artefacto documental para revisar y reconciliar las decisiones de PR #47 con `main`, ADR-004 y las porciones aprobadas en B00. No agrega especificaciones normativas, no implementa comportamiento ni autoriza implementar decisiones aún abiertas.
 
-Este cambio convierte en comportamiento propuesto los defaults OD-001 a OD-013 documentados en [`docs/planning/mvp-defaults.md`](../../../docs/planning/mvp-defaults.md). Su aprobación por el usuario lo acepta como baseline de implementación, pero no le otorga todavía carácter normativo. Las decisiones permanecen registradas como pendientes en [`docs/planning/open-decisions.md`](../../../docs/planning/open-decisions.md) hasta que este cambio sea revisado y archivado; la propuesta no modifica las especificaciones vigentes antes de ese archivo.
+OpenSpec sigue siendo la fuente normativa del comportamiento. Este cambio es exclusivamente documental y usa `skip_specs: true` porque no contiene deltas de capacidades. No modifica `openspec/specs/`.
+
+## Autoridad y estado de las decisiones
+
+- OD-001 a OD-005 siguen `main` y ADR-004; los detalles aún abiertos se mantienen como tales según `docs/planning/open-decisions.md`.
+- OD-007 tiene aprobación parcial: están aprobados los permisos de operador y supervisor expresamente enumerados en ADR-004; el resto de la matriz de roles sigue abierto.
+- OD-012 tiene aprobación parcial: la cola incluye franjas vacías y cupos restantes obtenidos de la API. Siguen abiertos las fórmulas, la fecha operativa, la zona horaria, el horizonte y la cadencia de actualización.
+- OD-013 tiene aprobación parcial: está aprobado que operador y supervisor listen, creen, editen e inhabiliten transportistas, camiones y fincas. Siguen abiertos los campos editables, sus validaciones, la gestión de asociaciones y la reactivación.
+- OD-006 y OD-008 a OD-011 siguen abiertos. Las propuestas detalladas para esos temas y las partes aún no resueltas de OD-012 y OD-013 son ideas no normativas. Antes de implementarlas requieren aprobación explícita mediante B00/ADR, según corresponda, y el cambio OpenSpec de la capacidad propietaria.
+
+Se conservan, sin eliminarlas ni adoptarlas, las ideas previas sobre idempotencia, outbox, auditoría, comportamiento del dashboard, matrices de roles y gestión de asociaciones. Ninguna propuesta de este cambio cierra una decisión abierta.
 
 ## Alcance
 
-- prioridad lexicográfica estable para asignación y reprogramación;
-- asociación explícita muchos a muchos entre transportistas y camiones;
-- ventana preferida opcional con fallback a la próxima compatible;
-- ventanas fijas de 30 minutos, capacidad positiva por ingenio y zona operativa `America/Argentina/Tucuman`;
-- campos mínimos y validaciones de una solicitud de turno;
-- idempotencia persistida para todas las creaciones y mutaciones críticas del baseline, mutaciones transaccionales y conflictos de concurrencia optimista;
-- matriz única de cuatro roles internos, propiedad de `acceso-y-autorizacion`, con autorización efectiva en backend;
-- credencial de servicio acotada para n8n, autenticidad del canal y deduplicación de mensajes;
-- auditoría append-only de mutaciones críticas;
-- entrega reproducible de notificaciones con estados observables y reintentos acotados;
-- perfil académico reproducible de operación, persistencia y recuperación;
-- indicadores diarios calculados por backend y refresco permitido cada 30 segundos;
-- gestión acotada de datos maestros con identificadores globales de plataforma, aislamiento por ingenio, inhabilitación, reactivación e historia, sin geodatos.
+- Corregir los metadatos y documentos explicativos de este cambio para distinguir con precisión las decisiones aprobadas de las opciones abiertas.
+- Conservar enlaces y propuestas futuras útiles, identificándolas como no normativas.
+- Mantener las tareas como instancias de decisión y controles documentales, no como instrucciones para implementar reglas aún no aprobadas.
 
 ## Fuera de alcance
 
-- implementar backend, frontend, n8n, persistencia, migraciones o CI;
-- modificar en esta etapa `docs/contracts/openapi.yaml` o fijar endpoints y DTO definitivos;
-- crear una capacidad normativa propiedad del frontend;
-- geolocalización, mapas operativos, PostGIS, rutas o posición estimada;
-- optimización predictiva, puntajes configurables o edición manual de prioridad;
-- roles personalizados, permisos por registro o sesiones multiingenio;
-- alta disponibilidad, failover automático, SLO productivo o certificación de producción;
-- campañas, múltiples proveedores simultáneos o garantías de entrega exactamente una vez.
+- Cambios en código fuente, API, contrato, pruebas o especificaciones normativas.
+- Autorización para implementar OD-006, OD-008, OD-009, OD-010, OD-011 ni detalles aún abiertos de OD-012 u OD-013.
+- Una regla de negocio fija de 30 minutos, una zona horaria aprobada, actualización cada 30 segundos, una matriz completa de cuatro roles o permisos para reintentar notificaciones.
+- Decidir rutas, DTO o paginación de B00; siguen abiertos.
 
-## Capacidades afectadas
+## Criterios de aceptación
 
-- **acceso-y-autorizacion:** es la única propietaria de los cuatro roles internos y de la matriz completa de operaciones, incluida la configuración de ventanas/capacidad y el reintento manual de notificaciones.
-- **datos-maestros:** define gestión acotada, identificadores globales con conflictos opacos entre ingenios, campos mínimos y asociación transportista-camión muchos a muchos.
-- **turnos-solicitud-y-asignacion:** define solicitud mínima, prioridad, preferencia, capacidad y asignación concurrente.
-- **turnos-ciclo-de-vida:** concreta los actores autorizados para transiciones y cancelaciones.
-- **interrupciones-operativas:** concreta permisos y reprogramación conforme a la prioridad aprobada.
-- **monitoreo-operativo:** define conteos diarios, fecha operativa y refresco cada 30 segundos.
-- **integracion-whatsapp-n8n:** define autenticación de servicio, deduplicación, entrega observable y exige para el reintento manual el permiso propiedad de `acceso-y-autorizacion`.
-- **plataforma-y-segregacion:** define el alcance completo de idempotencia para creaciones y mutaciones críticas, concurrencia, auditoría y recuperación reproducible.
-
-No se modifica `turnos-consulta`: la asociación autorizada que esa capacidad ya exige queda definida por `datos-maestros`. Tampoco se modifica `aceptacion-del-mvp`: sus recorridos y su exigencia de decisiones aprobadas ya integran estas capacidades sin duplicar sus reglas.
-
-## Casos de uso relacionados
-
-- CU-001: acceso de usuarios internos;
-- CU-002: solicitud y asignación de turnos;
-- CU-003, CU-004 y CU-005: consulta de turnos y vistas internas;
-- CU-006 y CU-011: avance y cancelación del ciclo operativo;
-- CU-007: interrupciones y reprogramación;
-- CU-008: monitoreo diario;
-- CU-009, CU-010 y CU-012: gestión de datos maestros.
-
-## Impacto
-
-| Área | Impacto esperado después de la aprobación |
-|---|---|
-| Backend | Será la autoridad de permisos, prioridad, capacidad, transiciones, indicadores, destinatarios y estado persistido. |
-| Persistencia | Requerirá asociaciones con vigencia, calendario/capacidad, idempotencia durable, control de versión, outbox y auditoría append-only. |
-| Contrato API | Deberá publicar entradas mínimas, preferencias opcionales, versiones, claves idempotentes, conflictos, permisos efectivos, indicadores y estados de entrega. Se realizará en un cambio posterior. |
-| Frontend | Consumirá permisos, resultados e indicadores autoritativos; podrá consultar el dashboard cada 30 segundos sin recalcular negocio. |
-| n8n/WhatsApp | Usará una identidad de servicio acotada, conservará correlación/idempotencia y comunicará solo resultados confirmados por la API. |
-| Pruebas | Deberán cubrir éxito, validaciones, permisos, aislamiento, conflictos, reintentos, fallas, recuperación y recorridos integrados. |
-| Operación | Requerirá un ambiente académico repetible, datos ficticios, salud, logs correlacionados y backup/restore probado. |
-
-## Criterios de aceptación del cambio
-
-- cada default aprobado tiene una única capacidad normativa propietaria;
-- las deltas usan requisitos y escenarios observables con SHALL/MUST;
-- no se agregan endpoints, DTOs ni detalles de un proveedor concreto a las especificaciones;
-- el backend conserva la autoridad operativa y los consumidores no duplican reglas;
-- las tareas posteriores enlazan especificación, contrato, implementación, pruebas y evidencia;
-- `docs/planning/open-decisions.md` permanece sin cambios hasta la revisión y el archivo de esta propuesta, momento en que el baseline pasa a ser normativo.
+- El cambio está identificado explícitamente como exclusivamente documental y es estructuralmente válido con `schema: spec-driven` y `skip_specs: true`.
+- Cada aprobación vigente se limita a lo que `main`, ADR-004 y B00 aprueban realmente; los detalles no resueltos siguen abiertos.
+- Se conservan las propuestas futuras y se identifican claramente como no normativas, sin insinuar autorización para implementarlas.
+- No se presenta una preferencia de ventana como parte esperada del contrato del MVP ni se describen como aprobadas una ventana fija de 30 minutos, una zona horaria o una actualización cada 30 segundos.
+- El documento no afirma que el contenido aceptado sea normativo ni que archivar este cambio documental vuelva vinculantes las decisiones abiertas.

@@ -29,13 +29,13 @@ La forma HTTP solo puede provenir de OpenAPI aprobado. Las rutas de UI que se pr
 
 | Actor | Uso previsto de la web | Estado de definición |
 |---|---|---|
-| Operador | Operación diaria de turnos, interrupciones y dashboard | Rol previsto; permisos exactos pendientes de OD-007 |
-| Supervisor | Supervisión operativa y, si se aprueba, gestión de datos maestros/auditoría | Rol previsto; permisos exactos pendientes de OD-007 |
-| Gerente | Consulta de operación e indicadores | Rol previsto; permisos exactos pendientes de OD-007 |
-| Administrador | Accesos y gestión autorizada del ambiente | Rol previsto; permisos exactos pendientes de OD-007 |
+| Operador | Gestión de los tres catálogos y creación/cancelación de turnos en su ingenio; otras vistas como candidatos UX | La porción indicada está aprobada en OpenSpec; visibilidad de otras rutas/acciones pendiente de B00/OD-007 |
+| Supervisor | Gestión de los tres catálogos y creación/cancelación de turnos en su ingenio; otras vistas como candidatos UX | La porción indicada está aprobada en OpenSpec; visibilidad de otras rutas/acciones pendiente de B00/OD-007 |
+| Gerente | Actor interno considerado para futuras vistas | Permisos y visibilidad pendientes de B00/OD-007; no se infieren |
+| Administrador | Actor interno considerado para futuras vistas | Permisos y visibilidad pendientes de B00/OD-007; no se infieren |
 | Transportista | **No usa el frontend web del MVP**; opera por WhatsApp/n8n | Definido por las specs del canal |
 
-OD-007 fue aprobado por el usuario como parte de la línea base `mvp-baseline`, que continúa abierta y no es normativa hasta su archivo. Hasta que se archive, la matriz aprobada no debe presentarse como comportamiento normativo. Ocultar un botón nunca reemplaza la autorización backend; ese límite está aceptado en [ADR-FE-007](../architecture/decisions/ADR-FE-007-roles-autorizacion.md).
+La parte aprobada de OD-007 ya es normativa en la especificación vigente: operador y supervisor pueden listar, crear, editar e inhabilitar transportistas, camiones y fincas, y crear/cancelar turnos dentro de su ingenio. No depende del archivo de `mvp-baseline`. Permanecen pendientes los demás roles y permisos, la matriz completa y la gestión de asociaciones. `frontend-foundation` y `frontend-auth-readonly-slice` son cambios preparatorios documentales (`skip_specs: true`), no sustituyen ni amplían esas reglas. Ocultar un botón nunca reemplaza la autorización backend; ese límite está aceptado en [ADR-FE-007](../architecture/decisions/ADR-FE-007-roles-autorizacion.md).
 
 ### Aislamiento por ingenio
 
@@ -52,13 +52,13 @@ Los nombres son una propuesta de navegación; podrán ajustarse sin cambiar la c
 | `/login` | Iniciar sesión interna y resolver contexto | [`acceso-y-autorizacion`](../../openspec/specs/acceso-y-autorizacion/spec.md) | Todos los roles internos |
 | `/` | Redirigir al inicio permitido por contexto/rol | Acceso + OD-007 | Todos los roles internos |
 | `/turnos` | Listar turnos del día, ordenar por horario y filtrar por fecha, estado y patente | [`turnos-consulta`](../../openspec/specs/turnos-consulta/spec.md) | Roles internos autorizados |
-| `/turnos/[turnoId]` | Ver detalle y estado vigente; ejecutar acciones permitidas | [`turnos-consulta`](../../openspec/specs/turnos-consulta/spec.md), [`turnos-ciclo-de-vida`](../../openspec/specs/turnos-ciclo-de-vida/spec.md) | Operador/supervisor/administrador según OD-007 |
-| `/operacion` | Ver indicadores diarios e interrupción activa | [`monitoreo-operativo`](../../openspec/specs/monitoreo-operativo/spec.md) | Operador, supervisor, gerente y administrador según OD-007 |
+| `/turnos/[turnoId]` | Candidato UX para ver detalle/estado y, si corresponde, acciones permitidas | [`turnos-consulta`](../../openspec/specs/turnos-consulta/spec.md), [`turnos-ciclo-de-vida`](../../openspec/specs/turnos-ciclo-de-vida/spec.md) | Visibilidad y acciones para roles más allá de permisos expresamente aprobados: pendiente de B00/OD-007 |
+| `/operacion` | Candidato UX para presentar datos operativos devueltos por API | [`monitoreo-operativo`](../../openspec/specs/monitoreo-operativo/spec.md) | Visibilidad por rol pendiente de B00; no se asignan permisos a gerente/administrador por inferencia |
 | `/interrupciones` | Consultar, registrar o actualizar la interrupción del ingenio | [`interrupciones-operativas`](../../openspec/specs/interrupciones-operativas/spec.md) | Roles autorizados según OD-007 |
-| `/datos-maestros/transportistas` | Listar y gestionar transportistas | [`datos-maestros`](../../openspec/specs/datos-maestros/spec.md) | Roles de gestión según OD-007/OD-013 |
-| `/datos-maestros/camiones` | Listar y gestionar camiones | [`datos-maestros`](../../openspec/specs/datos-maestros/spec.md) | Roles de gestión según OD-007/OD-013 |
-| `/datos-maestros/fincas` | Listar y gestionar fincas | [`datos-maestros`](../../openspec/specs/datos-maestros/spec.md) | Roles de gestión según OD-007/OD-013 |
-| `/datos-maestros/asociaciones` | Gestionar autorizaciones transportista-camión | [`datos-maestros`](../../openspec/specs/datos-maestros/spec.md), OD-002 | Roles de gestión según OD-007/OD-013 |
+| `/datos-maestros/transportistas` | Candidato UX para listar, crear, editar e inhabilitar transportistas | [`datos-maestros`](../../openspec/specs/datos-maestros/spec.md) | Operador/supervisor de su ingenio aprobados; campos editables pendientes de OD-013 |
+| `/datos-maestros/camiones` | Candidato UX para listar, crear, editar e inhabilitar camiones | [`datos-maestros`](../../openspec/specs/datos-maestros/spec.md) | Operador/supervisor de su ingenio aprobados; campos editables pendientes de OD-013 |
+| `/datos-maestros/fincas` | Candidato UX para listar, crear, editar e inhabilitar fincas | [`datos-maestros`](../../openspec/specs/datos-maestros/spec.md) | Operador/supervisor de su ingenio aprobados; campos editables pendientes de OD-013 |
+| `/datos-maestros/asociaciones` | Candidato UX; gestión de asociaciones aún no aprobada | [`datos-maestros`](../../openspec/specs/datos-maestros/spec.md), OD-002 | Gestión y roles pendientes de OD-007/OD-013 |
 | `/auditoria` | Consultar historial de mutaciones críticas | [`aceptacion-del-mvp`](../../openspec/specs/aceptacion-del-mvp/spec.md), OD-009 | Roles autorizados según OD-007 |
 
 ### Recorridos funcionales
@@ -87,7 +87,7 @@ Desde el detalle, un actor autorizado puede solicitar la siguiente transición p
 
 #### 4. Dashboard operativo
 
-`/operacion` presenta únicamente indicadores calculados por el backend para el ingenio y fecha operativa actuales, el instante de actualización y la interrupción activa. Podrá usar polling una vez aprobado OD-012; no calcula indicadores desde la lista local y no requiere WebSockets, según [ADR-FE-010](../architecture/decisions/ADR-FE-010-dashboard-refresh.md).
+`/operacion` es un candidato UX y solo podría presentar datos devueltos por el backend. OD-012 ya aprueba franjas vacías y cupos restantes obtenidos de la API; no fija fórmulas de indicadores, fecha operativa/zona horaria, horizonte ni cadencia de refresco. No se calcula capacidad en frontend ni se presume una frecuencia de polling; WebSockets no son obligatorios, según [ADR-FE-010](../architecture/decisions/ADR-FE-010-dashboard-refresh.md).
 
 #### 5. Interrupción
 
@@ -95,7 +95,7 @@ Un actor autorizado consulta la interrupción actual, registra o actualiza una y
 
 #### 6. Datos maestros
 
-Las pantallas administran solo las operaciones y campos que apruebe OD-013. Inhabilitar conserva historial; una entidad inactiva no puede participar de nuevos turnos. Las asociaciones transportista-camión dependen de OD-002. No se deduce un CRUD del prototipo.
+OD-013 aprueba parcialmente listado, alta, edición e inhabilitación de transportistas, camiones y fincas; los campos editables, sus validaciones, la reactivación y la gestión de asociaciones siguen pendientes. Inhabilitar conserva historial; una entidad inactiva no puede participar de nuevos turnos. No se deduce un CRUD de asociaciones ni campos del prototipo.
 
 #### 7. Integración visible, no operada por la web
 
@@ -103,19 +103,18 @@ La demo debe mostrar que solicitud, consulta y aviso `EN_CAMINO` ingresan por Wh
 
 ## Datos requeridos por el frontend
 
-Los campos exactos deben congelarse en OpenAPI. Este inventario expresa necesidades de producto, no DTO propuestos.
+Los campos exactos deben congelarse en OpenAPI. La tabla distingue información de negocio ya aprobada de capacidades o detalles posibles que siguen sujetos a contrato y/o decisión; ninguna fila propone un DTO.
 
-| Área | Datos necesarios |
-|---|---|
-| Sesión/contexto | identidad visible mínima, rol, permisos efectivos, ingenio efectivo, vigencia de sesión |
-| Lista de turnos | identificador, ventana, fecha operativa, estado, patente, transportista/finca resumidos y campos de orden/filtro aprobados |
-| Detalle de turno | estado vigente, ventana, prioridad explicada, referencias de camión/transportista/finca, historial operativo permitido, versión/concurrencia si el contrato la requiere |
-| Acciones de turno | acciones permitidas informadas por contrato, clave idempotente, correlación y resultado persistido |
-| Dashboard | fecha operativa, zona horaria, instante de cálculo, indicadores backend e interrupción activa |
-| Interrupciones | período, estado, motivo/descripción aprobados, turnos afectados, reprogramaciones y destinatarios determinados por backend |
-| Datos maestros | campos aprobados de transportistas, camiones, fincas y asociaciones, actividad, versión e historial visible |
-| Auditoría | actor representable, instante, acción, entidad, resultado, motivo/correlación permitidos y paginación |
-| Notificaciones | destinatario enmascarado cuando corresponda, tipo, estado de entrega, intentos e instante; nunca secretos del proveedor |
+| Área | Información de negocio aprobada | Opcional/futuro: pendiente de contrato o decisión |
+|---|---|---|
+| Sesión/contexto | El backend determina la identidad efectiva, autorización e ingenio; el frontend no es autoridad. | Campos de sesión, rol/permisos expuestos y vigencia: contrato de acceso/sesión aún pendiente. |
+| Lista y detalle de turnos | Crear/cancelar turnos internos por operador/supervisor está aprobado; las consultas solo reflejan estado persistido según las capacidades vigentes. | Campos concretos para lista/detalle, orden/filtros e historial: contrato de turnos pendiente. No se infieren campos por esta lista. |
+| Acciones de turno | El backend valida las acciones y devuelve el resultado persistido. | Clave idempotente, concurrencia/reintentos y otros datos del recibo dependen de OD-006 y del contrato; una clave idempotente no es un campo requerido aprobado. |
+| Dashboard | Para el dashboard futuro, la API incluye franjas vacías y cupos restantes (OD-012). | Fórmulas de indicadores, fecha operativa, zona horaria, instante de cálculo, horizonte y actualización siguen pendientes de OD-012/contrato. No se presentan como campos aprobados. |
+| Interrupciones | El backend determina y persiste los efectos operativos conforme a la capacidad vigente. | Campos de consulta/mutación, turnos afectados y datos de notificación requieren contrato; no se derivan de la UI. |
+| Datos maestros | Listado, alta, edición e inhabilitación de transportistas, camiones y fincas están aprobados; las entidades inactivas no participan de nuevos turnos. | Campos editables/validaciones dependen de OD-013. La gestión de asociaciones requiere aprobación B00/OD-013 y contrato; no se presume ruta, DTO, default ni permiso. |
+| Auditoría | La política y acceso al historial siguen pendientes de OD-009. | Eventos, campos visibles, acceso y paginación requieren decisión y contrato; la paginación no es un requisito aprobado. |
+| Notificaciones | El canal WhatsApp/n8n y los efectos que procesa el backend no autorizan exponer secretos del proveedor. | Destinatario enmascarado, estados, intentos e instantes visibles dependen de contrato y decisiones pendientes. |
 
 Los datos remotos viven en TanStack Query; Zustand queda limitado a estado efímero de UI, según la [arquitectura canónica](../architecture/frontend/frontend-architecture.md). JWT, sesión, permisos, ingenio, turnos e indicadores no se almacenan como autoridad en el navegador.
 
@@ -144,7 +143,7 @@ Mientras no existan la aplicación frontend ejecutable y contratos OpenAPI aprob
 - listado, filtros o detalle de turnos;
 - transiciones, cancelación o liberación de capacidad;
 - dashboard e interrupciones;
-- gestión de datos maestros y asociaciones conectada a la UI, aunque sus contratos de API ya están disponibles;
+- gestión de los catálogos conectada a la UI, aunque sus contratos de API ya están disponibles; la gestión de asociaciones sigue pendiente y no se afirma como interfaz disponible;
 - auditoría o estados de notificación;
 - tipos generados, adaptadores, pruebas de contrato o E2E reales.
 
@@ -165,11 +164,11 @@ Un layout, tabla o formulario estático puede servir para trabajo visual aislado
 - funcionamiento offline, aplicación nativa, ERP o microservicios;
 - panel de configuración de n8n, proveedor de WhatsApp o secretos.
 
-El prototipo en [`docs/contexto/AgroFlow-Dashboard/README.md`](../contexto/AgroFlow-Dashboard/README.md) es **referencia visual únicamente**. No es una base de código, fuente normativa ni evidencia de funcionalidad.
+Las ideas visuales futuras de mapa, reloj y demo se conservan como diseño no integrado: no son funcionalidad operativa ni autorizan mocks que se presenten como estado real. El prototipo en [`docs/contexto/AgroFlow-Dashboard/README.md`](../contexto/AgroFlow-Dashboard/README.md) es **referencia visual únicamente**. No es una base de código, fuente normativa ni evidencia de funcionalidad.
 
 ## Primera porción vertical real recomendada
 
-La primera porción debe ser **autenticación/contexto + lista de turnos + detalle de turno**:
+La primera porción propuesta es **autenticación/contexto + lista de turnos + detalle de turno**; la visibilidad de esas rutas para roles más allá de los permisos ya aprobados queda sujeta a B00:
 
 1. autenticación interna y sesión BFF con identificador opaco;
 2. usuario, rol, permisos e ingenio efectivos confirmados por backend;
@@ -240,8 +239,9 @@ Esta recomendación no convierte la porción de lectura en el MVP completo: las 
 
 ### Fase 6 — Agregar datos maestros e interrupciones
 
-- gestión acotada por OD-013;
-- asociaciones según OD-002;
+- gestión de transportistas, camiones y fincas dentro de las operaciones aprobadas; campos/validaciones según OD-013;
+- asociaciones solo después de aprobación B00/OD-013 y publicación de su contrato; no se infieren ruta, DTO, default ni permisos;
+- asociación según cardinalidad de OD-002 una vez aprobada su gestión;
 - interrupciones y visualización de efectos/notificaciones;
 - auditoría solo lectura.
 

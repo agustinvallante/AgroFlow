@@ -1,18 +1,18 @@
 # ADR-FE-007: Roles visibles y autorización efectiva
 
-- Estado: aceptada en su límite; matriz funcional pendiente
+- Estado: aceptada en su límite; permisos parcialmente aprobados
 - Alcance: experiencia por rol y frontera de autorización
-- Implementación: bloqueada por OD-007 para permisos concretos
+- Implementación: la experiencia debe limitarse a permisos normativos vigentes; permisos restantes de OD-007 siguen pendientes
 
 ## Contexto
 
-La interfaz puede mostrar navegación y acciones según el usuario, pero ocultar un control no protege una operación. OpenSpec exige autorización por rol en el backend y aislamiento por ingenio. La matriz concreta para operador, supervisor, gerente y administración sigue pendiente.
+La interfaz puede mostrar navegación y acciones según el usuario, pero ocultar un control no protege una operación. OpenSpec exige autorización por rol en el backend y aislamiento por ingenio. Ya es normativo que operador y supervisor puedan listar, crear, editar e inhabilitar transportistas, camiones y fincas y crear/cancelar turnos dentro de su ingenio. El resto de la matriz —incluidos gerente/administración y gestión de asociaciones— sigue pendiente.
 
 ## Decisión
 
 El backend SHALL ser la autoridad de permisos y pertenencia al ingenio. El frontend podrá adaptar navegación, mensajes y disponibilidad visual usando información confirmada, pero nunca considerará esa adaptación una barrera de seguridad.
 
-No se codificarán nombres de rol, matrices de acciones ni excepciones hasta resolver OD-007 y publicarlas en especificación y contrato. Un recurso de otro ingenio no se solicitará ni mostrará a partir de un selector libre del cliente.
+Solo podrán representarse en la experiencia los permisos ya aprobados en OpenSpec. No se inferirán ni codificarán permisos adicionales, matrices para gerente/administración ni gestión de asociaciones mientras OD-007 siga abierto en esos aspectos. Un recurso de otro ingenio no se solicitará ni mostrará a partir de un selector libre del cliente.
 
 ## Alternativas consideradas
 
@@ -29,7 +29,7 @@ No se codificarán nombres de rol, matrices de acciones ni excepciones hasta res
 
 ## Dependencias no resueltas
 
-- OD-007: roles válidos y operaciones permitidas;
+- OD-007: permisos adicionales a la porción ya normativa, incluidos gerente/administración y gestión de asociaciones;
 - forma contractual de comunicar identidad, ingenio y permisos;
 - estrategia de sesión de [ADR-FE-006](ADR-FE-006-auth-session.md).
 
