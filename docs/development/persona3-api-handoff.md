@@ -19,7 +19,7 @@ Al integrar las ramas, el adaptador de persistencia debe:
 5. Persistir cada transición con comprobación del estado vigente. La cancelación permitida conserva el turno consultable y libera el cupo en la misma transacción. Si el estado cambió concurrentemente, devolver conflicto sin sobrescribirlo.
 6. Inyectar `IAppointmentStore` y `IAppointmentService` en el host HTTP y completar el arranque local sin las dependencias obligatorias del backend heredado (SQL Server LocalDB, Identity/JWT y seed de ecommerce). El proyecto Data referencia hoy sólo a Domain: el adaptador podrá agregar una referencia a Application o ubicarse en otro proyecto sin crear dependencias circulares. Exponer `/health` como marca OpenAPI y comprobar CORS para el dashboard local. El endpoint heredado `/healthcheck` no satisface el contrato.
 
-Hasta completar esa integración, no debe mergearse esta rama como una API de demo lista ni presentarse como funcional de extremo a extremo. Actualmente pasan 43 pruebas de backend, incluidas pruebas HTTP en un host aislado y pruebas del servicio con un almacenamiento simulado; ninguna levanta la aplicación heredada con datos persistidos.
+Hasta completar esa integración, no debe mergearse esta rama como una API de demo lista ni presentarse como funcional de extremo a extremo. Actualmente pasan 44 pruebas de backend, incluidas pruebas HTTP en un host aislado y pruebas del servicio con un almacenamiento simulado; ninguna levanta la aplicación heredada con datos persistidos.
 
 ## Puntos a confirmar con Persona 1
 

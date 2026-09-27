@@ -24,7 +24,7 @@ public sealed class AppointmentsController : ControllerBase
         TimeSpan.FromSeconds(1));
 
     private static readonly Regex OffsetDateTimePattern = new(
-        @"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})\z",
+        @"^\d{4}-\d{2}-\d{2}[Tt]\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:[Zz]|[+-]\d{2}:\d{2})\z",
         RegexOptions.CultureInvariant,
         TimeSpan.FromSeconds(1));
 

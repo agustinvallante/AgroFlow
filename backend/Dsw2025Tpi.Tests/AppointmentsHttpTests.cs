@@ -40,6 +40,26 @@ public sealed class AppointmentsHttpTests
     }
 
     [Fact]
+    public async Task Post_accepts_rfc3339_lowercase_date_time_separator_and_utc_marker()
+    {
+        var service = new FakeAppointmentService();
+        using var app = await TestApp.StartAsync(service);
+        var body = new
+        {
+            carrierPhone = "+5493815550101",
+            truckPlate = "AF123BC",
+            farmCode = "FINCA-NORTE",
+            cutAt = "2026-09-28t08:30:00z",
+            estimatedLoadTons = 28.5
+        };
+
+        using var response = await app.Client.PostAsJsonAsync("/api/v1/appointments", body);
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        Assert.Equal(DateTimeOffset.Parse("2026-09-28T08:30:00Z"), service.LastCreate?.CutAt);
+    }
+
+    [Fact]
     public async Task Get_list_parses_combined_filters_and_returns_summaries()
     {
         var service = new FakeAppointmentService();
