@@ -41,7 +41,7 @@ Estas precisiones cierran ambigüedades detectadas al comparar OpenAPI, esta esp
 - **Fechas observables.** Los `date-time` de las respuestas se emiten con el desplazamiento explícito de la zona del ingenio sembrado (`America/Argentina/Tucuman` en la demo).
 - **Carga estimada.** `estimatedLoadTons` es obligatorio, mayor que cero y expresado en toneladas.
 
-Estas precisiones valen sólo para la demo local. No cierran `OD-004`, `OD-005`, `OD-006`, `OD-008` ni `OD-012` para el MVP completo: los límites de `cutAt`, rangos de carga, prioridad, horizonte de búsqueda, idempotencia, seguridad del canal y fecha operativa siguen abiertos.
+Estas precisiones valen sólo para la demo local. No cierran `OD-004`, `OD-005`, `OD-006`, `OD-008` ni `OD-012` para el MVP completo: los límites de `cutAt`, rangos de carga, horizonte de búsqueda, idempotencia, seguridad del canal y fecha operativa siguen abiertos. La política de prioridad de `OD-001` ya está acordada para el MVP, pero su aplicación técnica depende de los detalles aún abiertos de corte y concurrencia; este perfil local no la implementa.
 
 ### Seed y asignación acotados
 

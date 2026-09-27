@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using Dsw2025Tpi.Api.Contracts.Appointments;
 using Dsw2025Tpi.Application.Appointments;
@@ -31,6 +32,17 @@ public sealed class AppointmentsController : ControllerBase
     private static readonly HashSet<string> SupportedQueryKeys =
         new(["date", "status", "truckPlate", "phone"], StringComparer.Ordinal);
 
+    private static readonly HashSet<string> CreateBodyKeys =
+        new(["carrierPhone", "truckPlate", "farmCode", "cutAt", "estimatedLoadTons"], StringComparer.Ordinal);
+
+    private static readonly HashSet<string> TransitionBodyKeys =
+        new(["newStatus"], StringComparer.Ordinal);
+
+    private static readonly JsonSerializerOptions RequestJsonOptions = new(JsonSerializerDefaults.Web)
+    {
+        PropertyNameCaseInsensitive = false
+    };
+
     private readonly IAppointmentService _service;
     private readonly ILogger<AppointmentsController>? _logger;
 
@@ -43,18 +55,18 @@ public sealed class AppointmentsController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<IActionResult> Create(
-        [FromBody] CreateAppointmentRequest? request,
-        CancellationToken cancellationToken)
+    public async Task<IActionResult> Create(CancellationToken cancellationToken)
     {
-        if (!ModelState.IsValid)
+        var (request, failure) = await ReadRequestBodyAsync<CreateAppointmentRequest>(
+            CreateBodyKeys, cancellationToken);
+        if (failure is not null)
         {
-            return ValidationProblemFor("body", "El cuerpo JSON no cumple el contrato.");
+            return failure;
         }
 
         if (request is null)
         {
-            return ValidationProblemFor("body", "El cuerpo JSON es obligatorio.");
+            return ProblemResult(400, AppointmentErrorCodes.ValidationError);
         }
 
         var errors = new Dictionary<string, string[]>(StringComparer.Ordinal);
@@ -77,7 +89,7 @@ public sealed class AppointmentsController : ControllerBase
         }
 
         DateTimeOffset cutAt = default;
-        if (request.CutAt is null || request.CutAt.Length > 80 ||
+        if (request.CutAt is null ||
             !OffsetDateTimePattern.IsMatch(request.CutAt) ||
             !DateTimeOffset.TryParse(
                 request.CutAt,
@@ -207,7 +219,6 @@ public sealed class AppointmentsController : ControllerBase
     [HttpPost("{id}/transitions")]
     public async Task<IActionResult> Transition(
         string id,
-        [FromBody] TransitionAppointmentRequest? request,
         CancellationToken cancellationToken)
     {
         if (!Guid.TryParse(id, out var appointmentId))
@@ -215,13 +226,19 @@ public sealed class AppointmentsController : ControllerBase
             return ValidationProblemFor("id", "Debe ser un UUID válido.");
         }
 
-        if (!ModelState.IsValid)
+        var (request, failure) = await ReadRequestBodyAsync<TransitionAppointmentRequest>(
+            TransitionBodyKeys, cancellationToken);
+        if (failure is not null)
         {
-            return ValidationProblemFor("body", "El cuerpo JSON no cumple el contrato.");
+            return failure;
         }
 
-        if (request is null ||
-            !AppointmentHttpMapper.TryParseStatus(request.NewStatus, out var newStatus))
+        if (request is null)
+        {
+            return ProblemResult(400, AppointmentErrorCodes.ValidationError);
+        }
+
+        if (!AppointmentHttpMapper.TryParseStatus(request.NewStatus, out var newStatus))
         {
             return ValidationProblemFor("newStatus", "Debe ser un estado reconocido.");
         }
@@ -250,6 +267,71 @@ public sealed class AppointmentsController : ControllerBase
         }
 
         return values[0];
+    }
+
+    private async Task<(T? Request, IActionResult? Failure)> ReadRequestBodyAsync<T>(
+        IReadOnlySet<string> allowedKeys,
+        CancellationToken cancellationToken) where T : class
+    {
+        // MVC's automatic body binder would emit a bare 415 or a different
+        // validation payload. The demo contract requires ProblemDetails 400.
+        var mediaType = Request.ContentType?.Split(';', 2)[0].Trim();
+        if (!string.Equals(mediaType, "application/json", StringComparison.OrdinalIgnoreCase))
+        {
+            return (null, ProblemResult(400, AppointmentErrorCodes.ValidationError));
+        }
+
+        try
+        {
+            using var document = await JsonDocument.ParseAsync(Request.Body, cancellationToken: cancellationToken);
+            if (document.RootElement.ValueKind != JsonValueKind.Object)
+            {
+                return (null, ProblemResult(400, AppointmentErrorCodes.ValidationError));
+            }
+
+            var seenKeys = new HashSet<string>(StringComparer.Ordinal);
+            var errors = new Dictionary<string, string[]>(StringComparer.Ordinal);
+            foreach (var property in document.RootElement.EnumerateObject())
+            {
+                if (!allowedKeys.Contains(property.Name))
+                {
+                    errors[property.Name] = ["Propiedad no admitida."];
+                }
+                else if (!seenKeys.Add(property.Name))
+                {
+                    errors[property.Name] = ["La propiedad no puede repetirse."];
+                }
+            }
+
+            if (errors.Count > 0)
+            {
+                return (null, ProblemResult(400, AppointmentErrorCodes.ValidationError, errors));
+            }
+
+            try
+            {
+                return (document.RootElement.Deserialize<T>(RequestJsonOptions), null);
+            }
+            catch (JsonException exception)
+            {
+                var path = exception.Path;
+                var field = path is not null && path.StartsWith("$.", StringComparison.Ordinal)
+                    ? path[2..]
+                    : null;
+                if (field is not null && allowedKeys.Contains(field))
+                {
+                    return (null, ValidationProblemFor(field, "El tipo de dato no cumple el contrato."));
+                }
+
+                return (null, ProblemResult(400, AppointmentErrorCodes.ValidationError));
+            }
+        }
+        catch (JsonException)
+        {
+            // A syntactically malformed document cannot reliably be attributed
+            // to any field, so the optional errors map stays absent.
+            return (null, ProblemResult(400, AppointmentErrorCodes.ValidationError));
+        }
     }
 
     private IActionResult ValidationProblemFor(string field, string message) =>

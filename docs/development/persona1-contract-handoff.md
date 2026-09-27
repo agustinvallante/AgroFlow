@@ -80,7 +80,7 @@ Sin autenticación ni selección de ingenio: es un perfil exclusivamente local.
 No se implementan ni se infieren desde la demo; están en [decisiones abiertas](../planning/open-decisions.md):
 
 - límites de `cutAt` futuro o antiguo y rangos o unidad definitiva de la carga (`OD-005`); la demo sólo valida formato, offset y carga positiva;
-- prioridad (`OD-001`): la demo asigna la primera ventana futura con cupo;
+- aplicación técnica de la prioridad (`OD-001`): la política ya está acordada para el MVP, pero aún depende de las precisiones de corte y concurrencia; la demo asigna la primera ventana futura con cupo sin ejercer esa política;
 - horizonte general de búsqueda y calendario (`OD-004`);
 - idempotencia, concurrencia y reintentos (`OD-006`): reintentar un alta ya persistida responde `409 ACTIVE_APPOINTMENT_EXISTS` y repetir un estado responde `409`, sin que eso constituya una política;
 - seguridad del canal n8n (`OD-008`) y fecha operativa y zona horaria del MVP (`OD-012`).

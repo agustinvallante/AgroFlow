@@ -34,6 +34,10 @@ public sealed class AppointmentsHttpTests
         Assert.Equal("ASIGNADO", body.RootElement.GetProperty("status").GetString());
         Assert.Equal("AF123BC", body.RootElement.GetProperty("truck").GetProperty("plate").GetString());
         Assert.Equal(28.5, body.RootElement.GetProperty("estimatedLoadTons").GetDouble());
+        Assert.EndsWith("-03:00", body.RootElement.GetProperty("cutAt").GetString());
+        Assert.EndsWith("-03:00", body.RootElement.GetProperty("window").GetProperty("startAt").GetString());
+        Assert.EndsWith("-03:00", body.RootElement.GetProperty("window").GetProperty("endAt").GetString());
+        Assert.EndsWith("-03:00", body.RootElement.GetProperty("createdAt").GetString());
         Assert.NotNull(service.LastCreate);
         Assert.Equal("+5493815550101", service.LastCreate.CarrierPhone);
         Assert.Equal("FINCA-NORTE", service.LastCreate.FarmCode);
@@ -81,6 +85,20 @@ public sealed class AppointmentsHttpTests
     }
 
     [Fact]
+    public async Task Get_list_with_phone_but_no_date_leaves_local_today_to_the_store()
+    {
+        var service = new FakeAppointmentService();
+        using var app = await TestApp.StartAsync(service);
+
+        using var response = await app.Client.GetAsync(
+            "/api/v1/appointments?phone=%2B5493815550101");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Null(service.LastQuery?.Date);
+        Assert.Equal("+5493815550101", service.LastQuery?.Phone);
+    }
+
+    [Fact]
     public async Task Get_detail_returns_the_current_appointment()
     {
         var service = new FakeAppointmentService();
@@ -115,6 +133,10 @@ public sealed class AppointmentsHttpTests
     [InlineData("/api/v1/appointments?date=not-a-date")]
     [InlineData("/api/v1/appointments?status=ANYTHING")]
     [InlineData("/api/v1/appointments?phone=invalid")]
+    [InlineData("/api/v1/appointments?phone=+5493815550101")]
+    [InlineData("/api/v1/appointments?status=")]
+    [InlineData("/api/v1/appointments?phone=%2B5493815550101&phone=%2B5493815550101")]
+    [InlineData("/api/v1/appointments?cacheBust=123")]
     [InlineData("/api/v1/appointments/not-a-uuid")]
     public async Task Invalid_query_or_route_uses_canonical_validation_problem(string url)
     {
@@ -130,7 +152,10 @@ public sealed class AppointmentsHttpTests
     [InlineData("{\"carrierPhone\":\"+5493815550101\",\"truckPlate\":\"AF123BC\",\"farmCode\":\"FINCA-NORTE\",\"cutAt\":\"2026-09-28T05:30:00-03:00\",\"estimatedLoadTons\":0}")]
     [InlineData("{\"carrierPhone\":\"+5493815550101\",\"truckPlate\":\"AF123BC\",\"farmCode\":\"FINCA-NORTE\",\"cutAt\":\"2026-09-28T05:30:00\",\"estimatedLoadTons\":28.5}")]
     [InlineData("{\"carrierPhone\":\"+5493815550101\",\"truckPlate\":\"AF123BC\",\"farmCode\":\"FINCA-NORTE\",\"cutAt\":\"2026-09-28T05:30:00-03:00\",\"estimatedLoadTons\":28.5,\"preferredWindow\":\"2026-09-28T08:00:00-03:00\"}")]
-    [InlineData("{\"carrierPhone\":")]
+    [InlineData("{\"CarrierPhone\":\"+5493815550101\",\"truckPlate\":\"AF123BC\",\"farmCode\":\"FINCA-NORTE\",\"cutAt\":\"2026-09-28T05:30:00-03:00\",\"estimatedLoadTons\":28.5}")]
+    [InlineData("{\"carrierPhone\":\"+5493815550101\",\"carrierPhone\":\"+5493815550101\",\"truckPlate\":\"AF123BC\",\"farmCode\":\"FINCA-NORTE\",\"cutAt\":\"2026-09-28T05:30:00-03:00\",\"estimatedLoadTons\":28.5}")]
+    [InlineData("{\"carrierPhone\":42,\"truckPlate\":\"AF123BC\",\"farmCode\":\"FINCA-NORTE\",\"cutAt\":\"2026-09-28T05:30:00-03:00\",\"estimatedLoadTons\":28.5}")]
+    [InlineData("{\"carrierPhone\":\"+5493815550101\",\"truckPlate\":\"AF123BC\",\"farmCode\":\"FINCA-NORTE\",\"cutAt\":\"2026-09-28T05:30:00-03:00\",\"estimatedLoadTons\":\"28.5\"}")]
     public async Task Invalid_create_body_reports_field_errors(string json)
     {
         using var app = await TestApp.StartAsync(new FakeAppointmentService());
@@ -141,6 +166,107 @@ public sealed class AppointmentsHttpTests
         using var body = await AssertProblemAsync(response, HttpStatusCode.BadRequest,
             AppointmentErrorCodes.ValidationError);
         Assert.Equal(JsonValueKind.Object, body.RootElement.GetProperty("errors").ValueKind);
+    }
+
+    [Theory]
+    [InlineData("{\"carrierPhone\":")]
+    [InlineData("not-json")]
+    [InlineData("null")]
+    public async Task Malformed_or_null_create_body_omits_field_errors(string json)
+    {
+        using var app = await TestApp.StartAsync(new FakeAppointmentService());
+
+        using var response = await app.Client.PostAsync("/api/v1/appointments",
+            new StringContent(json, System.Text.Encoding.UTF8, "application/json"));
+
+        using var body = await AssertProblemAsync(response, HttpStatusCode.BadRequest,
+            AppointmentErrorCodes.ValidationError);
+        Assert.False(body.RootElement.TryGetProperty("errors", out _));
+    }
+
+    [Fact]
+    public async Task Missing_create_body_omits_field_errors()
+    {
+        using var app = await TestApp.StartAsync(new FakeAppointmentService());
+
+        using var response = await app.Client.PostAsync("/api/v1/appointments", null);
+
+        using var body = await AssertProblemAsync(response, HttpStatusCode.BadRequest,
+            AppointmentErrorCodes.ValidationError);
+        Assert.False(body.RootElement.TryGetProperty("errors", out _));
+    }
+
+    [Fact]
+    public async Task Unsupported_content_type_uses_contractual_problem_details()
+    {
+        using var app = await TestApp.StartAsync(new FakeAppointmentService());
+
+        using var response = await app.Client.PostAsync("/api/v1/appointments",
+            new StringContent("{}", System.Text.Encoding.UTF8, "text/plain"));
+
+        using var body = await AssertProblemAsync(response, HttpStatusCode.BadRequest,
+            AppointmentErrorCodes.ValidationError);
+        Assert.False(body.RootElement.TryGetProperty("errors", out _));
+    }
+
+    [Fact]
+    public async Task Missing_content_type_uses_contractual_problem_details()
+    {
+        using var app = await TestApp.StartAsync(new FakeAppointmentService());
+        using var content = new ByteArrayContent(System.Text.Encoding.UTF8.GetBytes("{}"));
+
+        using var response = await app.Client.PostAsync("/api/v1/appointments", content);
+
+        using var body = await AssertProblemAsync(response, HttpStatusCode.BadRequest,
+            AppointmentErrorCodes.ValidationError);
+        Assert.False(body.RootElement.TryGetProperty("errors", out _));
+    }
+
+    [Theory]
+    [InlineData("{\"newStatus\":")]
+    [InlineData("null")]
+    public async Task Malformed_or_null_transition_body_omits_field_errors(string json)
+    {
+        var service = new FakeAppointmentService();
+        using var app = await TestApp.StartAsync(service);
+
+        using var response = await app.Client.PostAsync(
+            $"/api/v1/appointments/{service.Appointment.Id}/transitions",
+            new StringContent(json, System.Text.Encoding.UTF8, "application/json"));
+
+        using var body = await AssertProblemAsync(response, HttpStatusCode.BadRequest,
+            AppointmentErrorCodes.ValidationError);
+        Assert.False(body.RootElement.TryGetProperty("errors", out _));
+    }
+
+    [Fact]
+    public async Task Unknown_create_property_reports_its_name()
+    {
+        using var app = await TestApp.StartAsync(new FakeAppointmentService());
+        const string json = "{\"preferredWindow\":\"2026-09-28T08:00:00-03:00\"}";
+
+        using var response = await app.Client.PostAsync("/api/v1/appointments",
+            new StringContent(json, System.Text.Encoding.UTF8, "application/json"));
+
+        using var body = await AssertProblemAsync(response, HttpStatusCode.BadRequest,
+            AppointmentErrorCodes.ValidationError);
+        Assert.True(body.RootElement.GetProperty("errors").TryGetProperty("preferredWindow", out _));
+    }
+
+    [Fact]
+    public async Task Unknown_transition_property_reports_its_name()
+    {
+        var service = new FakeAppointmentService();
+        using var app = await TestApp.StartAsync(service);
+
+        using var response = await app.Client.PostAsJsonAsync(
+            $"/api/v1/appointments/{service.Appointment.Id}/transitions",
+            new { newStatus = "EN_CAMINO", reason = "not in contract" });
+
+        using var body = await AssertProblemAsync(response, HttpStatusCode.BadRequest,
+            AppointmentErrorCodes.ValidationError);
+        Assert.True(body.RootElement.GetProperty("errors").TryGetProperty("reason", out _));
+        Assert.Null(service.LastTransition);
     }
 
     [Fact]

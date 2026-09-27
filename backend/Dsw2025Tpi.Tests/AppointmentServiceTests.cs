@@ -37,6 +37,42 @@ public sealed class AppointmentServiceTests
     }
 
     [Fact]
+    public async Task Create_delegates_natural_keys_and_preserves_seed_timezone_in_response()
+    {
+        var localOffset = TimeSpan.FromHours(-3);
+        var localStart = Now.AddHours(1).ToOffset(localOffset);
+        var candidate = new AppointmentCandidateWindow(
+            Guid.NewGuid(), localStart, localStart.AddMinutes(30), 2, 0);
+        var store = new FakeStore
+        {
+            CreationContext = new AppointmentCreationContext(false, [candidate]),
+            Current = FakeStore.NewSnapshot(AppointmentStatus.Asignado) with
+            {
+                CreatedAt = Now.ToOffset(localOffset)
+            }
+        };
+        var command = ValidCreate with
+        {
+            TruckPlate = "af-123 bc",
+            FarmCode = "finca-norte"
+        };
+        var service = new AppointmentService(store, new FixedClock(Now));
+
+        var result = await service.CreateAsync(command);
+
+        Assert.Same(command, store.LastCreationContextCommand);
+        Assert.Same(command, store.LastCreateCommitCommand);
+        Assert.Equal("+5493815550101", store.LastCreationContextCommand!.CarrierPhone);
+        Assert.Equal("af-123 bc", store.LastCreationContextCommand.TruckPlate);
+        Assert.Equal("finca-norte", store.LastCreationContextCommand.FarmCode);
+        Assert.Equal("AF123BC", result.Truck.Plate);
+        Assert.Equal(localOffset, result.CutAt.Offset);
+        Assert.Equal(localOffset, result.CreatedAt.Offset);
+        Assert.Equal(localOffset, result.Window.StartAt.Offset);
+        Assert.Equal(localOffset, result.Window.EndAt.Offset);
+    }
+
+    [Fact]
     public async Task Create_retries_the_next_window_after_a_concurrent_capacity_change()
     {
         var first = Candidate(1, 2, 1);
@@ -95,6 +131,19 @@ public sealed class AppointmentServiceTests
         Assert.Equal(0, store.CreationContextReads);
     }
 
+    [Fact]
+    public async Task Create_does_not_impose_an_undocumented_cutoff_on_cutAt()
+    {
+        var store = new FakeStore();
+        var service = new AppointmentService(store, new FixedClock(Now));
+        var command = ValidCreate with { CutAt = DateTimeOffset.MinValue };
+
+        await service.CreateAsync(command);
+
+        Assert.Equal(DateTimeOffset.MinValue, store.LastCreationContextCommand?.CutAt);
+        Assert.Equal(DateTimeOffset.MinValue, store.LastCreateCommitCommand?.CutAt);
+    }
+
     [Theory]
     [InlineData(AppointmentCreateOutcome.ReferenceChanged, AppointmentErrorCodes.ReferenceNotFound)]
     [InlineData(AppointmentCreateOutcome.ActiveAppointmentExists, AppointmentErrorCodes.ActiveAppointmentExists)]
@@ -134,6 +183,26 @@ public sealed class AppointmentServiceTests
 
         Assert.Same(query, store.LastQuery);
         Assert.Equal([early.Id, late.Id], result.Select(appointment => appointment.Id));
+    }
+
+    [Fact]
+    public async Task List_without_date_preserves_other_filters_for_the_store()
+    {
+        var store = new FakeStore { Listed = [] };
+        var service = new AppointmentService(store, new FixedClock(Now));
+        var query = new AppointmentQuery(
+            null, AppointmentStatus.EnCamino, "af-123 bc", "+5493815550101");
+
+        var result = await service.ListAsync(query);
+
+        // Persona 2 must interpret null as the seed ingenio's local today even
+        // with these filters, and return an empty collection when none match.
+        Assert.Same(query, store.LastQuery);
+        Assert.Null(store.LastQuery!.Date);
+        Assert.Equal(AppointmentStatus.EnCamino, store.LastQuery.Status);
+        Assert.Equal("af-123 bc", store.LastQuery.TruckPlate);
+        Assert.Equal("+5493815550101", store.LastQuery.Phone);
+        Assert.Empty(result);
     }
 
     [Fact]
@@ -264,6 +333,8 @@ public sealed class AppointmentServiceTests
         public AppointmentCreationContext? CreationContext { get; set; } =
             new(false, [Candidate(1, 2, 0)]);
         public int CreationContextReads { get; private set; }
+        public CreateAppointmentCommand? LastCreationContextCommand { get; private set; }
+        public CreateAppointmentCommand? LastCreateCommitCommand { get; private set; }
         public Queue<AppointmentCreateOutcome> CreateOutcomes { get; } = new();
         public List<Guid> AttemptedWindowIds { get; } = [];
         public IReadOnlyList<AppointmentSummary> Listed { get; set; } = [];
@@ -276,6 +347,7 @@ public sealed class AppointmentServiceTests
             CreateAppointmentCommand command, CancellationToken cancellationToken = default)
         {
             CreationContextReads++;
+            LastCreationContextCommand = command;
             return Task.FromResult(CreationContext);
         }
 
@@ -283,6 +355,7 @@ public sealed class AppointmentServiceTests
             CreateAppointmentCommand command, Guid windowId, CancellationToken cancellationToken = default)
         {
             AttemptedWindowIds.Add(windowId);
+            LastCreateCommitCommand = command;
             var outcome = CreateOutcomes.Count > 0 ? CreateOutcomes.Dequeue() : AppointmentCreateOutcome.Success;
             var window = CreationContext!.Windows.Single(candidate => candidate.Id == windowId);
             var created = Current with

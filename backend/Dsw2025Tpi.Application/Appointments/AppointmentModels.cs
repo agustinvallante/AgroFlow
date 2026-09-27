@@ -20,8 +20,9 @@ public sealed record CreateAppointmentCommand(
     double EstimatedLoadTons);
 
 /// <summary>
-/// Una fecha nula sin otros filtros significa el día local actual del ingenio.
-/// La interpretación de fecha local pertenece al adaptador de persistencia del ingenio sembrado.
+/// Una fecha nula siempre significa el día local actual del ingenio sembrado,
+/// incluso cuando se informan otros filtros. El adaptador de persistencia
+/// determina esa fecha y compara contra la fecha local de inicio de ventana.
 /// </summary>
 public sealed record AppointmentQuery(
     DateOnly? Date,

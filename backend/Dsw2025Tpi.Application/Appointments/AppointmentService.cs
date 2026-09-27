@@ -34,8 +34,6 @@ public sealed class AppointmentService : IAppointmentService
         if (string.IsNullOrEmpty(command.FarmCode) || command.FarmCode.Length > 50 ||
             !FarmCodePattern.IsMatch(command.FarmCode))
             errors["farmCode"] = ["Debe ser un código de finca válido de hasta 50 caracteres."];
-        if (command.CutAt == default)
-            errors["cutAt"] = ["Debe ser una fecha y hora válida con desplazamiento horario."];
         if (!double.IsFinite(command.EstimatedLoadTons) || command.EstimatedLoadTons <= 0)
             errors["estimatedLoadTons"] = ["Debe ser mayor que cero."];
 

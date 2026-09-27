@@ -42,20 +42,27 @@ public sealed record AppointmentTransitionResult(
 /// Puerto que implementará Persona 2 con persistencia real. Las lecturas suministran
 /// estado para que la capa Application aplique las reglas; las escrituras deben volver a
 /// comprobar invariantes en una transacción, pues la lectura puede quedar desactualizada.
+/// Todos los DateTimeOffset devueltos en turnos y ventanas, incluidos cutAt y createdAt,
+/// deben llevar el desplazamiento explícito de la zona del ingenio sembrado; el
+/// servicio no debe fijar ni inferir ese desplazamiento.
 /// </summary>
 public interface IAppointmentStore
 {
     /// <summary>
-    /// Resuelve teléfono, patente y código de finca del seed, comprueba actividad y
+    /// Resuelve teléfono exacto en E.164, patente ignorando mayúsculas y
+    /// separadores (comparando sólo letras y dígitos), y código de finca sin
+    /// distinguir mayúsculas pero sin otra normalización. Comprueba actividad y
     /// asociación transportista-camión, y lee turno activo y ventanas del ingenio.
-    /// Devuelve null ante referencia inválida sin mutar capacidad.
+    /// Devuelve null ante referencia inválida sin mutar capacidad. Las referencias
+    /// en las respuestas conservan la forma canónica almacenada en el seed.
     /// </summary>
     Task<AppointmentCreationContext?> GetCreationContextAsync(
         CreateAppointmentCommand command,
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Revalida referencias y asociación, ausencia de turno activo, ventana futura
+    /// Revalida las referencias con las mismas reglas de comparación y asociación,
+    /// ausencia de turno activo, ventana futura
     /// seleccionada y cupo; inserta ASIGNADO con ventana y ocupa cupo en una única
     /// transacción. Los rechazos no deben dejar reserva ni turno parcial. En conflicto
     /// concurrente de cupo devuelve CapacityChanged para probar otra ventana.
@@ -66,8 +73,11 @@ public interface IAppointmentStore
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Filtra por conjunción y ordena por inicio de ventana. Sin ningún filtro,
-    /// usa la fecha local actual del ingenio sembrado. Las consultas no mutan datos.
+    /// Filtra por conjunción y ordena por inicio de ventana. Si Date es null,
+    /// siempre usa la fecha local actual del ingenio sembrado, aunque haya otros
+    /// filtros; Date corresponde a la fecha local de inicio de la ventana. Phone
+    /// se compara exactamente en E.164, TruckPlate ignora mayúsculas y separadores.
+    /// La falta de coincidencias devuelve una lista vacía. La consulta no muta datos.
     /// </summary>
     Task<IReadOnlyList<AppointmentSummary>> ListAsync(
         AppointmentQuery query,
