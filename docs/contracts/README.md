@@ -21,6 +21,8 @@ Las issues `B10`–`B39` del [Project Backend](https://github.com/users/agustinv
 - n8n toma el teléfono del mensaje entrante y no requiere endpoints de datos maestros ni UUIDs hardcodeados; las respuestas pueden conservar referencias internas con UUID.
 - Sin autenticación ni selección de ingenio: esta simplificación es sólo local y no define seguridad productiva.
 
+El contrato de la demo quedó congelado en la versión `0.3.0`; el [traspaso de Persona 1](../development/persona1-contract-handoff.md) resume sus precisiones, las decisiones abiertas y lo que debe respetar cada área, sin reemplazar a OpenAPI.
+
 La salvedad de Docker/Linux y el recorrido reproducible están en el [runbook](../development/local-demo-runbook.md). El alcance y sus exclusiones están en [local-demo-scope.md](../planning/local-demo-scope.md).
 
 ## Reglas

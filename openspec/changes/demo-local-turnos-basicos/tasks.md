@@ -7,6 +7,7 @@ La asignación propone seis responsables, uno por frente. Cada casilla requiere 
 - [x] Registrar propuesta, diseño y deltas OpenSpec de la issue #49. Verificación: `openspec validate demo-local-turnos-basicos --strict --no-interactive`.
 - [x] Publicar en OpenAPI las cuatro operaciones canónicas, `/health`, el alta con `carrierPhone`/`truckPlate`/`farmCode`, el filtro opcional `phone`, los demás DTOs, filtros, estados y errores. Verificación: validación OpenAPI disponible en el repositorio o entorno, sin instalar dependencias.
 - [x] Documentar que la demo no modifica el MVP completo y que chatbot/dashboard referencian OpenAPI. Verificación: revisión cruzada de `proposal.md`, `docs/contracts/README.md` y `docs/planning/local-demo-scope.md`.
+- [x] Congelar OpenAPI 0.3.0 tras auditarlo contra OpenSpec y la API: fecha por defecto del listado aun con otros filtros, colección vacía, parámetros no documentados, comparación de identificadores naturales, `%2B` en `phone`, desplazamiento horario de respuestas y `SERVICE_UNAVAILABLE`; publicar el traspaso en [`persona1-contract-handoff.md`](../../../docs/development/persona1-contract-handoff.md). Verificación: `openspec validate --all --strict --no-interactive`, lint de Redocly y verificación de enlaces Markdown.
 
 ## 2. Preparar modelo, persistencia y seed — Persona 2
 

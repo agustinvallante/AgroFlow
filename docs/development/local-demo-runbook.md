@@ -53,7 +53,7 @@ Usá la UI, el chatbot o un cliente HTTP que respete OpenAPI.
 
 1. Crear un turno con `carrierPhone`, `truckPlate` y `farmCode` del seed, `cutAt` válido y `estimatedLoadTons` positivo; comprobar `201`, estado `ASIGNADO` y ventana asignada. La solicitud no debe contener UUIDs.
 2. Listar sin filtros; comprobar la fecha local actual y el orden ascendente por inicio de ventana.
-3. Filtrar por `date`, `status=ASIGNADO`, `truckPlate` y `phone`; comprobar que los filtros se combinan y que `phone` permite la consulta de CU-003 desde el número del remitente.
+3. Filtrar por `date`, `status=ASIGNADO`, `truckPlate` y `phone` (con el `+` codificado como `%2B`); comprobar que los filtros se combinan con AND, que sin `date` se aplican sobre la fecha local actual del ingenio, que sin coincidencias se recibe `200` con `[]` y que `phone` permite la consulta de CU-003 desde el número del remitente.
 4. Consultar el UUID del turno; comprobar que la lectura no cambia sus datos.
 5. Intentar otro turno activo para el mismo camión; comprobar `409` y ausencia de consumo adicional.
 6. Intentar un alta con un `carrierPhone`, `truckPlate` o `farmCode` ajeno al seed; comprobar `404` sin consumo de capacidad.
