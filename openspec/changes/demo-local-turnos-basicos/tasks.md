@@ -16,6 +16,8 @@ La asignación propone seis responsables, uno por frente. Cada casilla requiere 
 
 ## 3. Implementar API de turnos — Persona 3
 
+Avance de la rama `feat/demo-appointments-api`: el alcance implementable sin persistencia y los criterios todavía bloqueados se registran en [`docs/development/persona3-api-handoff.md`](../../../docs/development/persona3-api-handoff.md). Las casillas permanecen abiertas hasta probar el host real con el modelo y el seed de Persona 2.
+
 - [ ] Implementar alta por `carrierPhone`, `truckPlate` y `farmCode`, listado con filtros —incluido `phone`— y detalle conforme a OpenAPI, resolviendo las referencias en backend. Verificación: pruebas de integración para `201`, `200`, `400`, `404` y conflictos de capacidad/camión activo.
 - [ ] Implementar secuencia de estados y cancelación en la operación de transiciones. Verificación: pruebas de secuencia completa, salto rechazado, terminalidad y liberación de cupo.
 - [ ] Mantener errores compatibles con el esquema canónico. Verificación: pruebas de contrato sobre `Content-Type`, `status`, `code`, `traceId` y errores de campos.

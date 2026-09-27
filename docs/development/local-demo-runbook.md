@@ -4,6 +4,8 @@
 
 Esta guía coordina la ejecución local aprobada en la issue #49. Los comandos concretos de arranque y seed deben completarse cuando existan los componentes; esta documentación no inventa scripts ausentes. El contrato HTTP canónico es [`docs/contracts/openapi.yaml`](../contracts/openapi.yaml).
 
+La rama de Persona 3 documenta en [`persona3-api-handoff.md`](persona3-api-handoff.md) qué partes de la API pueden probarse aisladamente y qué verificación depende todavía del modelo, la persistencia y el seed de Persona 2. No se debe ejecutar este runbook como si esa integración ya existiera.
+
 ## Prerrequisitos
 
 - Backend, frontend y n8n disponibles localmente según sus README.
