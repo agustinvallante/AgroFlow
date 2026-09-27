@@ -1,12 +1,16 @@
 openapi: 3.1.0
 info:
   title: AgroFlow API
-  version: 0.2.0
+  version: 0.3.0
   description: >-
     Contrato HTTP canónico para la demo local de turnos básicos aprobada en la
     issue #49. El perfil local opera con un único ingenio sembrado y sin
     autenticación; no representa el contrato de seguridad ni el alcance completo
-    del MVP.
+    del MVP. Todas las fechas y horas (`date-time`) de las respuestas se emiten
+    en RFC 3339 con el desplazamiento horario explícito de la zona del ingenio
+    sembrado (`America/Argentina/Tucuman` en la demo); los consumidores deben
+    interpretar el desplazamiento recibido y no asumir uno fijo. Esta regla de
+    presentación es propia de la demo local y no define la del MVP completo.
 servers:
   - url: http://localhost:5000
     description: API ejecutada en el host local
@@ -36,11 +40,19 @@ paths:
               schema:
                 $ref: '#/components/schemas/HealthResponse'
         '503':
-          description: La API no puede atender la demo.
+          description: >-
+            La API no puede atender la demo. El cuerpo usa el código
+            `SERVICE_UNAVAILABLE`.
           content:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/ProblemDetails'
+              example:
+                type: 'about:blank'
+                title: Servicio no disponible
+                status: 503
+                code: SERVICE_UNAVAILABLE
+                traceId: 00-demo-trace
 
   /api/v1/appointments:
     post:
@@ -85,14 +97,23 @@ paths:
       operationId: listarTurnos
       summary: Listar y filtrar turnos
       description: >-
-        Sin filtros devuelve los turnos de la fecha local actual del ingenio
-        sembrado. Los filtros se combinan con AND y el resultado se ordena por
-        inicio de ventana ascendente. El filtro phone permite la consulta de
-        CU-003 desde el teléfono del mensaje entrante.
+        Devuelve los turnos del ingenio sembrado cuya ventana comienza en la
+        fecha local indicada por `date`. Si `date` no se informa, se usa siempre
+        la fecha local actual del ingenio sembrado, también cuando se informan
+        `status`, `truckPlate` o `phone`. Todos los filtros se combinan con AND
+        y el resultado se ordena por inicio de ventana ascendente. El filtro
+        `phone` permite la consulta de CU-003 desde el teléfono del mensaje
+        entrante. Cada parámetro admite un único valor no vacío; un parámetro no
+        documentado, repetido o vacío responde `400 VALIDATION_ERROR`, por lo
+        que los consumidores no deben agregar parámetros adicionales (por
+        ejemplo, para evitar cachés).
       parameters:
         - name: date
           in: query
-          description: Fecha local de la ventana. Por defecto, la fecha local actual.
+          description: >-
+            Fecha local (`YYYY-MM-DD`) del inicio de la ventana en la zona
+            horaria del ingenio sembrado. Si se omite, se usa la fecha local
+            actual del ingenio, aunque se informen otros filtros.
           schema:
             type: string
             format: date
@@ -103,7 +124,10 @@ paths:
             $ref: '#/components/schemas/AppointmentStatus'
         - name: truckPlate
           in: query
-          description: Patente completa; la comparación ignora mayúsculas y separadores.
+          description: >-
+            Patente completa. La comparación ignora mayúsculas y separadores:
+            sólo se comparan letras y dígitos (por ejemplo, `af-123 bc` equivale
+            a `AF123BC`).
           schema:
             type: string
             minLength: 6
@@ -112,15 +136,21 @@ paths:
         - name: phone
           in: query
           description: >-
-            Teléfono completo del transportista en formato E.164. Permite que n8n
-            consulte desde el número del remitente sin resolver antes su UUID.
+            Teléfono completo, en formato E.164, del transportista registrado en
+            el turno. Permite que n8n consulte desde el número del remitente sin
+            resolver antes su UUID. En la query string el `+` debe codificarse
+            como `%2B` (`phone=%2B5493815550101`); un `+` sin codificar se
+            interpreta como espacio y la solicitud se rechaza por formato
+            inválido.
           schema:
             type: string
             pattern: '^\+[1-9][0-9]{7,14}$'
             examples: ['+5493815550101']
       responses:
         '200':
-          description: Turnos que cumplen todos los filtros.
+          description: >-
+            Turnos que cumplen todos los filtros. Sin coincidencias, incluido un
+            `phone` o `truckPlate` inexistente, responde un arreglo vacío.
           content:
             application/json:
               schema:
@@ -221,18 +251,26 @@ components:
           pattern: '^\+[1-9][0-9]{7,14}$'
           description: >-
             Teléfono ficticio del transportista activo provisto por el seed, en
-            formato E.164.
+            formato E.164 con el prefijo `+`. Se compara exactamente; no se
+            admiten variantes sin `+` ni con separadores.
         truckPlate:
           type: string
           minLength: 6
           maxLength: 10
-          description: Patente del camión activo y asociado al transportista.
+          description: >-
+            Patente del camión activo y asociado al transportista. La resolución
+            ignora mayúsculas y separadores: sólo se comparan letras y dígitos.
+            Las respuestas devuelven la patente en la forma canónica almacenada
+            en el seed.
         farmCode:
           type: string
           minLength: 1
           maxLength: 50
           pattern: '^[A-Za-z0-9][A-Za-z0-9_-]*$'
-          description: Código estable de una finca activa provista por el seed.
+          description: >-
+            Código estable de una finca activa provista por el seed. La
+            resolución no distingue mayúsculas de minúsculas y no aplica otra
+            normalización.
         cutAt:
           type: string
           format: date-time
@@ -396,12 +434,16 @@ components:
             - NO_CAPACITY
             - INVALID_TRANSITION
             - INTERNAL_ERROR
+            - SERVICE_UNAVAILABLE
         traceId:
           type: string
           minLength: 1
         errors:
           type: object
-          description: Errores por campo; vacío o ausente para errores no asociados a campos.
+          description: >-
+            Errores por campo. Las claves son nombres de propiedades del cuerpo
+            o de parámetros de ruta o consulta, incluido un parámetro no
+            documentado. Vacío o ausente para errores no asociados a campos.
           additionalProperties:
             type: array
             items:
@@ -409,7 +451,9 @@ components:
 
   responses:
     ValidationError:
-      description: La solicitud, parámetro o filtro no cumple el contrato.
+      description: >-
+        La solicitud, parámetro o filtro no cumple el contrato, incluidos un
+        parámetro de consulta no documentado, repetido o vacío.
       content:
         application/problem+json:
           schema:
@@ -484,7 +528,9 @@ components:
                 traceId: 00-demo-trace
 
     InternalError:
-      description: Error inesperado sin exposición de detalles internos.
+      description: >-
+        Error inesperado sin exposición de detalles internos. La indisponibilidad
+        técnica de `/health` usa `503 SERVICE_UNAVAILABLE`, no este código.
       content:
         application/problem+json:
           schema:

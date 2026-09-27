@@ -29,7 +29,19 @@ El alta identifica al transportista por `carrierPhone`, al camión por `truckPla
 
 El enum visible es `ASIGNADO`, `EN_CAMINO`, `EN_ESPERA`, `INGRESADO`, `EN_DESCARGA`, `FINALIZADO` y `CANCELADO`. La transición recibe sólo el estado destino; el backend valida la secuencia y persiste antes de responder.
 
-Los errores siguen una forma compatible con Problem Details y agregan `code`, `errors` y `traceId`. El contrato diferencia entrada inválida (`400`), recurso inexistente (`404`), conflicto de negocio (`409`) y error inesperado (`500`).
+Los errores siguen una forma compatible con Problem Details y agregan `code`, `errors` y `traceId`. El contrato diferencia entrada inválida (`400`), recurso inexistente (`404`), conflicto de negocio (`409`), error inesperado (`500`) e indisponibilidad técnica de `/health` (`503`, código `SERVICE_UNAVAILABLE`).
+
+### Precisiones congeladas del contrato (OpenAPI 0.3.0)
+
+Estas precisiones cierran ambigüedades detectadas al comparar OpenAPI, esta especificación y la implementación de la API. Su forma exacta vive en OpenAPI; aquí se registra la decisión:
+
+- **Fecha por defecto del listado.** Si no se informa `date`, se usa siempre la fecha local actual del ingenio sembrado, aunque se informen `status`, `truckPlate` o `phone`. `date` refiere a la fecha local del inicio de la ventana. Los filtros se combinan con AND y un resultado sin coincidencias es `200` con una colección vacía.
+- **Parámetros de consulta.** Un parámetro no documentado, repetido o vacío responde `400 VALIDATION_ERROR`.
+- **Identificadores naturales.** `carrierPhone` y `phone` usan E.164 con `+` y se comparan exactamente; en la query string el `+` se codifica como `%2B`. La patente se compara ignorando mayúsculas y separadores, tanto en el alta como en el filtro, y las respuestas devuelven la forma canónica sembrada. `farmCode` se resuelve sin distinguir mayúsculas y sin otra normalización.
+- **Fechas observables.** Los `date-time` de las respuestas se emiten con el desplazamiento explícito de la zona del ingenio sembrado (`America/Argentina/Tucuman` en la demo).
+- **Carga estimada.** `estimatedLoadTons` es obligatorio, mayor que cero y expresado en toneladas.
+
+Estas precisiones valen sólo para la demo local. No cierran `OD-004`, `OD-005`, `OD-006`, `OD-008` ni `OD-012` para el MVP completo: los límites de `cutAt`, rangos de carga, prioridad, horizonte de búsqueda, idempotencia, seguridad del canal y fecha operativa siguen abiertos.
 
 ### Seed y asignación acotados
 
