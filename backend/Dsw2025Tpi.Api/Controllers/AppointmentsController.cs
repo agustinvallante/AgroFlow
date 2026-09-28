@@ -2,7 +2,9 @@ using System.Globalization;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Dsw2025Tpi.Api.Contracts.Appointments;
+using Dsw2025Tpi.Api.Security;
 using Dsw2025Tpi.Application.Appointments;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Dsw2025Tpi.Api.Controllers;
@@ -10,8 +12,10 @@ namespace Dsw2025Tpi.Api.Controllers;
 /// <summary>
 /// HTTP boundary for the local appointment demo. The Application service owns
 /// state and business decisions; this controller only validates the wire contract.
+/// Anonymous only under the LocalDemo profile: see <see cref="AppointmentsAuthorizationPolicy"/>.
 /// </summary>
 [Route("api/v1/appointments")]
+[Authorize(Policy = AppointmentsAuthorizationPolicy.Name)]
 public sealed class AppointmentsController : ControllerBase
 {
     private static readonly Regex PhonePattern = new(

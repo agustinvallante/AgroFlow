@@ -70,6 +70,11 @@ public sealed class AgroFlowDbContext : DbContext
             // Evita asociaciones duplicadas para el mismo par, incluso si una
             // quedó inactiva: reactivar la existente en vez de insertar otra.
             eb.HasIndex(a => new { a.TransportistaId, a.CamionId }).IsUnique();
+            // Un camión no puede tener más de un transportista activo a la
+            // vez (openspec/specs/datos-maestros/spec.md). Constraint real en
+            // BD; el seed y cualquier caso de uso futuro que cree o reactive
+            // asociaciones deben manejar el conflicto si lo violan.
+            eb.HasIndex(a => a.CamionId).IsUnique().HasFilter("IsActive = 1");
         });
 
         modelBuilder.Entity<Ventana>(eb =>

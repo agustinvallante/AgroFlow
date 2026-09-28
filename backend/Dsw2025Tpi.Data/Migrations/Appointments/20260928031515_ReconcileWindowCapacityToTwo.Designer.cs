@@ -3,6 +3,7 @@ using System;
 using Dsw2025Tpi.Data.Appointments;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Dsw2025Tpi.Data.Migrations.Appointments
 {
     [DbContext(typeof(AgroFlowDbContext))]
-    partial class AgroFlowDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260928031515_ReconcileWindowCapacityToTwo")]
+    partial class ReconcileWindowCapacityToTwo
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.7");

@@ -1,5 +1,6 @@
 using Dsw2025Tpi.Api.Contracts.Appointments;
 using Dsw2025Tpi.Api.NewFolder;
+using Dsw2025Tpi.Api.Security;
 using Dsw2025Tpi.Application.Appointments;
 using Dsw2025Tpi.Application.Services;
 using Dsw2025Tpi.Data;
@@ -147,7 +148,8 @@ public class Program
         builder.Services.AddScoped<IAppointmentService, AppointmentService>();
 
         builder.Services.AddSingleton<JwtTokenService>();
-        builder.Services.AddAuthorization();
+        builder.Services.AddAuthorization(options =>
+            AppointmentsAuthorizationPolicy.Configure(options, isLocalDemo));
 
         builder.Services.AddScoped<IRepository, EfRepository>();
         builder.Services.AddScoped<ProductsManagementService>();
@@ -259,22 +261,15 @@ public class Program
         }
 
         // Demo local de turnos (Persona 2): migra y siembra la base SQLite
-        // propia, aislada del arranque heredado de arriba.
+        // propia, aislada del arranque heredado de arriba. Con LocalDemo=true
+        // una falla aborta el arranque (fail-fast): nunca queda un host
+        // "aparentemente sano" sin haber inicializado.
         using (var appointmentsScope = app.Services.CreateScope())
         {
             var services = appointmentsScope.ServiceProvider;
-            try
-            {
-                var agroFlowDb = services.GetRequiredService<AgroFlowDbContext>();
-                await agroFlowDb.Database.MigrateAsync();
-                var timeProvider = services.GetRequiredService<TimeProvider>();
-                await AppointmentsSeeder.SeedAsync(agroFlowDb, timeProvider);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine(" Error al inicializar la persistencia de turnos (AgroFlowDbContext):");
-                Console.WriteLine(ex.ToString());
-            }
+            var agroFlowDb = services.GetRequiredService<AgroFlowDbContext>();
+            var timeProvider = services.GetRequiredService<TimeProvider>();
+            await AppointmentsStartup.InitializeAsync(agroFlowDb, timeProvider, failFast: isLocalDemo);
         }
 
         // Configure the HTTP request pipeline.

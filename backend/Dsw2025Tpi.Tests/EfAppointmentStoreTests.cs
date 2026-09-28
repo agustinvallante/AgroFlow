@@ -1,5 +1,6 @@
 using Dsw2025Tpi.Application.Appointments;
 using Dsw2025Tpi.Data.Appointments;
+using Dsw2025Tpi.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 
@@ -38,12 +39,27 @@ public sealed class EfAppointmentStoreTests : IDisposable
 
     private AgroFlowDbContext CreateContext()
     {
+        // Default Timeout (busy_timeout) evita "database is locked" cuando
+        // varios contextos escriben casi al mismo tiempo contra el mismo
+        // archivo, como en las pruebas de concurrencia real de abajo.
         var options = new DbContextOptionsBuilder<AgroFlowDbContext>()
-            .UseSqlite($"Data Source={_dbPath}")
+            .UseSqlite($"Data Source={_dbPath};Default Timeout=5")
             .Options;
         var context = new AgroFlowDbContext(options);
         context.Database.Migrate();
         return context;
+    }
+
+    private static async Task<(Guid TransportistaId, Guid CamionId)> CreateExtraTruckAsync(
+        AgroFlowDbContext db, Guid ingenioId, string phone, string plate)
+    {
+        var transportista = new Transportista(ingenioId, "Transportista Demo Tres", "20333333333", phone);
+        var camion = new Camion(ingenioId, plate, Camion.FleetTypePropia);
+        db.Transportistas.Add(transportista);
+        db.Camiones.Add(camion);
+        db.Asociaciones.Add(new TransportistaCamion(ingenioId, transportista.Id, camion.Id));
+        await db.SaveChangesAsync();
+        return (transportista.Id, camion.Id);
     }
 
     private sealed class FixedClock(DateTimeOffset now) : TimeProvider
@@ -177,30 +193,134 @@ public sealed class EfAppointmentStoreTests : IDisposable
     }
 
     [Fact]
-    public async Task Only_one_of_two_attempts_on_the_last_slot_of_a_window_succeeds_and_no_partial_data_remains()
+    public async Task Three_concurrent_attempts_on_a_window_with_capacity_two_let_exactly_two_succeed()
+    {
+        // Concurrencia real: tres tareas, cada una con su propio
+        // AgroFlowDbContext/conexión contra el mismo archivo SQLite,
+        // corriendo con Task.WhenAll. Nada de llamadas secuenciales
+        // simulando una carrera: el ganador lo decide únicamente el UPDATE
+        // atómico del store bajo contención real.
+        await SeedAsync(Now);
+        Guid windowId;
+        await using (var setupDb = CreateContext())
+        {
+            var ingenio = await setupDb.Ingenios.SingleAsync();
+            await CreateExtraTruckAsync(setupDb, ingenio.Id, "+5493815550103", "AF789GH");
+            // OrderBy sobre StartAtUtc (DateTime), no StartAt (DateTimeOffset):
+            // SQLite tampoco traduce ORDER BY sobre DateTimeOffset.
+            var window = await setupDb.Ventanas.Where(v => v.StartAtUtc > Now.UtcDateTime)
+                .OrderBy(v => v.StartAtUtc)
+                .FirstAsync();
+            windowId = window.Id;
+            Assert.Equal(2, window.Capacity);
+        }
+
+        var commands = new[]
+        {
+            ValidCreate,
+            new CreateAppointmentCommand("+5493815550102", "AF456DE", "FINCA-SUR", Now.AddHours(2), 12.0),
+            new CreateAppointmentCommand("+5493815550103", "AF789GH", "FINCA-NORTE", Now.AddHours(2), 9.0)
+        };
+
+        var results = await Task.WhenAll(commands.Select(async command =>
+        {
+            await using var db = CreateContext();
+            var store = new EfAppointmentStore(db, new FixedClock(Now));
+            return await store.TryCreateAssignedAsync(command, windowId);
+        }));
+
+        Assert.Equal(2, results.Count(r => r.Outcome == AppointmentCreateOutcome.Success));
+        Assert.Equal(1, results.Count(r => r.Outcome == AppointmentCreateOutcome.CapacityChanged));
+        Assert.All(results.Where(r => r.Outcome == AppointmentCreateOutcome.CapacityChanged),
+            r => Assert.Null(r.Appointment));
+
+        await using var verifyDb = CreateContext();
+        var persistedWindow = await verifyDb.Ventanas.SingleAsync(v => v.Id == windowId);
+        Assert.Equal(2, persistedWindow.Capacity);
+        Assert.Equal(2, persistedWindow.Occupied);
+        Assert.Equal(2, await verifyDb.Turnos.CountAsync(t => t.VentanaId == windowId));
+    }
+
+    [Fact]
+    public async Task Third_truck_is_assigned_the_next_window_once_the_first_is_full()
+    {
+        // A través de AppointmentService real (no un fake): el store sólo
+        // informa CapacityChanged/ventanas; quien reintenta con la siguiente
+        // ventana es el servicio, ya probado con un store fake en
+        // AppointmentServiceTests. Esto prueba que ambas piezas combinan
+        // bien con cupo 2 real.
+        await SeedAsync(Now);
+        await using var db = CreateContext();
+        var ingenio = await db.Ingenios.SingleAsync();
+        await CreateExtraTruckAsync(db, ingenio.Id, "+5493815550103", "AF789GH");
+        var store = new EfAppointmentStore(db, new FixedClock(Now));
+        var service = new AppointmentService(store, new FixedClock(Now));
+        var windows = (await store.GetCreationContextAsync(ValidCreate))!.Windows
+            .OrderBy(w => w.StartAt).ToList();
+
+        var truck1 = await service.CreateAsync(ValidCreate);
+        var truck2 = await service.CreateAsync(new CreateAppointmentCommand(
+            "+5493815550102", "AF456DE", "FINCA-SUR", Now.AddHours(2), 12.0));
+        var truck3 = await service.CreateAsync(new CreateAppointmentCommand(
+            "+5493815550103", "AF789GH", "FINCA-NORTE", Now.AddHours(2), 9.0));
+
+        Assert.Equal(windows[0].StartAt, truck1.Window.StartAt);
+        Assert.Equal(windows[0].StartAt, truck2.Window.StartAt);
+        Assert.Equal(windows[1].StartAt, truck3.Window.StartAt);
+    }
+
+    [Fact]
+    public async Task TryCreateAssignedAsync_rejects_a_window_whose_start_time_passed_by_commit_time()
     {
         await SeedAsync(Now);
         await using var db = CreateContext();
-        var store = new EfAppointmentStore(db, new FixedClock(Now));
-        var context = await store.GetCreationContextAsync(ValidCreate);
-        var lastSlot = context!.Windows.OrderBy(w => w.StartAt).First(w => w.Capacity - w.Occupied == 1);
+        var readStore = new EfAppointmentStore(db, new FixedClock(Now));
+        var context = await readStore.GetCreationContextAsync(ValidCreate);
+        var window = context!.Windows.OrderBy(w => w.StartAt).First();
 
-        // Both requests raced for the same window and reached this call with
-        // the same pre-image; only the atomic conditional UPDATE in the store
-        // decides the winner, not this test's ordering.
-        var second = new CreateAppointmentCommand(
-            "+5493815550102", "AF456DE", "FINCA-SUR", Now.AddHours(2), 12.0);
-        var firstResult = await store.TryCreateAssignedAsync(ValidCreate, lastSlot.Id);
-        var secondResult = await store.TryCreateAssignedAsync(second, lastSlot.Id);
+        // El reloj avanzó más allá del inicio de la ventana entre la lectura
+        // (GetCreationContextAsync) y este intento de confirmación.
+        var lateStore = new EfAppointmentStore(db, new FixedClock(window.StartAt.AddSeconds(1)));
+        var result = await lateStore.TryCreateAssignedAsync(ValidCreate, window.Id);
 
-        Assert.Equal(AppointmentCreateOutcome.Success, firstResult.Outcome);
-        Assert.Equal(AppointmentCreateOutcome.CapacityChanged, secondResult.Outcome);
-        Assert.Null(secondResult.Appointment);
+        Assert.Equal(AppointmentCreateOutcome.CapacityChanged, result.Outcome);
+        Assert.Null(result.Appointment);
 
         await using var verifyDb = CreateContext();
-        var window = await verifyDb.Ventanas.SingleAsync(v => v.Id == lastSlot.Id);
-        Assert.Equal(window.Capacity, window.Occupied);
-        Assert.Equal(1, await verifyDb.Turnos.CountAsync(t => t.VentanaId == lastSlot.Id));
+        var persistedWindow = await verifyDb.Ventanas.SingleAsync(v => v.Id == window.Id);
+        Assert.Equal(0, persistedWindow.Occupied);
+        Assert.Equal(0, await verifyDb.Turnos.CountAsync());
+    }
+
+    [Fact]
+    public async Task TransportistaCamion_unique_index_rejects_a_second_active_association_for_the_same_truck()
+    {
+        await SeedAsync(Now);
+        await using var db = CreateContext();
+        var ingenio = await db.Ingenios.SingleAsync();
+        var camion = await db.Camiones.SingleAsync(c => c.NormalizedPlate == "AF123BC");
+        var otroTransportista = new Transportista(ingenio.Id, "Transportista Demo Otro", "20444444444", "+5493815550199");
+        db.Transportistas.Add(otroTransportista);
+        db.Asociaciones.Add(new TransportistaCamion(ingenio.Id, otroTransportista.Id, camion.Id));
+
+        await Assert.ThrowsAsync<DbUpdateException>(() => db.SaveChangesAsync());
+    }
+
+    [Fact]
+    public async Task Seed_does_not_reactivate_an_association_disabled_on_purpose()
+    {
+        await SeedAsync(Now);
+        await using (var db = CreateContext())
+        {
+            var asociacion = await db.Asociaciones.FirstAsync();
+            asociacion.Inactivate();
+            await db.SaveChangesAsync();
+        }
+
+        await SeedAsync(Now);
+
+        await using var verifyDb = CreateContext();
+        Assert.Contains(await verifyDb.Asociaciones.ToListAsync(), a => !a.IsActive);
     }
 
     [Fact]

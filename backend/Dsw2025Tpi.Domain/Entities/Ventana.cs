@@ -19,6 +19,7 @@ public sealed class Ventana : EntityBase
             throw new ArgumentException("capacity must be a positive number.", nameof(capacity));
 
         StartAt = startAt;
+        StartAtUtc = startAt.UtcDateTime;
         EndAt = endAt;
         Capacity = capacity;
         Occupied = 0;
@@ -26,6 +27,19 @@ public sealed class Ventana : EntityBase
 
     public Guid IngenioId { get; private set; }
     public DateTimeOffset StartAt { get; private set; }
+
+    /// <summary>
+    /// Derivado exclusivamente de <see cref="StartAt"/> al construir la
+    /// instancia; no existe forma de fijarlo por separado, para que nunca
+    /// pueda divergir. Existe únicamente porque el proveedor SQLite de EF
+    /// Core no traduce comparaciones "&gt;"/"&lt;" entre dos DateTimeOffset:
+    /// este valor UTC puro sí se traduce, y es el único que debe usarse en
+    /// filtros SQL de "ventana futura". Las filas sembradas antes de que esta
+    /// columna existiera se completan una única vez en la migración que la
+    /// agrega.
+    /// </summary>
+    public DateTime? StartAtUtc { get; private set; }
+
     public DateTimeOffset EndAt { get; private set; }
     public int Capacity { get; private set; }
     public int Occupied { get; private set; }

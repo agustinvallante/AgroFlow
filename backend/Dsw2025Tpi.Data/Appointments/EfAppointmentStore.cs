@@ -71,8 +71,15 @@ public sealed class EfAppointmentStore : IAppointmentStore
             return new AppointmentCreateResult(AppointmentCreateOutcome.ActiveAppointmentExists, null);
         }
 
+        // StartAtUtc (no StartAt) porque el proveedor SQLite no traduce ">"
+        // entre dos DateTimeOffset; comparar contra el espejo UTC mantiene
+        // esta revalidación dentro de la misma sentencia atómica. Una
+        // ventana que dejó de ser futura entre la lectura y este commit se
+        // trata igual que un cupo perdido: el servicio prueba la siguiente.
+        var nowUtc = _timeProvider.GetUtcNow().UtcDateTime;
         var reservedRows = await _db.Ventanas
-            .Where(v => v.Id == windowId && v.IngenioId == resolved.IngenioId && v.Occupied < v.Capacity)
+            .Where(v => v.Id == windowId && v.IngenioId == resolved.IngenioId
+                && v.Occupied < v.Capacity && v.StartAtUtc > nowUtc)
             .ExecuteUpdateAsync(setters => setters.SetProperty(v => v.Occupied, v => v.Occupied + 1), cancellationToken);
         if (reservedRows == 0)
         {

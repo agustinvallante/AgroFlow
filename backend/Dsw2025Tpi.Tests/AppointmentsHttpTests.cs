@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Dsw2025Tpi.Api.Controllers;
+using Dsw2025Tpi.Api.Security;
 using Dsw2025Tpi.Application.Appointments;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -368,10 +369,17 @@ public sealed class AppointmentsHttpTests
                         services.AddControllers()
                             .AddApplicationPart(typeof(AppointmentsController).Assembly);
                         services.AddSingleton<IAppointmentService>(service);
+                        // Este host prueba el contrato HTTP de la demo local,
+                        // siempre anónima: misma política que Program.cs con
+                        // LocalDemo=true. La cobertura de LocalDemo=false vive
+                        // en AppointmentsAuthorizationTests.
+                        services.AddAuthorization(options =>
+                            AppointmentsAuthorizationPolicy.Configure(options, isLocalDemo: true));
                     })
                     .Configure(app =>
                     {
                         app.UseRouting();
+                        app.UseAuthorization();
                         app.UseEndpoints(endpoints => endpoints.MapControllers());
                     }))
                 .StartAsync();

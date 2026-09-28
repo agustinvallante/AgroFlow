@@ -12,7 +12,7 @@ public static class AppointmentsSeeder
 {
     private const string DefaultTimeZoneId = "America/Argentina/Tucuman";
     private static readonly TimeSpan WindowDuration = TimeSpan.FromMinutes(30);
-    private const int WindowCapacity = 1;
+    private const int WindowCapacity = 2;
     private static readonly TimeSpan DayStart = TimeSpan.FromHours(8);
     private static readonly TimeSpan DayEnd = TimeSpan.FromHours(18);
 
@@ -109,12 +109,9 @@ public static class AppointmentsSeeder
             a => a.TransportistaId == transportistaId && a.CamionId == camionId, ct);
         if (existing is not null)
         {
-            if (!existing.IsActive)
-            {
-                existing.Reactivate();
-                await db.SaveChangesAsync(ct);
-            }
-
+            // Idempotente pero no correctivo: si alguien la inactivó a
+            // propósito (por ejemplo para probar el conflicto de asociación
+            // única), el seed no debe reactivarla por su cuenta.
             return;
         }
 
