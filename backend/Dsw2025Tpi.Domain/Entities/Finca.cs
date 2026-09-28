@@ -15,6 +15,9 @@ public sealed class Finca : EntityBase
 
     public Guid IngenioId { get; private set; }
     public string Code { get; private set; } = string.Empty;
+
+    /// <summary>Code en mayúsculas, sin otra normalización, para resolver farmCode sin distinguir mayúsculas.</summary>
+    public string NormalizedCode { get; private set; } = string.Empty;
     public string Name { get; private set; } = string.Empty;
     public string LocationReference { get; private set; } = string.Empty;
     public bool IsActive { get; private set; }
@@ -28,10 +31,12 @@ public sealed class Finca : EntityBase
     private void Apply(string code, string name, string locationReference)
     {
         var validatedCode = MasterDataValidation.RequireText(code, nameof(code));
+        var normalizedCode = MasterDataValidation.NormalizeUpperInvariant(validatedCode, nameof(code));
         var validatedName = MasterDataValidation.RequireText(name, nameof(name));
         var validatedLocation = MasterDataValidation.RequireText(locationReference, nameof(locationReference));
 
         Code = validatedCode;
+        NormalizedCode = normalizedCode;
         Name = validatedName;
         LocationReference = validatedLocation;
     }
