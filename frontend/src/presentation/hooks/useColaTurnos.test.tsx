@@ -2,7 +2,7 @@ import { act, cleanup, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Turno } from "../../domain/entities/Turno";
 
-const obtenerTurnos = vi.hoisted(() => vi.fn());
+const { obtenerTurnos, obtenerDetalle } = vi.hoisted(() => ({ obtenerTurnos: vi.fn(), obtenerDetalle: vi.fn() }));
 
 vi.mock("../../composition/container", () => ({
   container: {
@@ -10,7 +10,7 @@ vi.mock("../../composition/container", () => ({
     apiUrl: "http://localhost:5000",
     turnos: {
       obtenerTurnosDelDia: { execute: obtenerTurnos },
-      obtenerDetalleTurno: { execute: vi.fn() },
+      obtenerDetalleTurno: { execute: obtenerDetalle },
       crearTurnoManual: { execute: vi.fn() },
       cambiarEstadoTurno: { execute: vi.fn() },
       cancelarTurno: { execute: vi.fn() },
@@ -106,5 +106,105 @@ describe("useColaTurnos con filtros incompletos", () => {
     expect(result.current.filtrosIncompletos).toHaveLength(1);
     expect(result.current.turnos).toEqual([]);
     expect(obtenerTurnos).toHaveBeenCalledTimes(llamadasPrevias);
+  });
+});
+
+/** Promesa que el test resuelve o rechaza cuando quiere, para forzar el orden. */
+function diferida<T>() {
+  let resolver!: (valor: T) => void;
+  let rechazar!: (error: unknown) => void;
+  const promesa = new Promise<T>((res, rej) => {
+    resolver = res;
+    rechazar = rej;
+  });
+  return { promesa, resolver, rechazar };
+}
+
+describe("useColaTurnos con respuestas de detalle fuera de orden", () => {
+  const turnoA: Turno = { ...turno, id: "A", patente: "AAA111" };
+  const turnoB: Turno = { ...turno, id: "B", patente: "BBB222" };
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    obtenerTurnos.mockReset();
+    obtenerTurnos.mockResolvedValue([turnoA, turnoB]);
+    obtenerDetalle.mockReset();
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.useRealTimers();
+  });
+
+  it("descarta el detalle de A si llega después de haber abierto B", async () => {
+    const pedidoA = diferida<Turno>();
+    const pedidoB = diferida<Turno>();
+    obtenerDetalle.mockReturnValueOnce(pedidoA.promesa).mockReturnValueOnce(pedidoB.promesa);
+
+    const { result } = renderHook(() => useColaTurnos());
+    await esperar();
+    act(() => result.current.abrirDetalle("A"));
+    act(() => result.current.abrirDetalle("B"));
+
+    await act(async () => pedidoB.resolver(turnoB));
+    await act(async () => pedidoA.resolver(turnoA));
+
+    expect(result.current.detalleId).toBe("B");
+    expect(result.current.detalle?.id).toBe("B");
+  });
+
+  it("un error tardío de A no cierra el detalle de B", async () => {
+    const pedidoA = diferida<Turno>();
+    const pedidoB = diferida<Turno>();
+    obtenerDetalle.mockReturnValueOnce(pedidoA.promesa).mockReturnValueOnce(pedidoB.promesa);
+
+    const { result } = renderHook(() => useColaTurnos());
+    await esperar();
+    act(() => result.current.abrirDetalle("A"));
+    act(() => result.current.abrirDetalle("B"));
+
+    await act(async () => pedidoB.resolver(turnoB));
+    await act(async () => pedidoA.rechazar(new Error("Turno inexistente")));
+
+    expect(result.current.detalleId).toBe("B");
+    expect(result.current.detalle?.id).toBe("B");
+    expect(result.current.errorAccion).toBeNull();
+  });
+
+  it("en el polling, una respuesta vieja del mismo turno no pisa una más nueva", async () => {
+    const inicial = diferida<Turno>();
+    const pollingViejo = diferida<Turno>();
+    const pollingNuevo = diferida<Turno>();
+    obtenerDetalle
+      .mockReturnValueOnce(inicial.promesa)
+      .mockReturnValueOnce(pollingViejo.promesa)
+      .mockReturnValueOnce(pollingNuevo.promesa);
+
+    const { result } = renderHook(() => useColaTurnos());
+    await esperar();
+    act(() => result.current.abrirDetalle("A"));
+    await act(async () => inicial.resolver(turnoA));
+    await esperar(INTERVALO_POLLING_MS);
+    await esperar(INTERVALO_POLLING_MS);
+    expect(obtenerDetalle).toHaveBeenCalledTimes(3);
+
+    await act(async () => pollingNuevo.resolver({ ...turnoA, estado: "viaje" }));
+    await act(async () => pollingViejo.resolver({ ...turnoA, estado: "pendiente" }));
+
+    expect(result.current.detalle?.estado).toBe("viaje");
+  });
+
+  it("ignora una respuesta que llega después de cerrar el detalle", async () => {
+    const pedidoA = diferida<Turno>();
+    obtenerDetalle.mockReturnValueOnce(pedidoA.promesa);
+
+    const { result } = renderHook(() => useColaTurnos());
+    await esperar();
+    act(() => result.current.abrirDetalle("A"));
+    act(() => result.current.cerrarDetalle());
+    await act(async () => pedidoA.resolver(turnoA));
+
+    expect(result.current.detalleId).toBeNull();
+    expect(result.current.detalle).toBeNull();
   });
 });

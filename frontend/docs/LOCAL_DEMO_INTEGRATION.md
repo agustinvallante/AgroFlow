@@ -139,7 +139,7 @@ Si en el futuro el contrato informa las transiciones permitidas (por ejemplo, un
 
 ### Estados de carga
 
-Cada resultado queda asociado a los filtros que lo produjeron; al cambiar un filtro no se muestran datos del filtro anterior.
+Cada resultado queda asociado a los filtros que lo produjeron; al cambiar un filtro no se muestran datos del filtro anterior. Del mismo modo, sólo se aplica la respuesta del último pedido de detalle del turno seleccionado: una respuesta o un error tardío de otro turno, de un polling anterior o posterior al cierre del detalle se descarta.
 
 | Situación | Presentación |
 |---|---|
@@ -167,7 +167,7 @@ El CI ejecuta los cuatro en `frontend/`. Los tests cubren:
 
 - `HttpTurnoRepository`: envía el `newStatus` elegido en un solo `POST`, traduce cada estado y propaga el `409` sin decidir localmente.
 - `appointmentMapper` y `shared/utils/date`: horas en la zona informada por la API, independientes de la zona del navegador, y sin inventar datos ausentes.
-- `useColaTurnos`: filtros incompletos (no consulta ni muestra lista) y completos (consulta con el filtro).
+- `useColaTurnos`: filtros incompletos (no consulta ni muestra lista) y completos (consulta con el filtro); respuestas de detalle fuera de orden (A tras abrir B, error tardío, polling viejo del mismo turno y respuesta posterior al cierre).
 - `ColaTurnosView`: error inicial frente a `200 []`, datos desactualizados y su recuperación, filtro incompleto y cambio de estado elegido por el operador.
 
 ## Tareas del responsable de dashboard

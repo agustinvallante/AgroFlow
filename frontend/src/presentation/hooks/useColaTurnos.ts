@@ -113,11 +113,22 @@ export function useColaTurnos() {
     }
   }, [filtrosApi, clave]);
 
+  // Turno seleccionado y último pedido de detalle emitido. Una respuesta
+  // (o un error) de un pedido anterior se descarta: puede llegar después de
+  // la de otro turno abierto más tarde, o de un polling más reciente.
+  const seleccionado = useRef<string | null>(null);
+  const ultimoDetalle = useRef(0);
+
   const cargarDetalle = useCallback(async (id: string) => {
+    const pedido = ++ultimoDetalle.current;
+    const sigueVigente = () => pedido === ultimoDetalle.current && seleccionado.current === id;
     try {
-      setDetalle(await container.turnos.obtenerDetalleTurno.execute(id));
+      const turno = await container.turnos.obtenerDetalleTurno.execute(id);
+      if (sigueVigente()) setDetalle(turno);
     } catch (e) {
+      if (!sigueVigente()) return;
       setErrorAccion(mensaje(e, "No se pudo obtener el detalle del turno."));
+      seleccionado.current = null;
       setDetalleId(null);
       setDetalle(null);
     }
@@ -134,6 +145,7 @@ export function useColaTurnos() {
 
   const abrirDetalle = useCallback(
     (id: string) => {
+      seleccionado.current = id;
       setDetalleId(id);
       setDetalle(null);
       cargarDetalle(id);
@@ -142,6 +154,8 @@ export function useColaTurnos() {
   );
 
   const cerrarDetalle = useCallback(() => {
+    seleccionado.current = null;
+    ultimoDetalle.current++;
     setDetalleId(null);
     setDetalle(null);
   }, []);
