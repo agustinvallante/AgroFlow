@@ -1,4 +1,4 @@
-import type { EstadoTurno, Turno } from "../../../domain/entities/Turno";
+import { calcularPrioridadCorte, type EstadoTurno, type Turno } from "../../../domain/entities/Turno";
 import { horaConOffset } from "../../../shared/utils/date";
 import { CHOFERES, FINCAS, elementoAleatorio, patenteAleatoria } from "./base.mock";
 
@@ -17,6 +17,7 @@ export function generarTurnosSemilla(): Turno[] {
     else if (offsetMin < 60) estado = elementoAleatorio(estadosActual);
     else estado = "pendiente";
 
+    const horasDesdeCorte = Math.round(Math.random() * 24);
     turnos.push({
       id: `turno-${contadorId++}`,
       hora: horaConOffset(offsetMin),
@@ -25,7 +26,8 @@ export function generarTurnosSemilla(): Turno[] {
       chofer: elementoAleatorio(CHOFERES),
       finca: elementoAleatorio(FINCAS),
       flota: Math.random() > 0.5 ? "propia" : "tercero",
-      horasDesdeCorte: Math.round(Math.random() * 24),
+      horasDesdeCorte,
+      prioridad: calcularPrioridadCorte(horasDesdeCorte),
       estado,
       canal: elementoAleatorio(canales),
       esperaMin: estado === "pendiente" ? 0 : Math.floor(Math.random() * 45) + 2,

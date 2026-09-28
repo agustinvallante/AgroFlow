@@ -390,6 +390,37 @@ tbody tr:hover {
 .estado.completado i {
   background: #6ab64e;
 }
+.estado.ingresado i {
+  background: #3f8f24;
+}
+.estado.cancelado i {
+  background: #6b6b6b;
+}
+.fila-seleccionable {
+  cursor: pointer;
+}
+.fila-seleccionable.activa td {
+  background: rgba(106, 182, 78, 0.08);
+}
+.detalle-turno dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 6px 16px;
+  margin: 10px 0 14px;
+  font-size: 13px;
+}
+.detalle-turno dt {
+  color: var(--tinta-suave);
+}
+.detalle-turno dd {
+  margin: 0;
+}
+.fuente-demo {
+  font-size: 11px;
+  color: var(--tinta-suave);
+  font-weight: 400;
+  margin-left: 8px;
+}
 .espera-alta {
   color: var(--alerta);
   font-weight: 600;
@@ -1101,4 +1132,20 @@ tbody tr:hover {
   .chat-layout {
     grid-template-columns: 1fr;
   }
+}
+
+.aviso-filtro,
+.aviso-desactualizado {
+  font-size: 13px;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+  border-left: 3px solid var(--alerta);
+  background: rgba(0, 0, 0, 0.03);
+}
+.aviso-filtro ul {
+  margin: 6px 0 0 18px;
+  padding: 0;
+}
+table.datos-desactualizados tbody {
+  opacity: 0.6;
 }

@@ -21,10 +21,10 @@ contratos explícitos.
 Prototipo de frontend para el panel de administración de AgroFlow, construido
 con **React + TypeScript + Vite** y organizado en **Clean Architecture**.
 
-Actualmente funciona **sin conexión a un backend real**: toda la información
-(turnos, transportistas, conversaciones del chatbot, reportes, configuración)
-vive en repositorios "mock" en memoria, con latencia simulada, para que la UI
-se comporte igual que el día en que exista una API real detrás.
+La cola de turnos puede consumir AgroFlow API (`VITE_DATA_SOURCE=http`) o
+repositorios "mock" en memoria (`VITE_DATA_SOURCE=mock`, sin backend). El resto
+de las vistas (panel general, chatbot, transportistas, reportes y
+configuración) usa mocks y se identifica como datos de demostración.
 
 ## Cómo correrlo
 
@@ -33,6 +33,9 @@ npm install
 npm run dev       # entorno de desarrollo
 npm run build     # build de producción (queda en dist/)
 npm run preview   # sirve el build de producción localmente
+npm test          # tests (Vitest + Testing Library)
+npm run typecheck # verificación de tipos
+npm run lint      # oxlint
 ```
 
 ## Estructura de carpetas (Clean Architecture)
@@ -48,12 +51,11 @@ src/
 │                               AlternarEstadoMolienda, ObtenerReporte, etc.
 │
 ├── infrastructure/            → Implementaciones concretas de los puertos.
-│   └── mock/                  Hoy: repositorios en memoria (sin backend).
+│   ├── http/                  Cliente, DTOs, mappers y HttpTurnoRepository contra
+│   │                           AgroFlow API (docs/contracts/openapi.yaml).
+│   └── mock/                  Repositorios en memoria (sin backend).
 │       ├── data/               Datos semilla (fincas, choferes, turnos, etc).
 │       └── repositories/       MockTurnoRepository, MockTransportistaRepository, etc.
-│                               Mañana: acá se agregaría infrastructure/http/
-│                               con HttpTurnoRepository, HttpTransportistaRepository...
-│                               implementando las MISMAS interfaces de domain/repositories.
 │
 ├── composition/
 │   └── container.ts           Raíz de composición: ÚNICO archivo que decide qué
@@ -97,22 +99,45 @@ La integración mínima con AgroFlow API está definida en
 se conserva React/Vite y se conecta únicamente el flujo de turnos; autenticación,
 CRUD de datos maestros, interrupciones, mapa, reportes y despliegue quedan fuera.
 
-Cuando el backend local esté listo, los pasos son:
+### Configuración
 
-1. Crear `src/infrastructure/http/HttpTurnoRepository.ts` (y equivalentes para
-   transportistas, conversaciones, reportes y configuración) implementando las
-   mismas interfaces de `src/domain/repositories/`, pero haciendo `fetch`
-   contra los endpoints reales.
-2. En `src/composition/container.ts`, reemplazar:
-   ```ts
-   const turnoRepository = new MockTurnoRepository();
-   ```
-   por:
-   ```ts
-   const turnoRepository = new HttpTurnoRepository(import.meta.env.VITE_API_URL);
-   ```
-3. Nada más cambia: los casos de uso, los hooks y las vistas siguen funcionando
-   igual, porque nunca dependieron de la implementación mock.
+Copiar `.env.example` como `.env` y elegir la fuente de datos:
+
+```env
+VITE_DATA_SOURCE=http          # mock = respaldo en memoria, sin backend
+VITE_API_URL=http://localhost:5000
+```
+
+Reiniciar `npm run dev` después de cambiar el `.env`.
+
+El navegador no llama directo a la API: pide `/api/...` a Vite, que lo
+reenvía a `VITE_API_URL` (ver `vite.config.ts`). Por eso no depende de la
+política CORS del backend ni de que Vite abra en el puerto 5173. Si la API
+arrancó en otro puerto (por ejemplo `5142`, sin `--urls`), basta con cambiar
+`VITE_API_URL` y reiniciar. El proxy funciona con `npm run dev` y
+`npm run preview`; servir `dist/` desde otro servidor requiere su propio proxy.
+
+### Qué consume de la API (`VITE_DATA_SOURCE=http`)
+
+`src/infrastructure/http/repositories/HttpTurnoRepository.ts` implementa el
+puerto `TurnoRepository` contra `docs/contracts/openapi.yaml` del repositorio
+AgroFlow:
+
+| Acción del dashboard | Operación |
+|---|---|
+| Alta manual (teléfono, patente, código de finca, corte, carga) | `POST /api/v1/appointments` |
+| Cola, filtros de estado/fecha/patente/teléfono y polling cada 4 s | `GET /api/v1/appointments` |
+| Detalle (clic en una fila) | `GET /api/v1/appointments/{id}` |
+| Cambiar estado (elegido por el operador) / Cancelar | `POST /api/v1/appointments/{id}/transitions` |
+
+El dashboard no calcula prioridad, ventana, capacidad ni transiciones válidas:
+el operador elige el estado y la API lo valida (`409` si no corresponde). Ante
+un error (`400`, `404`, `409`, `500` o sin conexión) muestra el mensaje y
+recarga el estado vigente. Los filtros incompletos, los fallos de carga, los
+datos desactualizados y la zona horaria se describen en
+[`docs/LOCAL_DEMO_INTEGRATION.md`](docs/LOCAL_DEMO_INTEGRATION.md). Panel general (métricas, timeline, molienda), chatbot,
+transportistas, reportes y configuración siguen en mock y se identifican como
+datos de demostración.
 
 ## Convenciones de la UI
 

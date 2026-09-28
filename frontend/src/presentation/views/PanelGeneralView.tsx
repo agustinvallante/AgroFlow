@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { container } from "../../composition/container";
 import { usePanel } from "../hooks/usePanel";
 import { useColaTurnos } from "../hooks/useColaTurnos";
 import { useBotFeed } from "../hooks/useBotFeed";
@@ -8,17 +9,27 @@ import { EstadoBadge, FlotaBadge } from "../components/common/Badges";
 import { Timeline } from "../components/panel/Timeline";
 import { BotFeedPanel } from "../components/panel/BotFeedPanel";
 import { LoadingState, ErrorState } from "../components/common/StatusStates";
+import { CambioEstadoSelect } from "../components/common/CambioEstadoSelect";
+
+// Con fuente http solo la tabla de camiones viene de la API.
+const etiquetaDemo = container.fuenteDatos === "http" && (
+  <span className="fuente-demo">datos de demostración</span>
+);
 
 export function PanelGeneralView() {
   const { metricas, timeline, cargando, error, alternarMolienda } = usePanel();
-  const { turnos, cargando: cargandoTurnos, cancelar } = useColaTurnos();
+  const { turnos, cargando: cargandoTurnos, cambiarEstado, enCurso, errorAccion, desactualizado, error: errorTurnos } =
+    useColaTurnos();
   const mensajesBot = useBotFeed();
   const { hora, fecha } = useClock();
   const [avisoEnviado, setAvisoEnviado] = useState<string | null>(null);
 
   const activos = useMemo(
-    () => turnos.filter((t) => ["viaje", "cancha", "descargando"].includes(t.estado)).slice(0, 14),
-    [turnos]
+    () =>
+      turnos
+        .filter((t) => ["viaje", "cancha", "ingresado", "descargando"].includes(t.estado))
+        .slice(0, 14),
+    [turnos],
   );
 
   if (error) return <ErrorState message={error} />;
@@ -29,7 +40,8 @@ export function PanelGeneralView() {
         <div>
           <h1>Panel general</h1>
           <div className="zafra">
-            Día {metricas?.diaDeZafra ?? "—"} de {metricas?.totalDiasZafra ?? "—"} de zafra · Ingenio San Ramón
+            Día {metricas?.diaDeZafra ?? "—"} de{" "}
+            {metricas?.totalDiasZafra ?? "—"} de zafra · Ingenio San Ramón
           </div>
         </div>
         <div className="clockbox">
@@ -42,21 +54,45 @@ export function PanelGeneralView() {
         <LoadingState label="Cargando métricas del panel..." />
       ) : (
         <>
+          {etiquetaDemo && <div style={{ marginBottom: 8 }}>Indicadores {etiquetaDemo}</div>}
           <div className="metrics">
-            <MetricCard label="Camiones en espera ahora" value={metricas.camionesEnEsperaAhora} trend="↑ variación según la última hora" trendDirection="up" />
-            <MetricCard label="Espera promedio en canchón" value={metricas.esperaPromedioMin} unit="min" trend="↓ 30% vs. asignación manual" trendDirection="down" />
-            <MetricCard label="Turnos gestionados por el bot" value={metricas.porcentajeGestionadoPorBot} unit="%" trend="Meta del trimestre: 100%" trendDirection="down" />
+            <MetricCard
+              label="Camiones en espera ahora"
+              value={metricas.camionesEnEsperaAhora}
+              trend="↑ variación según la última hora"
+              trendDirection="up"
+            />
+            <MetricCard
+              label="Espera promedio en canchón"
+              value={metricas.esperaPromedioMin}
+              unit="min"
+              trend="↓ 30% vs. asignación manual"
+              trendDirection="down"
+            />
+            <MetricCard
+              label="Turnos gestionados por el bot"
+              value={metricas.porcentajeGestionadoPorBot}
+              unit="%"
+              trend="Meta del trimestre: 100%"
+              trendDirection="down"
+            />
             <MetricCard
               label="Estado de la molienda"
-              value={metricas.estadoMolienda === "operando" ? "Operando" : "Detenida"}
+              value={
+                metricas.estadoMolienda === "operando" ? "Operando" : "Detenida"
+              }
               trend={`Capacidad actual: ${metricas.capacidadMoliendaTnH} tn/h`}
-              valueColor={metricas.estadoMolienda === "operando" ? "var(--ok)" : "var(--alerta)"}
+              valueColor={
+                metricas.estadoMolienda === "operando"
+                  ? "var(--ok)"
+                  : "var(--alerta)"
+              }
             />
           </div>
 
           <section>
             <div className="section-head">
-              <h2>Cola virtual del día</h2>
+              <h2>Cola del día{etiquetaDemo}</h2>
               <div className="meta">Ventanas de 30 min · 06:00 – 22:00</div>
             </div>
             <Timeline slots={timeline} />
@@ -68,6 +104,10 @@ export function PanelGeneralView() {
                 <h2>Camiones en canchón</h2>
                 <div className="meta">{activos.length} activos</div>
               </div>
+              {errorAccion && <ErrorState message={errorAccion} />}
+              {errorTurnos && (
+                <ErrorState message={desactualizado ? `Datos desactualizados. ${errorTurnos}` : errorTurnos} />
+              )}
               {cargandoTurnos ? (
                 <LoadingState />
               ) : (
@@ -86,19 +126,43 @@ export function PanelGeneralView() {
                   <tbody>
                     {activos.map((t) => (
                       <tr key={t.id}>
-                        <td style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 12.5 }}>{t.hora}</td>
-                        <td style={{ fontFamily: "'IBM Plex Mono',monospace" }}>{t.patente}</td>
+                        <td
+                          style={{
+                            fontFamily: "'IBM Plex Mono',monospace",
+                            fontSize: 12.5,
+                          }}
+                        >
+                          {t.hora}
+                        </td>
+                        <td style={{ fontFamily: "'IBM Plex Mono',monospace" }}>
+                          {t.patente}
+                        </td>
                         <td>
                           {t.finca}
-                          <div style={{ fontSize: 11, color: "var(--tinta-suave)" }}>{t.chofer}</div>
+                          <div
+                            style={{
+                              fontSize: 11,
+                              color: "var(--tinta-suave)",
+                            }}
+                          >
+                            {t.chofer}
+                          </div>
                         </td>
-                        <td><FlotaBadge flota={t.flota} /></td>
-                        <td><EstadoBadge estado={t.estado} /></td>
-                        <td className={t.esperaMin > 35 ? "espera-alta" : ""}>{t.esperaMin} min</td>
                         <td>
-                          <button className="btn-mini" onClick={() => cancelar(t.id)}>
-                            Marcar
-                          </button>
+                          <FlotaBadge flota={t.flota} />
+                        </td>
+                        <td>
+                          <EstadoBadge estado={t.estado} />
+                        </td>
+                        <td className={(t.esperaMin ?? 0) > 35 ? "espera-alta" : ""}>
+                          {t.esperaMin === null ? "—" : `${t.esperaMin} min`}
+                        </td>
+                        <td>
+                          <CambioEstadoSelect
+                            estadoActual={t.estado}
+                            deshabilitado={enCurso === t.id}
+                            onCambiar={(nuevo) => cambiarEstado(t.id, nuevo)}
+                          />
                         </td>
                       </tr>
                     ))}
@@ -114,34 +178,53 @@ export function PanelGeneralView() {
 
           <section>
             <div className="section-head">
-              <h2>Avisos y control operativo</h2>
+              <h2>Avisos y control operativo{etiquetaDemo}</h2>
               <div className="meta">Difusión automática a transportistas</div>
             </div>
             <div className="alert-row">
               <div className="alert-card">
                 <h3>Estado de molienda</h3>
-                <p>Si el ingenio se detiene, el sistema avisa por WhatsApp a los camiones en ruta para que no salgan de la finca.</p>
+                <p>
+                  Si el ingenio se detiene, el sistema avisa por WhatsApp a los
+                  camiones en ruta para que no salgan de la finca.
+                </p>
                 <div className="toggle-row">
                   <div
                     className={`toggle ${metricas.estadoMolienda === "detenida" ? "off" : ""}`}
                     onClick={() => alternarMolienda()}
                   />
                   <span className="toggle-label">
-                    {metricas.estadoMolienda === "operando" ? "Molienda operando" : "Molienda detenida"}
+                    {metricas.estadoMolienda === "operando"
+                      ? "Molienda operando"
+                      : "Molienda detenida"}
                   </span>
                 </div>
               </div>
               <div className="alert-card">
                 <h3>Aviso manual a transportistas</h3>
-                <p>Envía un mensaje inmediato a todos los camiones con turno asignado hoy, a través del bot de WhatsApp.</p>
-                <button className="btn-primary" onClick={() => setAvisoEnviado("Aviso enviado a la flota (simulado).")}>
+                <p>
+                  Envía un mensaje inmediato a todos los camiones con turno
+                  asignado hoy, a través del bot de WhatsApp.
+                </p>
+                <button
+                  className="btn-primary"
+                  onClick={() =>
+                    setAvisoEnviado("Aviso enviado a la flota (simulado).")
+                  }
+                >
                   Enviar aviso a la flota
                 </button>
-                {avisoEnviado && <p style={{ color: "var(--ok)" }}>{avisoEnviado}</p>}
+                {avisoEnviado && (
+                  <p style={{ color: "var(--ok)" }}>{avisoEnviado}</p>
+                )}
               </div>
               <div className="alert-card">
                 <h3>Asignación manual de turno</h3>
-                <p>Para casos excepcionales donde el chofer no puede usar WhatsApp, un operario de báscula puede cargar el turno a mano desde la sección "Cola de turnos".</p>
+                <p>
+                  Para casos excepcionales donde el chofer no puede usar
+                  WhatsApp, un operario de báscula puede cargar el turno a mano
+                  desde la sección "Cola de turnos".
+                </p>
               </div>
             </div>
           </section>

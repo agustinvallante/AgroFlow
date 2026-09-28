@@ -1,4 +1,10 @@
-import { calcularPrioridadCorte, type NuevoTurnoManual, type Turno } from "../../../domain/entities/Turno";
+import {
+  calcularPrioridadCorte,
+  type EstadoTurno,
+  type FiltrosTurno,
+  type NuevoTurnoManual,
+  type Turno,
+} from "../../../domain/entities/Turno";
 import type { FrancoTimeline, MetricasPanel } from "../../../domain/entities/MetricasPanel";
 import type { TurnoRepository } from "../../../domain/repositories/TurnoRepository";
 import { delay } from "../../../shared/utils/delay";
@@ -10,21 +16,40 @@ import { generarTurnosSemilla, siguienteIdTurno } from "../data/turnos.mock";
  * Simula lo que hoy hace n8n + un backend real, para poder
  * desarrollar y demostrar el frontend sin conexión.
  *
- * El día de mañana, para conectar al backend real, alcanza con
- * crear una HttpTurnoRepository que implemente esta misma interfaz
- * y cambiar una línea en `src/composition/container.ts`.
+ * Es el respaldo de VITE_DATA_SOURCE=mock; la implementación contra la
+ * API real es HttpTurnoRepository.
  */
+// Simula la validación que hace la API: solo acepta el paso siguiente.
+const SIGUIENTE_ESTADO: Partial<Record<EstadoTurno, EstadoTurno>> = {
+  pendiente: "viaje",
+  viaje: "cancha",
+  cancha: "ingresado",
+  ingresado: "descargando",
+  descargando: "completado",
+};
+
 export class MockTurnoRepository implements TurnoRepository {
   private turnos: Turno[] = generarTurnosSemilla();
   private moliendaOperando = true;
 
-  async obtenerTurnosDelDia(): Promise<Turno[]> {
-    return delay([...this.turnos]);
+  async obtenerTurnosDelDia(filtros: FiltrosTurno = {}): Promise<Turno[]> {
+    const patente = filtros.patente?.replace(/[^A-Za-z0-9]/g, "").toUpperCase();
+    return delay(
+      this.turnos.filter(
+        (t) =>
+          (!filtros.estado || t.estado === filtros.estado) &&
+          (!patente || t.patente.replace(/[^A-Za-z0-9]/g, "").toUpperCase() === patente)
+      )
+    );
+  }
+
+  async obtenerTurno(id: string): Promise<Turno> {
+    return delay({ ...this.buscar(id) });
   }
 
   async obtenerMetricasPanel(): Promise<MetricasPanel> {
     const activos = this.turnos.filter((t) =>
-      ["viaje", "cancha", "descargando"].includes(t.estado)
+      ["viaje", "cancha", "ingresado", "descargando"].includes(t.estado)
     );
     const gestionadosPorBot = this.turnos.filter((t) => t.canal === "bot").length;
     const metricas: MetricasPanel = {
@@ -71,48 +96,62 @@ export class MockTurnoRepository implements TurnoRepository {
   }
 
   async crearTurnoManual(datos: NuevoTurnoManual): Promise<Turno> {
+    const horasDesdeCorte = Math.max(0, Math.round((Date.now() - new Date(datos.corteEn).getTime()) / 3600000));
     const nuevo: Turno = {
       id: siguienteIdTurno(),
-      hora: datos.hora,
-      offsetMin: 9999,
+      hora: horaConOffset(60),
+      offsetMin: 60,
       patente: datos.patente,
-      chofer: datos.chofer,
-      finca: datos.finca,
-      flota: datos.flota,
-      horasDesdeCorte: datos.horasDesdeCorte,
+      chofer: datos.telefono,
+      finca: datos.codigoFinca,
+      flota: null,
+      horasDesdeCorte,
+      prioridad: calcularPrioridadCorte(horasDesdeCorte),
       estado: "pendiente",
       canal: "manual",
       esperaMin: 0,
+      corteEn: datos.corteEn,
+      cargaTon: datos.cargaTon,
+      creadoEn: new Date().toISOString(),
     };
     this.turnos.push(nuevo);
-    return delay(nuevo);
+    return delay({ ...nuevo });
   }
 
   async reasignarHorario(id: string, nuevaHora: string): Promise<Turno> {
-    const turno = this.turnos.find((t) => t.id === id);
-    if (!turno) throw new Error("Turno no encontrado");
+    const turno = this.buscar(id);
     turno.hora = nuevaHora;
-    return delay(turno);
+    return delay({ ...turno });
   }
 
-  async cancelarTurno(id: string): Promise<void> {
-    this.turnos = this.turnos.filter((t) => t.id !== id);
-    return delay(undefined);
+  async cancelarTurno(id: string): Promise<Turno> {
+    const turno = this.buscar(id);
+    if (turno.estado === "completado" || turno.estado === "cancelado") {
+      throw new Error("El turno ya está finalizado o cancelado.");
+    }
+    turno.estado = "cancelado";
+    return delay({ ...turno });
   }
 
-  async avanzarEstado(id: string): Promise<Turno> {
-    const turno = this.turnos.find((t) => t.id === id);
-    if (!turno) throw new Error("Turno no encontrado");
-    if (turno.estado === "pendiente") turno.estado = "viaje";
-    else if (turno.estado === "viaje") turno.estado = "cancha";
-    else if (turno.estado === "cancha") turno.estado = "descargando";
-    else if (turno.estado === "descargando") turno.estado = "completado";
-    return delay(turno);
+  async cambiarEstado(id: string, nuevoEstado: EstadoTurno): Promise<Turno> {
+    if (nuevoEstado === "cancelado") return this.cancelarTurno(id);
+    const turno = this.buscar(id);
+    if (SIGUIENTE_ESTADO[turno.estado] !== nuevoEstado) {
+      throw new Error("Transición inválida para el estado actual del turno.");
+    }
+    turno.estado = nuevoEstado;
+    return delay({ ...turno });
   }
 
   async alternarEstadoMolienda(): Promise<MetricasPanel> {
     this.moliendaOperando = !this.moliendaOperando;
     return this.obtenerMetricasPanel();
+  }
+
+  private buscar(id: string): Turno {
+    const turno = this.turnos.find((t) => t.id === id);
+    if (!turno) throw new Error("Turno no encontrado");
+    return turno;
   }
 }
 

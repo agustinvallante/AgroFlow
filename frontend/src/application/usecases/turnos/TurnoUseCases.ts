@@ -1,4 +1,4 @@
-import type { NuevoTurnoManual, Turno } from "../../../domain/entities/Turno";
+import type { EstadoTurno, FiltrosTurno, NuevoTurnoManual, Turno } from "../../../domain/entities/Turno";
 import type { TurnoRepository } from "../../../domain/repositories/TurnoRepository";
 
 export class ObtenerTurnosDelDia {
@@ -7,8 +7,19 @@ export class ObtenerTurnosDelDia {
   constructor(repo: TurnoRepository) {
     this.repo = repo;
   }
-  execute(): Promise<Turno[]> {
-    return this.repo.obtenerTurnosDelDia();
+  execute(filtros?: FiltrosTurno): Promise<Turno[]> {
+    return this.repo.obtenerTurnosDelDia(filtros);
+  }
+}
+
+export class ObtenerDetalleTurno {
+  private readonly repo: TurnoRepository;
+
+  constructor(repo: TurnoRepository) {
+    this.repo = repo;
+  }
+  execute(id: string): Promise<Turno> {
+    return this.repo.obtenerTurno(id);
   }
 }
 
@@ -19,13 +30,19 @@ export class CrearTurnoManual {
     this.repo = repo;
   }
   execute(datos: NuevoTurnoManual): Promise<Turno> {
-    // Regla de negocio: un turno cargado a mano siempre entra como "pendiente".
-    if (!datos.patente || !datos.chofer || !datos.finca || !datos.hora) {
+    // Solo se controla que el formulario esté completo; la validación de
+    // formato, referencias y capacidad es responsabilidad de la API.
+    if (!datos.telefono || !datos.patente || !datos.codigoFinca || !datos.corteEn || !datos.cargaTon) {
       return Promise.reject(
-        new Error("Completá al menos patente, transportista, finca y hora del turno.")
+        new Error("Completá teléfono, patente, código de finca, momento de corte y carga estimada.")
       );
     }
-    return this.repo.crearTurnoManual({ ...datos, patente: datos.patente.toUpperCase() });
+    return this.repo.crearTurnoManual({
+      ...datos,
+      telefono: datos.telefono.trim(),
+      patente: datos.patente.trim().toUpperCase(),
+      codigoFinca: datos.codigoFinca.trim().toUpperCase(),
+    });
   }
 }
 
@@ -46,18 +63,22 @@ export class CancelarTurno {
   constructor(repo: TurnoRepository) {
     this.repo = repo;
   }
-  execute(id: string): Promise<void> {
+  execute(id: string): Promise<Turno> {
     return this.repo.cancelarTurno(id);
   }
 }
 
-export class AvanzarEstadoTurno {
+/**
+ * Envía el estado que eligió el operador. No decide cuál es el siguiente:
+ * si la transición no es válida, la fuente de datos la rechaza.
+ */
+export class CambiarEstadoTurno {
   private readonly repo: TurnoRepository;
 
   constructor(repo: TurnoRepository) {
     this.repo = repo;
   }
-  execute(id: string): Promise<Turno> {
-    return this.repo.avanzarEstado(id);
+  execute(id: string, nuevoEstado: EstadoTurno): Promise<Turno> {
+    return this.repo.cambiarEstado(id, nuevoEstado);
   }
 }

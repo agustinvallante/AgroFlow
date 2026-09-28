@@ -1,5 +1,6 @@
 import { VISTAS, type VistaId } from "./vistas";
 import logo from "../../assets/logo.png";
+import { container } from "../../composition/container";
 
 interface SidebarProps {
   vistaActiva: VistaId;
@@ -11,7 +12,7 @@ export function Sidebar({ vistaActiva, onCambiarVista }: SidebarProps) {
     <aside className="sidebar">
       <div className="brand">
         <div className="mark">
-          <img src={logo} alt="AgroFlow" width={200} height={48} />
+          <img src={logo} alt="AgroFlow" width={200} height={38} />
         </div>
         <div className="brand-sub">Control de Playa</div>
         <select className="ingenio-select" defaultValue="san-ramon">
@@ -37,7 +38,15 @@ export function Sidebar({ vistaActiva, onCambiarVista }: SidebarProps) {
         <br />
         Jefa de Báscula · Turno mañana
         <br />
-        v0.4 prototipo · sin conexión al backend
+        {container.fuenteDatos === "http" ? (
+          <>
+            Turnos: AgroFlow API · {container.apiUrl}
+            <br />
+            Resto de las vistas: datos de demostración
+          </>
+        ) : (
+          "v0.4 prototipo · datos mock"
+        )}
       </div>
     </aside>
   );
