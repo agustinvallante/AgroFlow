@@ -90,6 +90,13 @@ VITE_API_URL=http://localhost:5000
 
 Reiniciar `npm run dev` después de cambiar el `.env`.
 
+El navegador no llama directo a la API: pide `/api/...` a Vite, que lo
+reenvía a `VITE_API_URL` (ver `vite.config.ts`). Por eso no depende de la
+política CORS del backend ni de que Vite abra en el puerto 5173. Si la API
+arrancó en otro puerto (por ejemplo `5142`, sin `--urls`), basta con cambiar
+`VITE_API_URL` y reiniciar. El proxy funciona con `npm run dev` y
+`npm run preview`; servir `dist/` desde otro servidor requiere su propio proxy.
+
 ### Qué consume de la API (`VITE_DATA_SOURCE=http`)
 
 `src/infrastructure/http/repositories/HttpTurnoRepository.ts` implementa el

@@ -57,12 +57,16 @@ function mensajeDeError(status: number, body: ProblemDetails | null): string {
 export class ApiClient {
   private readonly baseUrl: string;
 
+  /**
+   * @param baseUrl URL absoluta de la API, o "" para llamar al mismo origen
+   * (el proxy de Vite reenvía /api a VITE_API_URL).
+   */
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl.replace(/\/+$/, "");
   }
 
   async get<T>(path: string, query?: Record<string, string | undefined>): Promise<T> {
-    const url = new URL(`${this.baseUrl}${path}`);
+    const url = new URL(`${this.baseUrl}${path}`, globalThis.location?.origin);
     if (query) {
       Object.entries(query).forEach(([k, v]) => {
         if (v !== undefined && v !== "") url.searchParams.set(k, v);
@@ -103,7 +107,8 @@ export class ApiClient {
       });
     } catch {
       // fetch solo rechaza por fallo de red, no por status 4xx/5xx.
-      throw new ApiError(0, "NETWORK_ERROR", `No se pudo conectar con la API en ${this.baseUrl}. ¿Está corriendo?`);
+      const destino = this.baseUrl || "el proxy de Vite (VITE_API_URL)";
+      throw new ApiError(0, "NETWORK_ERROR", `No se pudo conectar con la API a través de ${destino}. ¿Está corriendo?`);
     }
 
     if (!response.ok) {

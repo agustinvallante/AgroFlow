@@ -50,8 +50,10 @@ export type FuenteDatos = "mock" | "http";
  *
  *   VITE_DATA_SOURCE=mock (o sin definir) → todo mock, funciona sin backend
  *   VITE_DATA_SOURCE=http                 → turnos contra AgroFlow API
- *                                            (VITE_API_URL, por defecto
- *                                            http://localhost:5000)
+ *
+ * El navegador llama a /api en su propio origen y el proxy de Vite
+ * (vite.config.ts) lo reenvía a VITE_API_URL, por defecto
+ * http://localhost:5000. Así no interviene CORS.
  *
  * La demo local solo expone turnos. Panel (métricas, timeline, molienda),
  * transportistas, conversaciones, reportes y configuración siguen en mock
@@ -59,11 +61,12 @@ export type FuenteDatos = "mock" | "http";
  */
 function crearContainer() {
   const fuenteDatos: FuenteDatos = import.meta.env.VITE_DATA_SOURCE === "http" ? "http" : "mock";
+  // Solo informativo: las llamadas van al mismo origen ("") vía proxy.
   const apiUrl = import.meta.env.VITE_API_URL ?? "http://localhost:5000";
 
   // El tipo declarado es la INTERFAZ, no la clase concreta.
   const turnoRepository: TurnoRepository =
-    fuenteDatos === "http" ? new HttpTurnoRepository(apiUrl) : new MockTurnoRepository();
+    fuenteDatos === "http" ? new HttpTurnoRepository("") : new MockTurnoRepository();
 
   // Con fuente http el panel usa su propio mock para no mezclar datos
   // simulados con los turnos persistidos por la API.
