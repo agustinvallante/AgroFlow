@@ -5,6 +5,7 @@ import type {
   AppointmentSummaryDto,
   CreateAppointmentRequestDto,
 } from "../dto/AppointmentDto";
+import { horaDeRfc3339 } from "../../../shared/utils/date";
 
 /** Tabla de docs/LOCAL_DEMO_INTEGRATION.md, con EN_ESPERA e INGRESADO separados. */
 const ESTADO_MAP: Record<AppointmentStatusDto, EstadoTurno> = {
@@ -17,22 +18,23 @@ const ESTADO_MAP: Record<AppointmentStatusDto, EstadoTurno> = {
   CANCELADO: "cancelado",
 };
 
-// "demorado" no existe en la API: no tiene equivalente para filtrar.
+// "demorado" no existe en la API: no tiene equivalente.
 const ESTADO_INVERSO: Partial<Record<EstadoTurno, AppointmentStatusDto>> = Object.fromEntries(
   Object.entries(ESTADO_MAP).map(([api, dominio]) => [dominio, api])
 );
 
-/** "2026-09-28T05:30:00-03:00" → "05:30" en la hora local del navegador. */
-function horaDeIso(iso: string): string {
-  const d = new Date(iso);
-  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+
+/** Estado del dominio → valor del contrato, o undefined si la API no lo tiene. */
+export function toAppointmentStatus(estado: EstadoTurno): AppointmentStatusDto | undefined {
+  return ESTADO_INVERSO[estado];
 }
 
 export function mapAppointment(dto: AppointmentDto): Turno {
   return {
     id: dto.id,
-    hora: horaDeIso(dto.window.startAt),
-    ventanaFin: horaDeIso(dto.window.endAt),
+    // Hora escrita por la API, en la zona del ingenio (no la del navegador).
+    hora: horaDeRfc3339(dto.window.startAt),
+    ventanaFin: horaDeRfc3339(dto.window.endAt),
     // Solo para ordenar la cola; la ventana la asigna la API.
     offsetMin: Math.round((new Date(dto.window.startAt).getTime() - Date.now()) / 60000),
     patente: dto.truck.plate,

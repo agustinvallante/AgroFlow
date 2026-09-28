@@ -19,6 +19,7 @@ import { generarTurnosSemilla, siguienteIdTurno } from "../data/turnos.mock";
  * Es el respaldo de VITE_DATA_SOURCE=mock; la implementación contra la
  * API real es HttpTurnoRepository.
  */
+// Simula la validación que hace la API: solo acepta el paso siguiente.
 const SIGUIENTE_ESTADO: Partial<Record<EstadoTurno, EstadoTurno>> = {
   pendiente: "viaje",
   viaje: "cancha",
@@ -132,11 +133,13 @@ export class MockTurnoRepository implements TurnoRepository {
     return delay({ ...turno });
   }
 
-  async avanzarEstado(id: string): Promise<Turno> {
+  async cambiarEstado(id: string, nuevoEstado: EstadoTurno): Promise<Turno> {
+    if (nuevoEstado === "cancelado") return this.cancelarTurno(id);
     const turno = this.buscar(id);
-    const siguiente = SIGUIENTE_ESTADO[turno.estado];
-    if (!siguiente) throw new Error("El turno no tiene un estado siguiente.");
-    turno.estado = siguiente;
+    if (SIGUIENTE_ESTADO[turno.estado] !== nuevoEstado) {
+      throw new Error("Transición inválida para el estado actual del turno.");
+    }
+    turno.estado = nuevoEstado;
     return delay({ ...turno });
   }
 

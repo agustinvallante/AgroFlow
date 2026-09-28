@@ -1,4 +1,4 @@
-import type { FiltrosTurno, NuevoTurnoManual, Turno } from "../../../domain/entities/Turno";
+import type { EstadoTurno, FiltrosTurno, NuevoTurnoManual, Turno } from "../../../domain/entities/Turno";
 import type { TurnoRepository } from "../../../domain/repositories/TurnoRepository";
 
 export class ObtenerTurnosDelDia {
@@ -68,13 +68,17 @@ export class CancelarTurno {
   }
 }
 
-export class AvanzarEstadoTurno {
+/**
+ * Envía el estado que eligió el operador. No decide cuál es el siguiente:
+ * si la transición no es válida, la fuente de datos la rechaza.
+ */
+export class CambiarEstadoTurno {
   private readonly repo: TurnoRepository;
 
   constructor(repo: TurnoRepository) {
     this.repo = repo;
   }
-  execute(id: string): Promise<Turno> {
-    return this.repo.avanzarEstado(id);
+  execute(id: string, nuevoEstado: EstadoTurno): Promise<Turno> {
+    return this.repo.cambiarEstado(id, nuevoEstado);
   }
 }

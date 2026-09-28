@@ -1,4 +1,4 @@
-import type { FiltrosTurno, NuevoTurnoManual, Turno } from "../entities/Turno";
+import type { EstadoTurno, FiltrosTurno, NuevoTurnoManual, Turno } from "../entities/Turno";
 import type { FrancoTimeline, MetricasPanel } from "../entities/MetricasPanel";
 
 /**
@@ -15,6 +15,7 @@ export interface TurnoRepository {
   crearTurnoManual(datos: NuevoTurnoManual): Promise<Turno>;
   reasignarHorario(id: string, nuevaHora: string): Promise<Turno>;
   cancelarTurno(id: string): Promise<Turno>;
-  avanzarEstado(id: string): Promise<Turno>;
+  /** Solicita el estado elegido por el operador; la fuente valida la transición. */
+  cambiarEstado(id: string, nuevoEstado: EstadoTurno): Promise<Turno>;
   alternarEstadoMolienda(): Promise<MetricasPanel>;
 }

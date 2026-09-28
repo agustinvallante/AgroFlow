@@ -1,20 +1,57 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { container } from "../../composition/container";
-import type { FiltrosTurno, NuevoTurnoManual, Turno } from "../../domain/entities/Turno";
+import type { EstadoTurno, FiltrosTurno, NuevoTurnoManual, Turno } from "../../domain/entities/Turno";
 
 export type FiltroFlota = "todas" | "propia" | "tercero";
 export type FiltroEstado = "todos" | Turno["estado"];
 export type OrdenCola = "turno" | "prioridad" | "espera";
 
+/**
+ * - "cargando": todavía no hubo respuesta para los filtros actuales.
+ * - "ok": la última consulta respondió (la lista puede estar vacía).
+ * - "error": la última consulta falló. Si antes hubo una respuesta para
+ *   estos mismos filtros, se sigue mostrando marcada como desactualizada.
+ */
+export type EstadoCarga = "cargando" | "ok" | "error";
+
 /** Consulta periódica de la cola. Solo lee: nunca dispara transiciones. */
-const INTERVALO_POLLING_MS = 4000;
+export const INTERVALO_POLLING_MS = 4000;
+
+// Formatos de los parámetros de consulta según openapi.yaml.
+const PATRON_TELEFONO = /^\+[1-9][0-9]{7,14}$/;
+const PATENTE_MIN = 6;
+const PATENTE_MAX = 10;
 
 const mensaje = (e: unknown, porDefecto: string) => (e instanceof Error ? e.message : porDefecto);
 
+/**
+ * Un filtro escrito a medias no se descarta en silencio: la consulta no se
+ * hace y la vista lo informa, para no mostrar turnos que no coinciden.
+ */
+export function validarFiltros(patente: string, telefono: string): string[] {
+  const problemas: string[] = [];
+  const plate = patente.trim();
+  const phone = telefono.trim();
+  if (plate && (plate.length < PATENTE_MIN || plate.length > PATENTE_MAX)) {
+    problemas.push(`La patente debe estar completa (entre ${PATENTE_MIN} y ${PATENTE_MAX} caracteres).`);
+  }
+  if (phone && !PATRON_TELEFONO.test(phone)) {
+    problemas.push("El teléfono debe estar completo en formato internacional, por ejemplo +5493815550101.");
+  }
+  return problemas;
+}
+
+/** Resultado de una consulta, asociado a los filtros que la produjeron. */
+interface ResultadoConsulta {
+  clave: string;
+  turnos: Turno[];
+  estado: "ok" | "error";
+  error: string | null;
+  ultimaActualizacion: Date | null;
+}
+
 export function useColaTurnos() {
-  const [turnos, setTurnos] = useState<Turno[]>([]);
-  const [cargando, setCargando] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [resultado, setResultado] = useState<ResultadoConsulta | null>(null);
   const [errorAccion, setErrorAccion] = useState<string | null>(null);
   const [enCurso, setEnCurso] = useState<string | null>(null);
 
@@ -32,39 +69,49 @@ export function useColaTurnos() {
   const [detalleId, setDetalleId] = useState<string | null>(null);
   const [detalle, setDetalle] = useState<Turno | null>(null);
 
-  const filtrosApi = useMemo<FiltrosTurno>(() => {
-    const plate = patente.trim();
-    const phone = telefono.trim();
+  const filtrosIncompletos = useMemo(() => validarFiltros(patente, telefono), [patente, telefono]);
+
+  // null = hay filtros incompletos: no se consulta.
+  const filtrosApi = useMemo<FiltrosTurno | null>(() => {
+    if (filtrosIncompletos.length > 0) return null;
     return {
       fecha: fecha || undefined,
       estado: filtroEstado === "todos" ? undefined : filtroEstado,
-      // La API exige la patente completa (6–10) y el teléfono en E.164.
-      patente: plate.length >= 6 ? plate : undefined,
-      telefono: /^\+[1-9][0-9]{7,14}$/.test(phone) ? phone : undefined,
+      patente: patente.trim() || undefined,
+      telefono: telefono.trim() || undefined,
     };
-  }, [fecha, filtroEstado, patente, telefono]);
+  }, [fecha, filtroEstado, patente, telefono, filtrosIncompletos]);
+
+  const clave = JSON.stringify(filtrosApi);
+
+  // Un resultado de otros filtros no corresponde a lo que se ve: se trata
+  // como si todavía no hubiera respuesta.
+  const vigente = resultado?.clave === clave ? resultado : null;
+  const turnos = useMemo(() => vigente?.turnos ?? [], [vigente]);
+  const estadoCarga: EstadoCarga = vigente?.estado ?? "cargando";
 
   // Descarta respuestas viejas si cambian los filtros con una consulta en vuelo.
   const ultimaConsulta = useRef(0);
 
-  const cargar = useCallback(
-    async (silencioso = false) => {
-      const consulta = ++ultimaConsulta.current;
-      if (!silencioso) setCargando(true);
-      try {
-        const data = await container.turnos.obtenerTurnosDelDia.execute(filtrosApi);
-        if (consulta !== ultimaConsulta.current) return;
-        setTurnos(data);
-        setError(null);
-      } catch (e) {
-        if (consulta !== ultimaConsulta.current) return;
-        setError(mensaje(e, "No se pudo cargar la cola de turnos."));
-      } finally {
-        if (consulta === ultimaConsulta.current) setCargando(false);
-      }
-    },
-    [filtrosApi]
-  );
+  const cargar = useCallback(async () => {
+    const consulta = ++ultimaConsulta.current;
+    if (!filtrosApi) return;
+    try {
+      const data = await container.turnos.obtenerTurnosDelDia.execute(filtrosApi);
+      if (consulta !== ultimaConsulta.current) return;
+      setResultado({ clave, turnos: data, estado: "ok", error: null, ultimaActualizacion: new Date() });
+    } catch (e) {
+      if (consulta !== ultimaConsulta.current) return;
+      const error = mensaje(e, "No se pudo cargar la cola de turnos.");
+      // Se conserva la última lista válida para estos filtros, pero la
+      // vista la marca como desactualizada.
+      setResultado((prev) =>
+        prev?.clave === clave
+          ? { ...prev, estado: "error", error }
+          : { clave, turnos: [], estado: "error", error, ultimaActualizacion: null }
+      );
+    }
+  }, [filtrosApi, clave]);
 
   const cargarDetalle = useCallback(async (id: string) => {
     try {
@@ -78,11 +125,8 @@ export function useColaTurnos() {
 
   useEffect(() => {
     cargar();
-  }, [cargar]);
-
-  useEffect(() => {
     const id = setInterval(() => {
-      cargar(true);
+      cargar();
       if (detalleId) cargarDetalle(detalleId);
     }, INTERVALO_POLLING_MS);
     return () => clearInterval(id);
@@ -113,21 +157,24 @@ export function useColaTurnos() {
       setEnCurso(id);
       try {
         const actualizado = await accion();
-        setTurnos((prev) => prev.map((t) => (t.id === id ? actualizado : t)));
+        setResultado((prev) =>
+          prev && { ...prev, turnos: prev.turnos.map((t) => (t.id === id ? actualizado : t)) }
+        );
         setDetalle((prev) => (prev?.id === id ? actualizado : prev));
       } catch (e) {
         setErrorAccion(mensaje(e, "No se pudo actualizar el turno."));
         if (detalleId) cargarDetalle(detalleId);
       } finally {
         setEnCurso(null);
-        cargar(true);
+        cargar();
       }
     },
     [cargar, cargarDetalle, detalleId]
   );
 
-  const avanzar = useCallback(
-    (id: string) => ejecutarAccion(id, () => container.turnos.avanzarEstadoTurno.execute(id)),
+  const cambiarEstado = useCallback(
+    (id: string, nuevoEstado: EstadoTurno) =>
+      ejecutarAccion(id, () => container.turnos.cambiarEstadoTurno.execute(id, nuevoEstado)),
     [ejecutarAccion]
   );
 
@@ -146,7 +193,7 @@ export function useColaTurnos() {
     async (datos: NuevoTurnoManual) => {
       // El error se propaga para que el formulario lo muestre.
       await container.turnos.crearTurnoManual.execute(datos);
-      await cargar(true);
+      await cargar();
     },
     [cargar]
   );
@@ -183,8 +230,13 @@ export function useColaTurnos() {
   return {
     turnos: turnosFiltrados,
     resumen,
-    cargando,
-    error,
+    estadoCarga,
+    cargando: estadoCarga === "cargando",
+    error: vigente?.error ?? null,
+    ultimaActualizacion: vigente?.ultimaActualizacion ?? null,
+    /** Hay datos en pantalla, pero la última consulta falló. */
+    desactualizado: estadoCarga === "error" && !!vigente?.ultimaActualizacion,
+    filtrosIncompletos,
     errorAccion,
     limpiarErrorAccion: () => setErrorAccion(null),
     enCurso,
@@ -201,7 +253,7 @@ export function useColaTurnos() {
     abrirDetalle,
     cerrarDetalle,
     crearTurno,
-    avanzar,
+    cambiarEstado,
     cancelar,
     reasignar,
     recargar: cargar,

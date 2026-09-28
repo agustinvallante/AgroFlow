@@ -4,35 +4,33 @@ import { useColaTurnos } from "../hooks/useColaTurnos";
 import { MetricCard } from "../components/common/MetricCard";
 import { CanalBadge, EstadoBadge, FlotaBadge, PrioridadBadge } from "../components/common/Badges";
 import { EmptyState, ErrorState, LoadingState } from "../components/common/StatusStates";
+import { CambioEstadoSelect } from "../components/common/CambioEstadoSelect";
+import { ESTADOS_SELECCIONABLES } from "../components/common/estadosSeleccionables";
 import type { Turno } from "../../domain/entities/Turno";
+import { datetimeLocalARfc3339, fechaHoraDeRfc3339 } from "../../shared/utils/date";
 
 const ESTADO_OPCIONES: { value: string; label: string }[] = [
   { value: "todos", label: "Todos los estados" },
-  { value: "pendiente", label: "Asignado" },
-  { value: "viaje", label: "En camino" },
-  { value: "cancha", label: "En espera" },
-  { value: "ingresado", label: "Ingresado" },
-  { value: "descargando", label: "En descarga" },
-  { value: "completado", label: "Finalizado" },
-  { value: "cancelado", label: "Cancelado" },
+  ...ESTADOS_SELECCIONABLES,
 ];
 
 const esApi = container.fuenteDatos === "http";
 
 const FORM_VACIO = { telefono: "", patente: "", codigoFinca: "", corteEn: "", cargaTon: "" };
 
-const fechaHora = (iso?: string) =>
-  iso ? new Date(iso).toLocaleString("es-AR", { dateStyle: "short", timeStyle: "short" }) : "—";
 
-/** Estados en los que ya no hay acciones posibles (terminales). */
-const esTerminal = (t: Turno) => t.estado === "completado" || t.estado === "cancelado";
+const horaActualizacion = (d: Date | null) => (d ? d.toLocaleTimeString("es-AR") : "—");
 
 export function ColaTurnosView() {
   const {
     turnos,
     resumen,
-    cargando,
+    estadoCarga,
     error,
+    ultimaActualizacion,
+    desactualizado,
+    filtrosIncompletos,
+    recargar,
     errorAccion,
     limpiarErrorAccion,
     enCurso,
@@ -49,7 +47,7 @@ export function ColaTurnosView() {
     abrirDetalle,
     cerrarDetalle,
     crearTurno,
-    avanzar,
+    cambiarEstado,
     cancelar,
     reasignar,
   } = useColaTurnos();
@@ -71,8 +69,8 @@ export function ColaTurnosView() {
         telefono: form.telefono,
         patente: form.patente,
         codigoFinca: form.codigoFinca,
-        // datetime-local no trae zona horaria; toISOString la vuelve explícita.
-        corteEn: form.corteEn ? new Date(form.corteEn).toISOString() : "",
+        // datetime-local no trae zona: se envía con el desplazamiento explícito.
+        corteEn: datetimeLocalARfc3339(form.corteEn),
         cargaTon: Number(form.cargaTon) || 0,
       });
       setForm(FORM_VACIO);
@@ -95,10 +93,12 @@ export function ColaTurnosView() {
 
   const acciones = (t: Turno) => (
     <div className="row-actions">
-      <button className="btn-mini" disabled={enCurso === t.id || esTerminal(t)} onClick={() => avanzar(t.id)}>
-        Avanzar
-      </button>
-      <button className="btn-mini" disabled={enCurso === t.id || esTerminal(t)} onClick={() => handleCancelar(t)}>
+      <CambioEstadoSelect
+        estadoActual={t.estado}
+        deshabilitado={enCurso === t.id}
+        onCambiar={(nuevo) => cambiarEstado(t.id, nuevo)}
+      />
+      <button className="btn-mini" disabled={enCurso === t.id} onClick={() => handleCancelar(t)}>
         Cancelar
       </button>
       {!esApi && (
@@ -191,11 +191,11 @@ export function ColaTurnosView() {
                 <dt>Finca</dt>
                 <dd>{detalle.finca}</dd>
                 <dt>Corte</dt>
-                <dd>{fechaHora(detalle.corteEn)} ({detalle.horasDesdeCorte} h)</dd>
+                <dd>{fechaHoraDeRfc3339(detalle.corteEn)} ({detalle.horasDesdeCorte} h)</dd>
                 <dt>Carga estimada</dt>
                 <dd>{detalle.cargaTon !== undefined ? `${detalle.cargaTon} tn` : "—"}</dd>
                 <dt>Creado</dt>
-                <dd>{fechaHora(detalle.creadoEn)}</dd>
+                <dd>{fechaHoraDeRfc3339(detalle.creadoEn)}</dd>
               </dl>
               <div style={{ display: "flex", gap: 10 }}>
                 {acciones(detalle)}
@@ -240,13 +240,33 @@ export function ColaTurnosView() {
         )}
       </div>
 
-      {error && <ErrorState message={error} />}
-
-      {cargando ? (
+      {filtrosIncompletos.length > 0 ? (
+        // No se consulta ni se muestra una lista que no respeta el filtro.
+        <div className="aviso-filtro" role="status">
+          <strong>Filtro incompleto.</strong> Completalo para ver los turnos que coinciden:
+          <ul>
+            {filtrosIncompletos.map((p) => (
+              <li key={p}>{p}</li>
+            ))}
+          </ul>
+        </div>
+      ) : estadoCarga === "cargando" ? (
         <LoadingState label="Cargando turnos..." />
+      ) : estadoCarga === "error" && !desactualizado ? (
+        // Nunca hubo una respuesta válida: no hay lista que mostrar.
+        <div role="alert">
+          <ErrorState message={error ?? "No se pudo cargar la cola de turnos."} />
+          <button className="btn-mini" onClick={() => recargar()}>Reintentar</button>
+        </div>
       ) : (
         <>
-          <table>
+          {desactualizado && (
+            <div className="aviso-desactualizado" role="alert">
+              <strong>Datos desactualizados.</strong> Última actualización: {horaActualizacion(ultimaActualizacion)}.
+              {" "}{error} Se reintenta automáticamente.
+            </div>
+          )}
+          <table className={desactualizado ? "datos-desactualizados" : undefined}>
             <thead>
               <tr>
                 <th>Ventana</th>
@@ -286,7 +306,15 @@ export function ColaTurnosView() {
               ))}
             </tbody>
           </table>
-          {turnos.length === 0 && <EmptyState message="No hay turnos que coincidan con estos filtros." />}
+          {turnos.length === 0 && (
+            <EmptyState
+              message={
+                desactualizado
+                  ? `No había turnos en la última actualización (${horaActualizacion(ultimaActualizacion)}).`
+                  : "No hay turnos que coincidan con estos filtros."
+              }
+            />
+          )}
         </>
       )}
     </div>

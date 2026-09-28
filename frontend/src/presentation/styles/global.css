@@ -1133,3 +1133,19 @@ tbody tr:hover {
     grid-template-columns: 1fr;
   }
 }
+
+.aviso-filtro,
+.aviso-desactualizado {
+  font-size: 13px;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+  border-left: 3px solid var(--alerta);
+  background: rgba(0, 0, 0, 0.03);
+}
+.aviso-filtro ul {
+  margin: 6px 0 0 18px;
+  padding: 0;
+}
+table.datos-desactualizados tbody {
+  opacity: 0.6;
+}

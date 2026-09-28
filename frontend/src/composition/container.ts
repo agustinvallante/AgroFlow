@@ -14,7 +14,7 @@ import {
   ObtenerTimelineDelDia,
 } from "../application/usecases/panel/PanelUseCases";
 import {
-  AvanzarEstadoTurno,
+  CambiarEstadoTurno,
   CancelarTurno,
   CrearTurnoManual,
   ObtenerDetalleTurno,
@@ -92,7 +92,7 @@ function crearContainer() {
       crearTurnoManual: new CrearTurnoManual(turnoRepository),
       reasignarHorarioTurno: new ReasignarHorarioTurno(turnoRepository),
       cancelarTurno: new CancelarTurno(turnoRepository),
-      avanzarEstadoTurno: new AvanzarEstadoTurno(turnoRepository),
+      cambiarEstadoTurno: new CambiarEstadoTurno(turnoRepository),
     },
     transportistas: {
       obtenerTransportistas: new ObtenerTransportistas(transportistaRepository),

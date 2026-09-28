@@ -1,4 +1,4 @@
-import type { FiltrosTurno, NuevoTurnoManual, Turno } from "../../../domain/entities/Turno";
+import type { EstadoTurno, FiltrosTurno, NuevoTurnoManual, Turno } from "../../../domain/entities/Turno";
 import type { FrancoTimeline, MetricasPanel } from "../../../domain/entities/MetricasPanel";
 import type { TurnoRepository } from "../../../domain/repositories/TurnoRepository";
 import { ApiClient } from "../ApiClient";
@@ -11,25 +11,12 @@ import type {
 import {
   combinarResumenYDetalle,
   mapAppointment,
+  toAppointmentStatus,
   toCreateAppointmentRequest,
   toListQuery,
 } from "../mappers/appointmentMapper";
 
 const BASE = "/api/v1/appointments";
-
-/**
- * Secuencia operativa de openapi.yaml. El contrato exige indicar newStatus,
- * así que "Avanzar" pide el siguiente estado del estado VIGENTE que devuelve
- * la API en ese momento. La API sigue siendo quien valida: si el turno ya
- * cambió, responde 409 INVALID_TRANSITION y la UI recarga.
- */
-const SIGUIENTE_ESTADO: Partial<Record<AppointmentStatusDto, AppointmentStatusDto>> = {
-  ASIGNADO: "EN_CAMINO",
-  EN_CAMINO: "EN_ESPERA",
-  EN_ESPERA: "INGRESADO",
-  INGRESADO: "EN_DESCARGA",
-  EN_DESCARGA: "FINALIZADO",
-};
 
 /**
  * Implementa TurnoRepository contra AgroFlow API (docs/contracts/openapi.yaml).
@@ -71,13 +58,12 @@ export class HttpTurnoRepository implements TurnoRepository {
     return mapAppointment(creado);
   }
 
-  async avanzarEstado(id: string): Promise<Turno> {
-    const vigente = await this.pedirDetalle(id);
-    const siguiente = SIGUIENTE_ESTADO[vigente.status];
-    if (!siguiente) {
-      throw new Error("El turno ya está finalizado o cancelado; no tiene un estado siguiente.");
-    }
-    return this.transicionar(id, siguiente);
+  async cambiarEstado(id: string, nuevoEstado: EstadoTurno): Promise<Turno> {
+    // El destino lo elige el operador; la API decide si la transición es
+    // válida y, si no, responde 409 INVALID_TRANSITION.
+    const status = toAppointmentStatus(nuevoEstado);
+    if (!status) throw new Error("La API no admite ese estado.");
+    return this.transicionar(id, status);
   }
 
   async cancelarTurno(id: string): Promise<Turno> {

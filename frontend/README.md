@@ -3,10 +3,10 @@
 Prototipo de frontend para el panel de administración de AgroFlow, construido
 con **React + TypeScript + Vite** y organizado en **Clean Architecture**.
 
-Actualmente funciona **sin conexión a un backend real**: toda la información
-(turnos, transportistas, conversaciones del chatbot, reportes, configuración)
-vive en repositorios "mock" en memoria, con latencia simulada, para que la UI
-se comporte igual que el día en que exista una API real detrás.
+La cola de turnos puede consumir AgroFlow API (`VITE_DATA_SOURCE=http`) o
+repositorios "mock" en memoria (`VITE_DATA_SOURCE=mock`, sin backend). El resto
+de las vistas (panel general, chatbot, transportistas, reportes y
+configuración) usa mocks y se identifica como datos de demostración.
 
 ## Cómo correrlo
 
@@ -15,6 +15,9 @@ npm install
 npm run dev       # entorno de desarrollo
 npm run build     # build de producción (queda en dist/)
 npm run preview   # sirve el build de producción localmente
+npm test          # tests (Vitest + Testing Library)
+npm run typecheck # verificación de tipos
+npm run lint      # oxlint
 ```
 
 ## Estructura de carpetas (Clean Architecture)
@@ -30,12 +33,11 @@ src/
 │                               AlternarEstadoMolienda, ObtenerReporte, etc.
 │
 ├── infrastructure/            → Implementaciones concretas de los puertos.
-│   └── mock/                  Hoy: repositorios en memoria (sin backend).
+│   ├── http/                  Cliente, DTOs, mappers y HttpTurnoRepository contra
+│   │                           AgroFlow API (docs/contracts/openapi.yaml).
+│   └── mock/                  Repositorios en memoria (sin backend).
 │       ├── data/               Datos semilla (fincas, choferes, turnos, etc).
 │       └── repositories/       MockTurnoRepository, MockTransportistaRepository, etc.
-│                               Mañana: acá se agregaría infrastructure/http/
-│                               con HttpTurnoRepository, HttpTransportistaRepository...
-│                               implementando las MISMAS interfaces de domain/repositories.
 │
 ├── composition/
 │   └── container.ts           Raíz de composición: ÚNICO archivo que decide qué
@@ -108,11 +110,14 @@ AgroFlow:
 | Alta manual (teléfono, patente, código de finca, corte, carga) | `POST /api/v1/appointments` |
 | Cola, filtros de estado/fecha/patente/teléfono y polling cada 4 s | `GET /api/v1/appointments` |
 | Detalle (clic en una fila) | `GET /api/v1/appointments/{id}` |
-| Avanzar / Cancelar | `POST /api/v1/appointments/{id}/transitions` |
+| Cambiar estado (elegido por el operador) / Cancelar | `POST /api/v1/appointments/{id}/transitions` |
 
-El dashboard no calcula prioridad, ventana ni capacidad. Ante un error
-(`400`, `404`, `409`, `500` o sin conexión) muestra el mensaje y recarga el
-estado vigente. Panel general (métricas, timeline, molienda), chatbot,
+El dashboard no calcula prioridad, ventana, capacidad ni transiciones válidas:
+el operador elige el estado y la API lo valida (`409` si no corresponde). Ante
+un error (`400`, `404`, `409`, `500` o sin conexión) muestra el mensaje y
+recarga el estado vigente. Los filtros incompletos, los fallos de carga, los
+datos desactualizados y la zona horaria se describen en
+[`docs/LOCAL_DEMO_INTEGRATION.md`](docs/LOCAL_DEMO_INTEGRATION.md). Panel general (métricas, timeline, molienda), chatbot,
 transportistas, reportes y configuración siguen en mock y se identifican como
 datos de demostración.
 

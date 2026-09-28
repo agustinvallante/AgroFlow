@@ -9,6 +9,7 @@ import { EstadoBadge, FlotaBadge } from "../components/common/Badges";
 import { Timeline } from "../components/panel/Timeline";
 import { BotFeedPanel } from "../components/panel/BotFeedPanel";
 import { LoadingState, ErrorState } from "../components/common/StatusStates";
+import { CambioEstadoSelect } from "../components/common/CambioEstadoSelect";
 
 // Con fuente http solo la tabla de camiones viene de la API.
 const etiquetaDemo = container.fuenteDatos === "http" && (
@@ -17,7 +18,8 @@ const etiquetaDemo = container.fuenteDatos === "http" && (
 
 export function PanelGeneralView() {
   const { metricas, timeline, cargando, error, alternarMolienda } = usePanel();
-  const { turnos, cargando: cargandoTurnos, avanzar, enCurso, errorAccion } = useColaTurnos();
+  const { turnos, cargando: cargandoTurnos, cambiarEstado, enCurso, errorAccion, desactualizado, error: errorTurnos } =
+    useColaTurnos();
   const mensajesBot = useBotFeed();
   const { hora, fecha } = useClock();
   const [avisoEnviado, setAvisoEnviado] = useState<string | null>(null);
@@ -103,6 +105,9 @@ export function PanelGeneralView() {
                 <div className="meta">{activos.length} activos</div>
               </div>
               {errorAccion && <ErrorState message={errorAccion} />}
+              {errorTurnos && (
+                <ErrorState message={desactualizado ? `Datos desactualizados. ${errorTurnos}` : errorTurnos} />
+              )}
               {cargandoTurnos ? (
                 <LoadingState />
               ) : (
@@ -153,13 +158,11 @@ export function PanelGeneralView() {
                           {t.esperaMin === null ? "—" : `${t.esperaMin} min`}
                         </td>
                         <td>
-                          <button
-                            className="btn-mini"
-                            disabled={enCurso === t.id}
-                            onClick={() => avanzar(t.id)}
-                          >
-                            Avanzar
-                          </button>
+                          <CambioEstadoSelect
+                            estadoActual={t.estado}
+                            deshabilitado={enCurso === t.id}
+                            onCambiar={(nuevo) => cambiarEstado(t.id, nuevo)}
+                          />
                         </td>
                       </tr>
                     ))}
