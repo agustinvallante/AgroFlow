@@ -39,9 +39,8 @@ public sealed class EfAppointmentStoreTests : IDisposable
 
     private AgroFlowDbContext CreateContext()
     {
-        // Default Timeout (busy_timeout) evita "database is locked" cuando
-        // varios contextos escriben casi al mismo tiempo contra el mismo
-        // archivo, como en las pruebas de concurrencia real de abajo.
+        // Default Timeout (busy_timeout) permite esperar si varios contextos
+        // compiten por la misma base SQLite durante las pruebas.
         var options = new DbContextOptionsBuilder<AgroFlowDbContext>()
             .UseSqlite($"Data Source={_dbPath};Default Timeout=5")
             .Options;
@@ -193,13 +192,12 @@ public sealed class EfAppointmentStoreTests : IDisposable
     }
 
     [Fact]
-    public async Task Three_concurrent_attempts_on_a_window_with_capacity_two_let_exactly_two_succeed()
+    public async Task Three_attempts_from_independent_contexts_on_capacity_two_let_exactly_two_succeed()
     {
-        // Concurrencia real: tres tareas, cada una con su propio
-        // AgroFlowDbContext/conexión contra el mismo archivo SQLite,
-        // corriendo con Task.WhenAll. Nada de llamadas secuenciales
-        // simulando una carrera: el ganador lo decide únicamente el UPDATE
-        // atómico del store bajo contención real.
+        // Tres contextos y conexiones independientes comprueban el límite de
+        // cupo persistido. Microsoft.Data.Sqlite puede ejecutar sus métodos
+        // async sincrónicamente: Task.WhenAll no garantiza contención real.
+        // Una prueba de carrera forzada queda para la política OD-006.
         await SeedAsync(Now);
         Guid windowId;
         await using (var setupDb = CreateContext())

@@ -12,6 +12,8 @@ OpenAPI es el único contrato HTTP canónico. Las guías del dashboard y del cha
 
 La demo utiliza un único ingenio proveniente del seed y no ofrece login ni registro. Las operaciones no reciben credenciales ni permiten seleccionar un ingenio. Esta simplificación sólo es válida para ejecución local: no demuestra autenticación, autorización, segregación ni seguridad entre servicios.
 
+El perfil `LocalDemo:Enabled=true` publica las rutas de turnos y `/health` de este contrato e inicializa su SQLite. Con `LocalDemo:Enabled=false` no se publican esas rutas ni se inicializa la persistencia de la demo: un JWT del backend heredado no habilita por sí solo operaciones de turnos sin autorización por rol e ingenio. El `/healthcheck` heredado permanece independiente.
+
 ### Contrato mínimo
 
 Se publican cuatro operaciones versionadas:

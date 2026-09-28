@@ -2,14 +2,14 @@
 
 ## Propósito
 
-Esta guía coordina la ejecución local aprobada en la issue #49. Los comandos concretos de arranque y seed deben completarse cuando existan los componentes; esta documentación no inventa scripts ausentes. El contrato HTTP canónico es [`docs/contracts/openapi.yaml`](../contracts/openapi.yaml).
+Esta guía coordina la ejecución local aprobada en la issue #49. El backend migra y siembra SQLite automáticamente al arrancar en el perfil `LocalDemo`; no hay un paso manual de seed. El contrato HTTP canónico es [`docs/contracts/openapi.yaml`](../contracts/openapi.yaml).
 
-La rama de Persona 3 documenta en [`persona3-api-handoff.md`](persona3-api-handoff.md) qué partes de la API pueden probarse aisladamente y qué verificación depende todavía del modelo, la persistencia y el seed de Persona 2. No se debe ejecutar este runbook como si esa integración ya existiera.
+[`persona3-api-handoff.md`](persona3-api-handoff.md) registra el estado anterior de la rama aislada de Persona 3; para esta integración, seguí los pasos ejecutables de esta guía.
 
 ## Prerrequisitos
 
-- Backend, frontend y n8n disponibles localmente según sus README.
-- Persistencia local inicializada con el seed de demo.
+- SDK de .NET 8 instalado para iniciar el backend. Frontend y n8n sólo son necesarios para el recorrido integrado.
+- Permiso de escritura en el directorio local donde se creará la base SQLite.
 - Puertos libres: `5000` para API, `5173` para frontend y `5678` para n8n.
 - Fecha local cubierta por las ventanas generadas por el seed.
 
@@ -44,15 +44,11 @@ Desde un clon limpio, sin instalar SQL Server/LocalDB ni configurar JWT:
 
 ```bash
 cd backend/Dsw2025Tpi.Api
-dotnet run
+dotnet run --launch-profile http --urls http://localhost:5000
 ```
 
-- **Perfil**: `dotnet run` usa el profile `http` de `Properties/launchSettings.json`, que fija `ASPNETCORE_ENVIRONMENT=Development`. `appsettings.Development.json` trae `LocalDemo:Enabled=true`; ese flag (no el nombre del entorno en sí) es lo que apaga el JWT heredado y el seeding de Identity/Customer y activa la demo. Fuera de Development, `appsettings.json` trae `LocalDemo:Enabled=false` y el backend heredado se comporta exactamente igual que antes de esta demo.
-- **Puerto real**: el `launchSettings.json` heredado apunta a `5142`; el contrato (`docs/contracts/openapi.yaml`) y el resto de esta guía asumen `5000`. Forzalo con:
-  ```bash
-  ASPNETCORE_URLS=http://localhost:5000 dotnet run
-  ```
-- **Persistencia**: SQLite embebido, un único archivo `agroflow-demo.db` (+ `-wal`/`-shm` en modo WAL) creado junto al ejecutable, en `backend/Dsw2025Tpi.Api/`. No se versiona (ver `.gitignore`). Para reiniciar desde cero, cerrá la API y borrá esos tres archivos.
+- **Perfil y puerto**: `--launch-profile http` usa `Properties/launchSettings.json`, que fija `ASPNETCORE_ENVIRONMENT=Development`; `appsettings.Development.json` trae `LocalDemo:Enabled=true`. `--urls` sobrescribe el puerto heredado `5142` y deja la API en `5000`. El flag `LocalDemo:Enabled` es lo que activa los endpoints de turnos sin identidad; cuando es `false`, esas rutas y `/health` de la demo no se publican y SQLite no se inicializa. El backend heredado conserva `/healthcheck` y sus propios requisitos de SQL Server/JWT.
+- **Persistencia**: SQLite embebido, un único archivo `agroflow-demo.db` (+ `-wal`/`-shm` en modo WAL) creado en el directorio de trabajo `backend/Dsw2025Tpi.Api/` con el comando anterior. No se versiona (ver `.gitignore`). Para reiniciar desde cero, cerrá la API y borrá sólo esos archivos.
 - **Migración y seed automáticos**: al arrancar, la API aplica las migraciones pendientes de `AgroFlowDbContext` y corre el seed antes de empezar a escuchar. Si migrar o sembrar falla, el proceso **no arranca** (fail-fast): no hay riesgo de que `/health` responda `200` sin haber inicializado. El seed es idempotente: correrlo de nuevo (reiniciar la API) no duplica datos maestros, asociaciones ni ventanas, y nunca toca turnos ya creados.
 - **Fixtures fijos del seed** (siempre los mismos, para que la demo sea reproducible):
 
@@ -66,7 +62,7 @@ dotnet run
 
 ### Recorrido reproducible
 
-1. `dotnet run` como arriba (backend), luego frontend y n8n con sus URLs base.
+1. Ejecutá el comando de backend anterior, luego iniciá frontend y n8n con sus URLs base.
 2. Verificá `GET http://localhost:5000/health` → `200 {"status":"Healthy"}` antes de probar negocio.
 3. Alta con `carrierPhone=+5493815550101`, `truckPlate=AF123BC`, `farmCode=FINCA-NORTE` → `201 ASIGNADO`.
 4. Repetí con el segundo camión (`+5493815550102` / `AF456DE` / `FINCA-SUR`); como el cupo es 2, ambos turnos pueden caer en la misma ventana.

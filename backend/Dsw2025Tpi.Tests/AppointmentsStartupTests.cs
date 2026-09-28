@@ -6,8 +6,8 @@ namespace Dsw2025Tpi.Tests;
 
 /// <summary>
 /// Un token ya cancelado fuerza una falla determinística en
-/// MigrateAsync/SeedAsync sin corromper ningún archivo: alcanza para probar
-/// el contrato de failFast sin depender del motor real de migraciones.
+/// MigrateAsync/SeedAsync sin corromper ningún archivo: el arranque de la
+/// demo debe propagarla en vez de servir con estado incompleto.
 /// </summary>
 public sealed class AppointmentsStartupTests : IDisposable
 {
@@ -35,24 +35,13 @@ public sealed class AppointmentsStartupTests : IDisposable
     }
 
     [Fact]
-    public async Task FailFast_true_propagates_initialization_failures()
+    public async Task Initialization_propagates_failures()
     {
         await using var db = CreateContext();
         using var cts = new CancellationTokenSource();
         cts.Cancel();
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
-            AppointmentsStartup.InitializeAsync(db, TimeProvider.System, failFast: true, cts.Token));
-    }
-
-    [Fact]
-    public async Task FailFast_false_swallows_initialization_failures()
-    {
-        await using var db = CreateContext();
-        using var cts = new CancellationTokenSource();
-        cts.Cancel();
-
-        // No debe lanzar: conserva el comportamiento heredado de loguear y continuar.
-        await AppointmentsStartup.InitializeAsync(db, TimeProvider.System, failFast: false, cts.Token);
+            AppointmentsStartup.InitializeAsync(db, TimeProvider.System, cts.Token));
     }
 }

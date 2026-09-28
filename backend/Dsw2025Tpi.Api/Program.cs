@@ -45,7 +45,8 @@ public class Program
             }
         });
 
-        builder.Services.AddControllers().AddJsonOptions(opt =>
+        builder.Services.AddControllers(options =>
+            options.Conventions.Add(new LocalDemoAppointmentsConvention(isLocalDemo))).AddJsonOptions(opt =>
         {
             opt.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()); 
 
@@ -137,15 +138,17 @@ public class Program
             options.UseSqlServer(builder.Configuration.GetConnectionString("Dsw2025TpiEntities"));
         });
 
-        // Demo local de turnos (Persona 2): persistencia propia en SQLite,
-        // independiente de SQL Server/LocalDB e Identity.
-        builder.Services.AddSingleton(TimeProvider.System);
-        builder.Services.AddDbContext<AgroFlowDbContext>(options =>
+        // La persistencia SQLite sólo existe en el perfil de demo local.
+        if (isLocalDemo)
         {
-            options.UseSqlite(builder.Configuration.GetConnectionString("AgroFlowDb"));
-        });
-        builder.Services.AddScoped<IAppointmentStore, EfAppointmentStore>();
-        builder.Services.AddScoped<IAppointmentService, AppointmentService>();
+            builder.Services.AddSingleton(TimeProvider.System);
+            builder.Services.AddDbContext<AgroFlowDbContext>(options =>
+            {
+                options.UseSqlite(builder.Configuration.GetConnectionString("AgroFlowDb"));
+            });
+            builder.Services.AddScoped<IAppointmentStore, EfAppointmentStore>();
+            builder.Services.AddScoped<IAppointmentService, AppointmentService>();
+        }
 
         builder.Services.AddSingleton<JwtTokenService>();
         builder.Services.AddAuthorization(options =>
@@ -260,16 +263,14 @@ public class Program
             }
         }
 
-        // Demo local de turnos (Persona 2): migra y siembra la base SQLite
-        // propia, aislada del arranque heredado de arriba. Con LocalDemo=true
-        // una falla aborta el arranque (fail-fast): nunca queda un host
-        // "aparentemente sano" sin haber inicializado.
-        using (var appointmentsScope = app.Services.CreateScope())
+        // Sólo la demo inicializa SQLite; cualquier falla impide escuchar HTTP.
+        if (isLocalDemo)
         {
+            using var appointmentsScope = app.Services.CreateScope();
             var services = appointmentsScope.ServiceProvider;
-            var agroFlowDb = services.GetRequiredService<AgroFlowDbContext>();
-            var timeProvider = services.GetRequiredService<TimeProvider>();
-            await AppointmentsStartup.InitializeAsync(agroFlowDb, timeProvider, failFast: isLocalDemo);
+            await AppointmentsStartup.InitializeAsync(
+                services.GetRequiredService<AgroFlowDbContext>(),
+                services.GetRequiredService<TimeProvider>());
         }
 
         // Configure the HTTP request pipeline.
@@ -294,32 +295,35 @@ public class Program
         // /health según docs/contracts/openapi.yaml: 200 JSON "Healthy" o 503
         // Problem Details "SERVICE_UNAVAILABLE". El /healthcheck heredado de
         // arriba no cumple el contrato (responde texto plano).
-        app.MapGet("/health", async (HttpContext http, AgroFlowDbContext db) =>
+        if (isLocalDemo)
         {
-            var healthy = false;
-            try
+            app.MapGet("/health", async (HttpContext http, AgroFlowDbContext db) =>
             {
-                healthy = await db.Database.CanConnectAsync();
-            }
-            catch
-            {
-                healthy = false;
-            }
+                var healthy = false;
+                try
+                {
+                    healthy = await db.Database.CanConnectAsync();
+                }
+                catch
+                {
+                    healthy = false;
+                }
 
-            if (healthy)
-            {
-                return Results.Json(new { status = "Healthy" }, statusCode: 200, contentType: "application/json");
-            }
+                if (healthy)
+                {
+                    return Results.Json(new { status = "Healthy" }, statusCode: 200, contentType: "application/json");
+                }
 
-            var problem = new AppointmentProblemDetails
-            {
-                Title = "Servicio no disponible",
-                Status = 503,
-                Code = "SERVICE_UNAVAILABLE",
-                TraceId = http.TraceIdentifier
-            };
-            return Results.Json(problem, statusCode: 503, contentType: "application/problem+json");
-        });
+                var problem = new AppointmentProblemDetails
+                {
+                    Title = "Servicio no disponible",
+                    Status = 503,
+                    Code = "SERVICE_UNAVAILABLE",
+                    TraceId = http.TraceIdentifier
+                };
+                return Results.Json(problem, statusCode: 503, contentType: "application/problem+json");
+            });
+        }
 
         app.Run();
     }

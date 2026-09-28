@@ -18,10 +18,8 @@ using Xunit;
 namespace Dsw2025Tpi.Tests;
 
 /// <summary>
-/// Hallazgo #2 de la revisión del PR #61: Appointments debe seguir anónimo
-/// bajo LocalDemo, pero no puede quedar público fuera de ese perfil. No hay
-/// autenticación nueva acá: se reutiliza JwtBearer real con una key que
-/// existe únicamente en este archivo de test.
+/// Appointments existe sólo en LocalDemo. Fuera de él, ni siquiera un JWT
+/// válido del backend heredado debe publicar la ruta de la demo sin identidad.
 /// </summary>
 public sealed class AppointmentsAuthorizationTests
 {
@@ -40,24 +38,30 @@ public sealed class AppointmentsAuthorizationTests
     }
 
     [Fact]
-    public async Task LocalDemo_false_rejects_anonymous_access()
+    public async Task LocalDemo_false_does_not_publish_appointments_for_anonymous_access()
     {
         await using var app = await StartAsync(isLocalDemo: false);
 
         using var response = await app.Client.GetAsync("/api/v1/appointments");
 
-        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
     [Fact]
-    public async Task LocalDemo_false_allows_an_authenticated_caller()
+    public async Task LocalDemo_false_does_not_publish_any_appointment_operation_for_authenticated_access()
     {
         await using var app = await StartAsync(isLocalDemo: false);
         app.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", CreateToken());
 
-        using var response = await app.Client.GetAsync("/api/v1/appointments");
+        var id = Guid.NewGuid();
+        using var list = await app.Client.GetAsync("/api/v1/appointments");
+        using var create = await app.Client.PostAsync("/api/v1/appointments", new StringContent("{}"));
+        using var detail = await app.Client.GetAsync($"/api/v1/appointments/{id}");
+        using var transition = await app.Client.PostAsync(
+            $"/api/v1/appointments/{id}/transitions", new StringContent("{}"));
 
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.All(new[] { list, create, detail, transition },
+            response => Assert.Equal(HttpStatusCode.NotFound, response.StatusCode));
     }
 
     private static string CreateToken()
@@ -80,7 +84,8 @@ public sealed class AppointmentsAuthorizationTests
                 .UseTestServer()
                 .ConfigureServices(services =>
                 {
-                    services.AddControllers()
+                    services.AddControllers(options =>
+                            options.Conventions.Add(new LocalDemoAppointmentsConvention(isLocalDemo)))
                         .AddApplicationPart(typeof(AppointmentsController).Assembly);
                     services.AddSingleton<IAppointmentService>(new FakeAppointmentService());
                     services.AddAuthorization(options =>

@@ -4,11 +4,9 @@ namespace Dsw2025Tpi.Api.Security;
 
 /// <summary>
 /// Política de acceso a `/api/v1/appointments`. No implementa autenticación
-/// nueva: reutiliza el JwtBearer heredado. Con LocalDemo=true no exige nada
-/// (perfil explícitamente sin autenticación); con LocalDemo=false exige un
-/// usuario autenticado, igual que cualquier otro recurso protegido del
-/// backend heredado. Se expone como método estático para que Program.cs y
-/// los tests de ambos perfiles configuren exactamente la misma regla.
+/// nueva: con LocalDemo=true no exige credenciales. Fuera de ese perfil se
+/// deniega incluso si una ruta fuese publicada accidentalmente; el convenio
+/// MVC también elimina el controlador completo.
 /// </summary>
 public static class AppointmentsAuthorizationPolicy
 {
@@ -16,5 +14,5 @@ public static class AppointmentsAuthorizationPolicy
 
     public static void Configure(AuthorizationOptions options, bool isLocalDemo) =>
         options.AddPolicy(Name, policy =>
-            policy.RequireAssertion(ctx => isLocalDemo || (ctx.User.Identity?.IsAuthenticated ?? false)));
+            policy.RequireAssertion(_ => isLocalDemo));
 }
