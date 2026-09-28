@@ -368,3 +368,7 @@ FodyWeavers.xsd
 .env.*
 !.env.example
 Logs/
+
+# SQLite de la demo local de turnos (Persona 2): generado en runtime, no se versiona.
+agroflow-demo.db
+agroflow-demo.db-*

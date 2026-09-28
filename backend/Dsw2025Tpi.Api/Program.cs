@@ -1,6 +1,10 @@
+using Dsw2025Tpi.Api.Contracts.Appointments;
 using Dsw2025Tpi.Api.NewFolder;
+using Dsw2025Tpi.Api.Security;
+using Dsw2025Tpi.Application.Appointments;
 using Dsw2025Tpi.Application.Services;
 using Dsw2025Tpi.Data;
+using Dsw2025Tpi.Data.Appointments;
 using Dsw2025Tpi.Data.Helper;
 using Dsw2025Tpi.Data.Repositories;
 using Dsw2025Tpi.Domain.Entities;
@@ -22,6 +26,12 @@ public class Program
     {
         var builder = WebApplication.CreateBuilder(args);
 
+        // Perfil de demo local de turnos: sin JWT ni seeding heredado de
+        // Identity/Customer. Default false para no cambiar el arranque
+        // heredado fuera de Development; appsettings.Development.json lo
+        // habilita para "dotnet run" en desarrollo.
+        var isLocalDemo = builder.Configuration.GetValue("LocalDemo:Enabled", false);
+
         // Add services to the container.
         builder.Services.AddLogging(config =>
         {
@@ -35,7 +45,8 @@ public class Program
             }
         });
 
-        builder.Services.AddControllers().AddJsonOptions(opt =>
+        builder.Services.AddControllers(options =>
+            options.Conventions.Add(new LocalDemoAppointmentsConvention(isLocalDemo))).AddJsonOptions(opt =>
         {
             opt.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()); 
 
@@ -80,7 +91,7 @@ public class Program
             options.UseSqlServer(builder.Configuration.GetConnectionString("Dsw2025TpiEntities"));
         });
 
-        // --- AQUÍ ESTÁ EL CAMBIO ---
+        // --- AQUï¿½ ESTï¿½ EL CAMBIO ---
         builder.Services.AddIdentity<IdentityUser, IdentityRole>(options =>
         {
             options.Password = new PasswordOptions
@@ -95,28 +106,31 @@ public class Program
         .AddErrorDescriber<SpanishIdentityErrorDescriber>(); 
 
 
-        var jwtConfig = builder.Configuration.GetSection("Jwt");
-        var keyText = jwtConfig["Key"] ?? throw new ArgumentNullException("JWT Key");
-        var key = Encoding.UTF8.GetBytes(keyText);
-
-        builder.Services.AddAuthentication(options =>
+        if (!isLocalDemo)
         {
-            options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-            options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-        })
-            .AddJwtBearer(options =>
+            var jwtConfig = builder.Configuration.GetSection("Jwt");
+            var keyText = jwtConfig["Key"] ?? throw new ArgumentNullException("JWT Key");
+            var key = Encoding.UTF8.GetBytes(keyText);
+
+            builder.Services.AddAuthentication(options =>
             {
-                options.TokenValidationParameters = new TokenValidationParameters
+                options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+                options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+            })
+                .AddJwtBearer(options =>
                 {
-                    ValidateIssuer = true,
-                    ValidateAudience = true,
-                    ValidateLifetime = true,
-                    ValidateIssuerSigningKey = true,
-                    ValidIssuer = jwtConfig["Issuer"],
-                    ValidAudience = jwtConfig["Audience"],
-                    IssuerSigningKey = new SymmetricSecurityKey(key)
-                };
-            });
+                    options.TokenValidationParameters = new TokenValidationParameters
+                    {
+                        ValidateIssuer = true,
+                        ValidateAudience = true,
+                        ValidateLifetime = true,
+                        ValidateIssuerSigningKey = true,
+                        ValidIssuer = jwtConfig["Issuer"],
+                        ValidAudience = jwtConfig["Audience"],
+                        IssuerSigningKey = new SymmetricSecurityKey(key)
+                    };
+                });
+        }
 
 
         builder.Services.AddDbContext<Dsw2025TpiContext>(options =>
@@ -124,8 +138,21 @@ public class Program
             options.UseSqlServer(builder.Configuration.GetConnectionString("Dsw2025TpiEntities"));
         });
 
+        // La persistencia SQLite sÃ³lo existe en el perfil de demo local.
+        if (isLocalDemo)
+        {
+            builder.Services.AddSingleton(TimeProvider.System);
+            builder.Services.AddDbContext<AgroFlowDbContext>(options =>
+            {
+                options.UseSqlite(builder.Configuration.GetConnectionString("AgroFlowDb"));
+            });
+            builder.Services.AddScoped<IAppointmentStore, EfAppointmentStore>();
+            builder.Services.AddScoped<IAppointmentService, AppointmentService>();
+        }
+
         builder.Services.AddSingleton<JwtTokenService>();
-        builder.Services.AddAuthorization();
+        builder.Services.AddAuthorization(options =>
+            AppointmentsAuthorizationPolicy.Configure(options, isLocalDemo));
 
         builder.Services.AddScoped<IRepository, EfRepository>();
         builder.Services.AddScoped<ProductsManagementService>();
@@ -146,6 +173,7 @@ public class Program
         var app = builder.Build();
 
         //para crear los roles y cargar los administradores desde el archivo JSON
+        if (!isLocalDemo)
         using (var scope = app.Services.CreateScope())
         {
             var services = scope.ServiceProvider;
@@ -234,6 +262,17 @@ public class Program
                 Console.WriteLine(ex.ToString());
             }
         }
+
+        // SÃ³lo la demo inicializa SQLite; cualquier falla impide escuchar HTTP.
+        if (isLocalDemo)
+        {
+            using var appointmentsScope = app.Services.CreateScope();
+            var services = appointmentsScope.ServiceProvider;
+            await AppointmentsStartup.InitializeAsync(
+                services.GetRequiredService<AgroFlowDbContext>(),
+                services.GetRequiredService<TimeProvider>());
+        }
+
         // Configure the HTTP request pipeline.
         if (app.Environment.IsDevelopment())
         {
@@ -252,6 +291,39 @@ public class Program
         app.MapControllers();
 
         app.MapHealthChecks("/healthcheck");
+
+        // /health segÃºn docs/contracts/openapi.yaml: 200 JSON "Healthy" o 503
+        // Problem Details "SERVICE_UNAVAILABLE". El /healthcheck heredado de
+        // arriba no cumple el contrato (responde texto plano).
+        if (isLocalDemo)
+        {
+            app.MapGet("/health", async (HttpContext http, AgroFlowDbContext db) =>
+            {
+                var healthy = false;
+                try
+                {
+                    healthy = await db.Database.CanConnectAsync();
+                }
+                catch
+                {
+                    healthy = false;
+                }
+
+                if (healthy)
+                {
+                    return Results.Json(new { status = "Healthy" }, statusCode: 200, contentType: "application/json");
+                }
+
+                var problem = new AppointmentProblemDetails
+                {
+                    Title = "Servicio no disponible",
+                    Status = 503,
+                    Code = "SERVICE_UNAVAILABLE",
+                    TraceId = http.TraceIdentifier
+                };
+                return Results.Json(problem, statusCode: 503, contentType: "application/problem+json");
+            });
+        }
 
         app.Run();
     }
