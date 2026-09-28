@@ -171,19 +171,24 @@ export function useColaTurnos() {
       setEnCurso(id);
       try {
         const actualizado = await accion();
+        // Lo confirmado por la API es lo más reciente: cualquier lectura de
+        // detalle iniciada antes de la mutación queda invalidada. La de la
+        // lista la invalida cargar() en el finally.
+        ultimoDetalle.current++;
         setResultado((prev) =>
           prev && { ...prev, turnos: prev.turnos.map((t) => (t.id === id ? actualizado : t)) }
         );
-        setDetalle((prev) => (prev?.id === id ? actualizado : prev));
+        // Aunque el detalle todavía no hubiera cargado (null).
+        if (seleccionado.current === id) setDetalle(actualizado);
       } catch (e) {
         setErrorAccion(mensaje(e, "No se pudo actualizar el turno."));
-        if (detalleId) cargarDetalle(detalleId);
+        if (seleccionado.current) cargarDetalle(seleccionado.current);
       } finally {
         setEnCurso(null);
         cargar();
       }
     },
-    [cargar, cargarDetalle, detalleId]
+    [cargar, cargarDetalle]
   );
 
   const cambiarEstado = useCallback(

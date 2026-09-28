@@ -2,7 +2,12 @@ import { act, cleanup, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Turno } from "../../domain/entities/Turno";
 
-const { obtenerTurnos, obtenerDetalle } = vi.hoisted(() => ({ obtenerTurnos: vi.fn(), obtenerDetalle: vi.fn() }));
+const { obtenerTurnos, obtenerDetalle, cambiarEstado, cancelar } = vi.hoisted(() => ({
+  obtenerTurnos: vi.fn(),
+  obtenerDetalle: vi.fn(),
+  cambiarEstado: vi.fn(),
+  cancelar: vi.fn(),
+}));
 
 vi.mock("../../composition/container", () => ({
   container: {
@@ -12,8 +17,8 @@ vi.mock("../../composition/container", () => ({
       obtenerTurnosDelDia: { execute: obtenerTurnos },
       obtenerDetalleTurno: { execute: obtenerDetalle },
       crearTurnoManual: { execute: vi.fn() },
-      cambiarEstadoTurno: { execute: vi.fn() },
-      cancelarTurno: { execute: vi.fn() },
+      cambiarEstadoTurno: { execute: cambiarEstado },
+      cancelarTurno: { execute: cancelar },
       reasignarHorarioTurno: { execute: vi.fn() },
     },
   },
@@ -206,5 +211,89 @@ describe("useColaTurnos con respuestas de detalle fuera de orden", () => {
 
     expect(result.current.detalleId).toBeNull();
     expect(result.current.detalle).toBeNull();
+  });
+});
+
+describe("useColaTurnos: lecturas de detalle en vuelo durante una mutación", () => {
+  const turnoA: Turno = { ...turno, id: "A", estado: "pendiente" };
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    obtenerTurnos.mockReset();
+    obtenerTurnos.mockResolvedValue([turnoA]);
+    obtenerDetalle.mockReset();
+    cambiarEstado.mockReset();
+    cancelar.mockReset();
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.useRealTimers();
+  });
+
+  /** Abre A, deja cargado el detalle y un GET de polling pendiente. */
+  async function abrirConPollingPendiente() {
+    const pollingViejo = diferida<Turno>();
+    obtenerDetalle.mockResolvedValueOnce(turnoA).mockReturnValueOnce(pollingViejo.promesa);
+    const hook = renderHook(() => useColaTurnos());
+    await esperar();
+    act(() => hook.result.current.abrirDetalle("A"));
+    await esperar();
+    await esperar(INTERVALO_POLLING_MS);
+    expect(obtenerDetalle).toHaveBeenCalledTimes(2);
+    return { ...hook, pollingViejo };
+  }
+
+  it("un GET iniciado antes de la transición no revierte el estado confirmado", async () => {
+    const { result, pollingViejo } = await abrirConPollingPendiente();
+    cambiarEstado.mockResolvedValueOnce({ ...turnoA, estado: "viaje" });
+
+    await act(() => result.current.cambiarEstado("A", "viaje"));
+    expect(result.current.detalle?.estado).toBe("viaje");
+
+    await act(async () => pollingViejo.resolver(turnoA));
+    expect(result.current.detalle?.estado).toBe("viaje");
+  });
+
+  it("un GET iniciado antes de la cancelación no revierte el estado confirmado", async () => {
+    const { result, pollingViejo } = await abrirConPollingPendiente();
+    cancelar.mockResolvedValueOnce({ ...turnoA, estado: "cancelado" });
+
+    await act(() => result.current.cancelar("A"));
+    await act(async () => pollingViejo.resolver(turnoA));
+
+    expect(result.current.detalle?.estado).toBe("cancelado");
+  });
+
+  it("aplica el turno confirmado aunque el detalle todavía no hubiera cargado", async () => {
+    const inicial = diferida<Turno>();
+    obtenerDetalle.mockReturnValueOnce(inicial.promesa);
+    cambiarEstado.mockResolvedValueOnce({ ...turnoA, estado: "viaje" });
+
+    const { result } = renderHook(() => useColaTurnos());
+    await esperar();
+    act(() => result.current.abrirDetalle("A"));
+    expect(result.current.detalle).toBeNull();
+
+    await act(() => result.current.cambiarEstado("A", "viaje"));
+    expect(result.current.detalle?.estado).toBe("viaje");
+
+    await act(async () => inicial.resolver(turnoA));
+    expect(result.current.detalle?.estado).toBe("viaje");
+  });
+
+  it("la cola también refleja el estado confirmado y no el de una lectura anterior", async () => {
+    const listaVieja = diferida<Turno[]>();
+    const { result } = renderHook(() => useColaTurnos());
+    await esperar();
+    obtenerTurnos.mockReturnValueOnce(listaVieja.promesa).mockResolvedValue([{ ...turnoA, estado: "viaje" }]);
+    await esperar(INTERVALO_POLLING_MS);
+    cambiarEstado.mockResolvedValueOnce({ ...turnoA, estado: "viaje" });
+
+    await act(() => result.current.cambiarEstado("A", "viaje"));
+    await act(async () => listaVieja.resolver([turnoA]));
+    await esperar();
+
+    expect(result.current.turnos[0].estado).toBe("viaje");
   });
 });

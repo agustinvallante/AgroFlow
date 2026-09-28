@@ -88,9 +88,23 @@ export class HttpTurnoRepository implements TurnoRepository {
     throw new Error("La API local no expone el estado de la molienda.");
   }
 
+  /**
+   * Versión por turno de lo guardado en `detalles`. Un GET sólo actualiza la
+   * caché si nada más reciente (otro GET o una transición confirmada) la
+   * escribió mientras estaba en vuelo.
+   */
+  private readonly versiones = new Map<string, number>();
+
+  private nuevaVersion(id: string): number {
+    const version = (this.versiones.get(id) ?? 0) + 1;
+    this.versiones.set(id, version);
+    return version;
+  }
+
   private async pedirDetalle(id: string): Promise<AppointmentDto> {
+    const version = this.nuevaVersion(id);
     const detalle = await this.api.get<AppointmentDto>(`${BASE}/${encodeURIComponent(id)}`);
-    this.detalles.set(id, detalle);
+    if (this.versiones.get(id) === version) this.detalles.set(id, detalle);
     return detalle;
   }
 
@@ -100,6 +114,8 @@ export class HttpTurnoRepository implements TurnoRepository {
       `${BASE}/${encodeURIComponent(id)}/transitions`,
       body
     );
+    // Lo confirmado por la API invalida cualquier GET todavía en vuelo.
+    this.nuevaVersion(id);
     this.detalles.set(id, actualizado);
     return mapAppointment(actualizado);
   }
