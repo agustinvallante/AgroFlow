@@ -1,4 +1,22 @@
-# AgroFlow — Panel del Ingenio (frontend)
+# Frontend de AgroFlow
+
+Aplicación web de AgroFlow, incorporada desde el prototipo
+[AgroFlow-Dashboard](https://github.com/GabrielBurieque/AgroFlow-Dashboard).
+
+Antes de implementar una pantalla o flujo, consultar:
+
+- [especificaciones vigentes](../openspec/specs/);
+- [documentación específica del frontend](../docs/frontend/README.md);
+- [contratos compartidos](../docs/contracts/README.md);
+- [catálogo de casos de uso](../docs/product/use-case-catalog.md).
+
+El frontend no debe recrear reglas de asignación, prioridad o transiciones de
+estado. Esas decisiones pertenecen al backend y deben consumirse mediante
+contratos explícitos.
+
+---
+
+## Panel del Ingenio
 
 Prototipo de frontend para el panel de administración de AgroFlow, construido
 con **React + TypeScript + Vite** y organizado en **Clean Architecture**.
