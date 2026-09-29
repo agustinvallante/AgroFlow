@@ -9,7 +9,7 @@ El código permanece en un monorepo con `frontend/` y `backend/`. OpenSpec, cont
 
 GitHub Projects son tableros de planificación, no repositorios de código. Las decisiones y el contrato compartidos no se copian como fuentes normativas separadas para cada tablero. Una necesidad transversal puede descomponerse en issues por área y enlazarse, manteniendo una sola especificación por capacidad.
 
-Al preparar esta guía, el Project Backend contiene **38 issues `B00`–`B07` y `B10`–`B39`, todas en Backlog**. Son tareas preparadas para refinar y tomar; no indican endpoints implementados. El Project Frontend aún no tiene issues de implementación planificadas. La [hoja de ruta](../planning/implementation-roadmap.md) describe las dependencias lógicas entre las del backend.
+El backlog backend conserva los prefijos `B00`–`B07` y `B10`–`B39`; el frontend usa `F01`–`F09` sobre la base React/Vite ya integrada. El estado vivo, las personas asignadas y las prioridades se consultan en cada Project. La [hoja de ruta](../planning/implementation-roadmap.md) y la [replanificación tras la demo](../planning/mvp-replan-2026-09-29.md) explican qué avances se reutilizan y qué falta para el MVP.
 
 ## Estados y metadatos
 
@@ -23,14 +23,14 @@ No se debe asumir que Área, Capacidad, Caso de uso, Prioridad o Entrega existan
 
 ## De una necesidad a código
 
-1. Crear o tomar un issue del área correspondiente con la plantilla de funcionalidad o error. Las `Bxx` existentes permanecen en Backlog hasta que el equipo las refine y priorice.
+1. Crear o tomar un issue del área correspondiente con la plantilla de funcionalidad o error. Una tarea pasa de `Backlog` a `To do` sólo cuando el equipo la refina y prioriza, aunque parte de su código ya exista por la demo.
 2. Vincular capacidad, caso de uso y reglas `RN-*`.
 3. Confirmar que ninguna decisión pendiente bloquee el resultado.
 4. Para comportamiento nuevo o modificado, crear `openspec/changes/<id>/`.
-5. Revisar propuesta, escenarios, contrato OpenAPI y tareas con todas las áreas afectadas. Las rutas en títulos de issues backend son propuestas, no contrato aprobado, hasta cerrar `B00`.
+5. Revisar propuesta, escenarios, contrato OpenAPI y tareas con todas las áreas afectadas. Las rutas históricas de issues backend no prevalecen sobre las cuatro operaciones de turnos ya publicadas para la demo; `B00` define cómo se amplía el contrato para el MVP.
 6. Crear una rama corta y desarrollar la porción asignada.
 7. Abrir un pull request y completar la plantilla.
-8. Integrar solo cuando cumpla la definición de terminado.
+8. Integrar solo cuando cumpla la definición de terminado. Una PR parcial de demo no cierra por sí sola la issue del MVP: se verifica el delta expresado en la issue.
 
 ## División de tareas sin duplicar requisitos
 

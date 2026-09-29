@@ -2,7 +2,7 @@
 
 Base técnica en .NET 8 reutilizada de [ICS2026-backend](https://github.com/agustinvallante/ICS2026-backend).
 
-La solución actual aporta una arquitectura por capas, Entity Framework Core, SQL Server, ASP.NET Core Identity, autenticación JWT, Swagger, CORS, health checks y manejo centralizado de errores. Los modelos de comercio electrónico (`Product`, `Order`, `Customer`) son temporales: servirán como referencia de implementación, pero deberán reemplazarse por el dominio de AgroFlow.
+La solución heredada aporta una arquitectura por capas, Entity Framework Core, SQL Server, ASP.NET Core Identity, autenticación JWT, Swagger, CORS, health checks y manejo centralizado de errores. Los modelos de comercio electrónico (`Product`, `Order`, `Customer`) son temporales y deberán retirarse. La demo incorporó otra porción: entidades de AgroFlow, persistencia SQLite/seed y API de turnos activadas sólo con `LocalDemo:Enabled`. La [ADR-006](../docs/architecture/decisions/ADR-006-sqlite-para-persistencia-del-mvp.md) elige SQLite para el MVP, pero no vuelve seguro al perfil demo ni afirma que WAL ya funcione. La [replanificación tras la demo](../docs/planning/mvp-replan-2026-09-29.md) especifica las brechas.
 
 Antes de modificar comportamiento, consultar:
 

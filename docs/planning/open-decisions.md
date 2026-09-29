@@ -1,6 +1,6 @@
 # Registro de decisiones del MVP
 
-Este registro distingue los acuerdos ya tomados de los detalles que todavía impiden cerrar un contrato o escenario verificable. Una respuesta parcial **no** autoriza a completar el resto por suposición. Las decisiones acordadas el 2026-09-25 se fundamentan en [ADR-004](../architecture/decisions/ADR-004-politicas-operativas-del-mvp.md) y deben reflejarse en las capacidades OpenSpec afectadas.
+Este registro distingue los acuerdos ya tomados de los detalles que todavía impiden cerrar un contrato o escenario verificable. Una respuesta parcial **no** autoriza a completar el resto por suposición. Las decisiones operativas acordadas el 2026-09-25 se fundamentan en [ADR-004](../architecture/decisions/ADR-004-politicas-operativas-del-mvp.md) y deben reflejarse en las capacidades OpenSpec afectadas. La [ADR-005](../architecture/decisions/ADR-005-continuidad-react-vite-para-el-mvp.md) cerró la continuidad de React/Vite; no es una decisión abierta.
 
 ## Decisiones surgidas del relevamiento
 
@@ -26,6 +26,7 @@ La redacción original de `RN-016` contemplaba una ventana solicitada. Se conser
 | OD-011 | Operación y calidad de servicio | Definir observabilidad, copias de seguridad, recuperación, tratamiento de datos personales y cómo se medirá la disponibilidad. | Política mínima para la entrega académica y objetivos productivos posteriores. | Pendiente |
 | OD-012 | Indicadores y cola del dashboard | La cola visual del MVP **incluye franjas vacías y cupos restantes**, calculados con datos de la API para el ingenio autorizado. No se exige editar duración, cupo o calendario desde Configuración. | Fórmula de cada indicador, fecha operativa y zona horaria, horizonte y formato de las franjas, e intervalo de actualización periódica. | Parcialmente resuelta |
 | OD-013 | Gestión de datos maestros | Transportistas, camiones y fincas tendrán **listado, alta, edición e inhabilitación** en el MVP; no se requiere eliminación física. Se aplican los permisos parciales de `OD-007`. | Campos editables y sus validaciones, gestión de asociaciones transportista-camión y restricciones adicionales por historial o turnos activos. | Parcialmente resuelta |
+| OD-014 | Persistencia del perfil MVP | **SQLite** es el motor elegido para el MVP académico en un solo host, según [ADR-006](../architecture/decisions/ADR-006-sqlite-para-persistencia-del-mvp.md). WAL se evalúa mediante pruebas de concurrencia; el diario tradicional sigue siendo alternativa si WAL no aporta o no es apto. | Implementar y verificar perfil MVP, migraciones/seed por ingenio, modo de diario y tiempos de espera, respaldo/restauración y transición desde la demo. No afirmar WAL operativo ni `G11` cumplida antes de evidenciarlo. | Motor resuelto; diseño operativo y evidencia pendientes |
 
 ## Cómo cerrar un detalle pendiente
 
