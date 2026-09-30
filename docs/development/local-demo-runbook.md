@@ -43,12 +43,12 @@ El navegador continúa usando `http://localhost:5000`; no debe recibir `host.doc
 Desde un clon limpio, sin instalar SQL Server/LocalDB ni configurar JWT:
 
 ```bash
-cd backend/Dsw2025Tpi.Api
+cd backend/AgroFlow.Api
 dotnet run --launch-profile http --urls http://localhost:5000
 ```
 
-- **Perfil y puerto**: `--launch-profile http` usa `Properties/launchSettings.json`, que fija `ASPNETCORE_ENVIRONMENT=Development`; `appsettings.Development.json` trae `LocalDemo:Enabled=true`. `--urls` sobrescribe el puerto heredado `5142` y deja la API en `5000`. El flag `LocalDemo:Enabled` es lo que activa los endpoints de turnos sin identidad; cuando es `false`, esas rutas y `/health` de la demo no se publican y SQLite no se inicializa. El backend heredado conserva `/healthcheck` y sus propios requisitos de SQL Server/JWT.
-- **Persistencia**: SQLite embebido, un único archivo `agroflow-demo.db` (+ `-wal`/`-shm` en modo WAL) creado en el directorio de trabajo `backend/Dsw2025Tpi.Api/` con el comando anterior. No se versiona (ver `.gitignore`). Para reiniciar desde cero, cerrá la API y borrá sólo esos archivos.
+- **Perfil y puerto**: `--launch-profile http` usa `Properties/launchSettings.json`, que fija `ASPNETCORE_ENVIRONMENT=Development`; `appsettings.Development.json` trae `LocalDemo:Enabled=true`. `--urls` sobrescribe el puerto predeterminado `5142` y deja la API en `5000`. El flag `LocalDemo:Enabled` activa los endpoints de turnos sin identidad; cuando es `false`, esas rutas y `/health` de la demo no se publican y SQLite no se inicializa. Identity/JWT es sólo andamiaje externo a la demo, pendiente de B03; `/healthcheck` sigue disponible.
+- **Persistencia**: SQLite embebido, un único archivo `agroflow-demo.db` (+ `-wal`/`-shm` si se habilita WAL) creado en el directorio de trabajo `backend/AgroFlow.Api/` con el comando anterior. No se versiona (ver `.gitignore`). Para reiniciar desde cero, cerrá la API y borrá sólo esos archivos. WAL no es un requisito predeterminado de la demo: se habilitará y verificará sólo si el perfil de concurrencia del MVP lo justifica.
 - **Migración y seed automáticos**: al arrancar, la API aplica las migraciones pendientes de `AgroFlowDbContext` y corre el seed antes de empezar a escuchar. Si migrar o sembrar falla, el proceso **no arranca** (fail-fast): no hay riesgo de que `/health` responda `200` sin haber inicializado. El seed es idempotente: correrlo de nuevo (reiniciar la API) no duplica datos maestros, asociaciones ni ventanas, y nunca toca turnos ya creados.
 - **Fixtures fijos del seed** (siempre los mismos, para que la demo sea reproducible):
 

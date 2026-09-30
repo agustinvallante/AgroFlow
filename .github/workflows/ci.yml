@@ -62,33 +62,24 @@ jobs:
           dotnet-version: "8.0.x"
 
       - name: Restore
-        run: dotnet restore backend/Dsw2025Tpi.sln
+        run: dotnet restore backend/AgroFlow.sln
 
       - name: Build
-        run: dotnet build backend/Dsw2025Tpi.sln --configuration Release --no-restore
+        run: dotnet build backend/AgroFlow.sln --configuration Release --no-restore
 
-      - name: Detect backend test projects
-        id: backend-tests
-        shell: bash
-        run: |
-          if find backend -type f \( -name '*Test.csproj' -o -name '*Tests.csproj' \) -print -quit | grep -q .; then
-            echo "found=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "found=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::El backend compila, pero todavía no existen proyectos de pruebas automatizadas."
-          fi
+      - name: Require backend test project
+        run: test -f backend/AgroFlow.Tests/AgroFlow.Tests.csproj
 
       - name: Run backend tests
-        if: steps.backend-tests.outputs.found == 'true'
         run: >-
-          dotnet test backend/Dsw2025Tpi.sln
+          dotnet test backend/AgroFlow.sln
           --configuration Release
           --no-build
           --no-restore
           --logger "trx;LogFileName=backend-tests.trx"
 
       - name: Upload backend test results
-        if: always() && steps.backend-tests.outputs.found == 'true'
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: backend-test-results
@@ -99,7 +90,7 @@ jobs:
       - name: Publish backend delivery artifact
         if: github.event_name == 'push'
         run: >-
-          dotnet publish backend/Dsw2025Tpi.Api/Dsw2025Tpi.Api.csproj
+          dotnet publish backend/AgroFlow.Api/AgroFlow.Api.csproj
           --configuration Release
           --no-build
           --no-restore

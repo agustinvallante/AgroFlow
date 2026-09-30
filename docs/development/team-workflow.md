@@ -9,7 +9,7 @@ El código permanece en un monorepo con `frontend/` y `backend/`. OpenSpec, cont
 
 GitHub Projects son tableros de planificación, no repositorios de código. Las decisiones y el contrato compartidos no se copian como fuentes normativas separadas para cada tablero. Una necesidad transversal puede descomponerse en issues por área y enlazarse, manteniendo una sola especificación por capacidad.
 
-Al preparar esta guía, el Project Backend contiene **38 issues `B00`–`B07` y `B10`–`B39`, todas en Backlog**. Son tareas preparadas para refinar y tomar; no indican endpoints implementados. El Project Frontend aún no tiene issues de implementación planificadas. La [hoja de ruta](../planning/implementation-roadmap.md) describe las dependencias lógicas entre las del backend.
+Los tableros contienen issues de implementación, pero el estado de cada una cambia con el trabajo del equipo. El Project Backend incluye `B00`–`B07` y `B10`–`B39`; el frontend también tiene tareas planificadas. Un issue en Backlog es una propuesta a refinar, no evidencia de que el endpoint exista ni autorización para resolver decisiones pendientes. La [hoja de ruta](../planning/implementation-roadmap.md) describe las dependencias lógicas entre las del backend.
 
 ## Estados y metadatos
 
@@ -23,7 +23,7 @@ No se debe asumir que Área, Capacidad, Caso de uso, Prioridad o Entrega existan
 
 ## De una necesidad a código
 
-1. Crear o tomar un issue del área correspondiente con la plantilla de funcionalidad o error. Las `Bxx` existentes permanecen en Backlog hasta que el equipo las refine y priorice.
+1. Crear o tomar un issue del área correspondiente con la plantilla de funcionalidad o error. Antes de delegarlo a un agente sin contexto de esta conversación, comprobar la [guía de preparación autónoma](issue-readiness.md).
 2. Vincular capacidad, caso de uso y reglas `RN-*`.
 3. Confirmar que ninguna decisión pendiente bloquee el resultado.
 4. Para comportamiento nuevo o modificado, crear `openspec/changes/<id>/`.

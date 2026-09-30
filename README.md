@@ -47,8 +47,8 @@ Los documentos académicos originales son fuentes históricas. Una vez incorpora
 ## Estado técnico
 
 - El backend parte de una copia independiente de [ICS2026-backend](https://github.com/agustinvallante/ICS2026-backend), commit `dc40f7cfa515a1425f8709c73ae917e9c004266a`.
-- El frontend se integrará desde [AgroFlow-Dashboard](https://github.com/GabrielBurieque/AgroFlow-Dashboard) una vez estabilizado el contrato inicial.
-- El backend heredado todavía conserva nombres y módulos del e-commerce original; no representa aún el dominio objetivo de AgroFlow.
+- El frontend React/Vite se integró desde [AgroFlow-Dashboard](https://github.com/GabrielBurieque/AgroFlow-Dashboard) para la demo local y debe evolucionar para el MVP.
+- B01 retira los módulos de comercio electrónico y renombra la solución .NET; el modelo de turnos aún debe evolucionar del recorrido de demo al MVP. Identity/JWT sigue siendo andamiaje, no la autenticación MVP terminada.
 
 ## Seguridad
 
