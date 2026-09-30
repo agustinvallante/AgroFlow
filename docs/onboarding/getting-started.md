@@ -18,26 +18,27 @@ Requisitos actuales:
 
 - Git;
 - .NET SDK 8 para el backend;
-- Node.js y el administrador de paquetes que se adopte al importar el frontend;
-- una configuración local de base de datos según la guía futura del backend.
+- Node.js 22 y npm para el frontend actual;
+- permiso de escritura para la base SQLite de la demo local.
 
 Las credenciales, claves JWT y cadenas de conexión no se guardan en Git. Deben suministrarse mediante variables de entorno, secretos de usuario o un almacén aprobado.
 
 ## 3. Verificar el estado actual
 
-El backend heredado puede comprobarse desde la raíz con:
+El backend puede comprobarse desde la raíz con:
 
 ```powershell
-dotnet restore backend/Dsw2025Tpi.sln
-dotnet build backend/Dsw2025Tpi.sln --configuration Release
+dotnet restore backend/AgroFlow.sln
+dotnet build backend/AgroFlow.sln --configuration Release
+dotnet test backend/AgroFlow.sln --configuration Release
 ```
 
-El frontend todavía es un espacio preparado para integrar el prototipo. Sus comandos definitivos se documentarán en `docs/frontend/` al incorporar el código.
+El frontend React/Vite ya está integrado; sus comandos se documentan en `docs/frontend/` y `frontend/package.json`.
 
 Las especificaciones se validan con:
 
 ```powershell
-openspec validate --all --strict --no-interactive
+npx --yes @fission-ai/openspec@1.13.1 validate --all --strict --no-interactive
 ```
 
 ## 4. Elegir una tarea
