@@ -24,6 +24,14 @@ La API de la demo usa un archivo SQLite sólo cuando `LocalDemo:Enabled`; el có
 - Revisar las [limitaciones EF Core SQLite](https://learn.microsoft.com/en-us/ef/core/providers/sqlite/limitations) que afectan migraciones y traducción de tipos, especialmente fechas con zona, decimales y operaciones de esquema. Conservar pruebas de consultas/filtros sobre el proveedor real.
 - Ejecutar respaldo y restauración mientras la aplicación haya procesado turnos, y demostrar que el estado persistido coincide después de reiniciar (`G11`, `G12`).
 
+## Si más adelante se cambia a SQL Server Express
+
+El cambio de modo de diario SQLite (tradicional ↔ WAL) no es una migración de motor ni de modelo. En cambio, pasar de SQLite a SQL Server Express **no consiste en sustituir la cadena de conexión**. EF Core requiere [migraciones separadas por proveedor](https://learn.microsoft.com/en-us/ef/core/managing-schemas/migrations/providers); no se aplican las migraciones SQLite actuales directamente sobre SQL Server.
+
+El camino de migración será: (1) elegir la versión y el ambiente de SQL Server; (2) configurar el proveedor y generar un conjunto propio de migraciones AgroFlow; (3) adaptar y probar el SQL y manejo de errores específicos de SQLite; (4) ejecutar pruebas de índices, restricciones, consultas, fechas, capacidad y concurrencia sobre SQL Server; (5) si ya existen datos que conservar, exportarlos, transformarlos e importarlos con verificación de recuentos e identificadores; y (6) ensayar corte, respaldo y reversión antes de cambiar el ambiente activo. El contrato HTTP y las reglas del dominio no deberían cambiar por el motor.
+
+En el corte de esta ADR, `AgroFlowDbContext` y sus migraciones son SQLite. El SQL Server presente en la solución sirve al dominio e-commerce heredado, no ofrece un esquema AgroFlow listo para usar. Hay detalles concretos que revisar al migrar: `datetime(StartAt)` en una migración, la captura de `SqliteException` para conflictos y las consultas de fecha adaptadas a limitaciones del proveedor. Para mantener acotado ese trabajo, se aísla el código dependiente del proveedor y se prueban las reglas contra la base elegida, **sin mantener dos implementaciones completas durante el MVP**. La dificultad será moderada mientras los datos sean ficticios y mayor si deben conservarse datos reales.
+
 ## Consecuencias
 
 SQLite reduce requisitos de infraestructura para el MVP académico, pero fija un límite operativo claro: archivo local, un escritor y escala de un host. El código SQL Server heredado no pasa a ser la persistencia objetivo por coexistir en la solución; se retira o aísla según `B01`/`B02`. El motor elegido no sustituye autenticación, segregación lógica ni auditoría. Cualquier expansión a varios hosts, un servicio central o una carga de escritura incompatible con SQLite requiere una ADR nueva, migración ensayada y actualización de guías/pruebas.
