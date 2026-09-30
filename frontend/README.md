@@ -92,12 +92,15 @@ presentation  →  application  →  domain  ←  infrastructure
   a través de `composition/container.ts`; no sabe si los datos vienen de un
   mock o de una API real.
 
-## Integración para la demo local
+## Integración existente de la demo local
 
 La integración mínima con AgroFlow API está definida en
-[`docs/LOCAL_DEMO_INTEGRATION.md`](docs/LOCAL_DEMO_INTEGRATION.md). Para el lunes
-se conserva React/Vite y se conecta únicamente el flujo de turnos; autenticación,
-CRUD de datos maestros, interrupciones, mapa, reportes y despliegue quedan fuera.
+[`docs/LOCAL_DEMO_INTEGRATION.md`](docs/LOCAL_DEMO_INTEGRATION.md). Ese perfil
+conecta únicamente el flujo de turnos, sin autenticación, CRUD de datos maestros
+ni interrupciones. Estas exclusiones no reducen el [MVP](../docs/product/mvp-acceptance.md):
+la [ADR-005](../docs/architecture/decisions/ADR-005-continuidad-react-vite-para-el-mvp.md)
+mantiene React/Vite para ampliar gradualmente la aplicación. El
+[replanificación tras la demo](../docs/planning/mvp-replan-2026-09-29.md) enumera lo pendiente.
 
 ### Configuración
 
