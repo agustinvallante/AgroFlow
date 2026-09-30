@@ -25,3 +25,9 @@ La [ADR-004](../architecture/decisions/ADR-004-politicas-operativas-del-mvp.md) 
 La [ADR-005](../architecture/decisions/ADR-005-continuidad-react-vite-para-el-mvp.md) mantiene React/Vite. El backend es la única fuente operativa de reglas; frontend y n8n no calculan ventanas, prioridad, cupos, permisos o transiciones.
 
 Completar una lista de issues backend no equivale a entregar el MVP. Para cada comportamiento nuevo o modificado se sigue el flujo de [ADR-002](../architecture/decisions/ADR-002-jerarquia-documental-y-openspec.md): cambio OpenSpec, contrato, implementación, pruebas y documentación coherentes. El candidato final cumple todas las puertas obligatorias de la [guía](../product/mvp-acceptance.md).
+
+## Después de la presentación académica
+
+El MVP se presenta con SQLite y datos ficticios o simulados. La [ADR-006](../architecture/decisions/ADR-006-sqlite-para-persistencia-del-mvp.md) establece PostgreSQL como destino para el primer cliente real: migrar y validar antes de comenzar su operación. Esta etapa no agrega PostgreSQL a las issues del MVP ni exige mantener ambos motores. Su plan incluirá proveedor/migraciones de AgroFlow e Identity, UTC y zona del ingenio, restricciones/errores, pruebas reales de concurrencia y recorridos integrados, configuración y respaldo/restauración.
+
+La reserva orientativa es de 2–3 semanas calendario, basada en 5–10 días hábiles de backend dedicado con apoyo de QA, si sólo hay datos simulados recreables. No es un plazo garantizado: debe recalcularse con el MVP final y el entorno del cliente. Si ya hay datos operativos que conservar, hace falta un plan específico de transferencia, corte y reversión, no sólo un cambio de proveedor. Los supuestos y el rango alternativo se mantienen en ADR-006, sin congelarlos en el backlog actual.
