@@ -11,6 +11,8 @@ GitHub Projects son tableros de planificación, no repositorios de código. Las 
 
 El backlog backend conserva los prefijos `B00`–`B07` y `B10`–`B39`; el frontend usa `F01`–`F09` sobre la base React/Vite ya integrada. El estado vivo, las personas asignadas y las prioridades se consultan en cada Project. La [hoja de ruta](../planning/implementation-roadmap.md) y la [replanificación tras la demo](../planning/mvp-replan-2026-09-29.md) explican qué avances se reutilizan y qué falta para el MVP.
 
+Un issue en Backlog es una propuesta a refinar, no evidencia de que el endpoint exista ni autorización para resolver decisiones pendientes.
+
 ## Estados y metadatos
 
 | Mecanismo | Uso |
@@ -23,7 +25,7 @@ No se debe asumir que Área, Capacidad, Caso de uso, Prioridad o Entrega existan
 
 ## De una necesidad a código
 
-1. Crear o tomar un issue del área correspondiente con la plantilla de funcionalidad o error. Una tarea pasa de `Backlog` a `To do` sólo cuando el equipo la refina y prioriza, aunque parte de su código ya exista por la demo.
+1. Crear o tomar un issue del área correspondiente con la plantilla de funcionalidad o error. Una tarea pasa de `Backlog` a `To do` sólo cuando el equipo la refina y prioriza, aunque parte de su código ya exista por la demo. Antes de delegarlo a un agente sin contexto de esta conversación, comprobar la [guía de preparación autónoma](issue-readiness.md).
 2. Vincular capacidad, caso de uso y reglas `RN-*`.
 3. Confirmar que ninguna decisión pendiente bloquee el resultado.
 4. Para comportamiento nuevo o modificado, crear `openspec/changes/<id>/`.

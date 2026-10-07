@@ -20,18 +20,20 @@ Requisitos actuales:
 - Git;
 - .NET SDK 8 para el backend;
 - Node.js 22 y npm para el frontend React/Vite existente;
-- almacenamiento local para SQLite: la [demo local](../development/local-demo-runbook.md) lo inicializa automáticamente; el perfil SQLite **MVP** elegido en [ADR-006](../architecture/decisions/ADR-006-sqlite-para-persistencia-del-mvp.md) aún debe implementarse y validarse. No usar `LocalDemo` como sustituto del perfil seguro del MVP.
+- almacenamiento local con permiso de escritura para SQLite: la [demo local](../development/local-demo-runbook.md) lo inicializa automáticamente; el perfil SQLite **MVP** elegido en [ADR-006](../architecture/decisions/ADR-006-sqlite-para-persistencia-del-mvp.md) aún debe implementarse y validarse. No usar `LocalDemo` como sustituto del perfil seguro del MVP.
 
 Las credenciales, claves JWT y cadenas de conexión no se guardan en Git. Deben suministrarse mediante variables de entorno, secretos de usuario o un almacén aprobado.
+
+Si ya tenés una base de la demo anterior, seguí la [transición no destructiva](../development/local-demo-runbook.md#actualización-desde-la-demo-anterior-sin-perder-turnos) antes de iniciar la API renombrada. Git no mueve la SQLite ignorada: el arranque exige una ruta absoluta explícita para reutilizarla y conservar turnos.
 
 ## 3. Verificar el estado actual
 
 Desde la raíz del repositorio, comprobar la solución backend y sus pruebas con:
 
 ```powershell
-dotnet restore backend/Dsw2025Tpi.sln
-dotnet build backend/Dsw2025Tpi.sln --configuration Release
-dotnet test backend/Dsw2025Tpi.sln --configuration Release --no-build
+dotnet restore backend/AgroFlow.sln
+dotnet build backend/AgroFlow.sln --configuration Release
+dotnet test backend/AgroFlow.sln --configuration Release --no-build
 ```
 
 Comprobar el frontend existente con:
@@ -50,7 +52,7 @@ Para ejecutar los recorridos locales, seguir el [runbook de la demo](../developm
 Las especificaciones se validan con:
 
 ```powershell
-openspec validate --all --strict --no-interactive
+npx --yes @fission-ai/openspec@1.13.1 validate --all --strict --no-interactive
 ```
 
 ## 4. Elegir una tarea

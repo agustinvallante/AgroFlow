@@ -4,6 +4,8 @@
 - Propósito: distinguir trabajo **integrado**, brechas y evidencia pendiente para la [épica #46](https://github.com/agustinvallante/AgroFlow/issues/46). Este documento es un mapa de implementación, no modifica las especificaciones vigentes.
 - Fuentes normativas: [`openspec/specs/`](../../openspec/specs/), [OpenAPI](../contracts/openapi.yaml) y [guía de aceptación](../product/mvp-acceptance.md). Las simplificaciones de la [demo local](local-demo-scope.md) no reducen el MVP.
 
+Actualización de integración (2026-10-07): la PR #76 se revisa sobre la rama de #77 para reconciliar la documentación sin perder las decisiones de este corte. El orden previsto es #77 primero, luego #76 hacia `main`. El resultado combinado usa `AgroFlow.sln` y `AgroFlow.*`, retira el e-commerce y protege la continuidad de la SQLite anterior según el [runbook](../development/local-demo-runbook.md#actualización-desde-la-demo-anterior-sin-perder-turnos). La tabla siguiente conserva el relevamiento histórico de `ef4cc5b`; las guías actuales reflejan el resultado reconciliado, no presentan el e-commerce como código aún pendiente de retiro.
+
 ## Qué quedó reutilizable
 
 | Área | Base integrada en `main` | Límite comprobable |

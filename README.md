@@ -51,8 +51,9 @@ Los documentos académicos originales son fuentes históricas. Una vez incorpora
 
 - El backend parte de una copia independiente de [ICS2026-backend](https://github.com/agustinvallante/ICS2026-backend), commit `dc40f7cfa515a1425f8709c73ae917e9c004266a`.
 - El frontend React/Vite importado desde [AgroFlow-Dashboard](https://github.com/GabrielBurieque/AgroFlow-Dashboard) está en `frontend/`: la cola de turnos puede usar la API de la demo; las demás vistas principales siguen con datos simulados.
-- El backend ya incluye una API de turnos y seed SQLite para el perfil local `LocalDemo`, pero conserva nombres y módulos del e-commerce original. Esta base todavía no equivale a una API MVP con identidad y aislamiento entre ingenios.
+- La solución backend se llama `AgroFlow.sln`, con proyectos y namespaces `AgroFlow.*`. B01 retiró productos, pedidos y clientes del e-commerce, preservando la API de turnos y seed SQLite del perfil `LocalDemo`. Identity/JWT sigue como andamiaje: esta base todavía no equivale a una API MVP con identidad y aislamiento entre ingenios.
 - El contrato HTTP actual cubre la demo local; para el MVP faltan decisiones, ampliación de OpenAPI y evidencia de todas las puertas de aceptación.
+- Si ya existe una SQLite de la demo anterior, aplicar la [transición con respaldo y selección explícita](docs/development/local-demo-runbook.md#actualización-desde-la-demo-anterior-sin-perder-turnos) antes de iniciar la API renombrada; Git no mueve esos archivos ignorados.
 
 ## Seguridad
 
