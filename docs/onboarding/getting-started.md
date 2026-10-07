@@ -23,6 +23,8 @@ Requisitos actuales:
 
 Las credenciales, claves JWT y cadenas de conexión no se guardan en Git. Deben suministrarse mediante variables de entorno, secretos de usuario o un almacén aprobado.
 
+Si ya tenés una base de la demo anterior, seguí la [transición no destructiva](../development/local-demo-runbook.md#actualización-desde-la-demo-anterior-sin-perder-turnos) antes de iniciar la API renombrada. Git no mueve la SQLite ignorada: el arranque exige una ruta absoluta explícita para reutilizarla y conservar turnos.
+
 ## 3. Verificar el estado actual
 
 El backend puede comprobarse desde la raíz con:

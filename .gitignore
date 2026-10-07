@@ -361,8 +361,7 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
-/backend/Dsw2025Tpi.Api/admins.json
-/backend/AgroFlow.Api/admins.json
+admins.json
 
 # Local configuration and generated logs
 .env

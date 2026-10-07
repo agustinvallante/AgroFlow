@@ -2,6 +2,7 @@ using System.Text;
 using System.Text.Json.Serialization;
 using AgroFlow.Api.Contracts.Appointments;
 using AgroFlow.Api.Middleware;
+using AgroFlow.Api.Persistence;
 using AgroFlow.Api.Security;
 using AgroFlow.Application.Appointments;
 using AgroFlow.Application.Services;
@@ -73,9 +74,11 @@ public class Program
 
         if (isLocalDemo)
         {
+            var appointmentsConnection = LocalDemoDatabase.ResolveConnectionString(
+                builder.Configuration.GetConnectionString("AgroFlowDb"), builder.Environment.ContentRootPath);
             builder.Services.AddSingleton(TimeProvider.System);
             builder.Services.AddDbContext<AgroFlowDbContext>(options =>
-                options.UseSqlite(builder.Configuration.GetConnectionString("AgroFlowDb")));
+                options.UseSqlite(appointmentsConnection));
             builder.Services.AddScoped<IAppointmentStore, EfAppointmentStore>();
             builder.Services.AddScoped<IAppointmentService, AppointmentService>();
         }
