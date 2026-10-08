@@ -1,4 +1,4 @@
-## ADDED Requirements
+## MODIFIED Requirements
 
 ### Requirement: Superficie HTTP exclusiva del dominio AgroFlow
 
@@ -18,13 +18,13 @@ La API de AgroFlow MUST NOT publicar operaciones ni contratos de productos, pedi
 
 ### Requirement: Continuidad de SQLite durante el renombre
 
-El renombre de la API SHALL permitir reutilizar explícitamente su archivo SQLite previo sin borrar ni sustituir turnos ni historial de migraciones. Las rutas relativas SHALL resolverse contra la raíz de contenido de la API. Si existen archivos en la ubicación histórica y sólo se configuró una ruta relativa, el arranque MUST abortar antes de inicializar otra base y SHALL indicar el procedimiento de respaldo y selección absoluta. La API MUST NOT mover, copiar, borrar ni combinar esos archivos automáticamente.
+El renombre de la API SHALL permitir reutilizar explícitamente su archivo SQLite previo sin borrar ni sustituir turnos ni historial de migraciones. Las rutas relativas SHALL resolverse contra la raíz de contenido de la API. Antes de inicializar otra base, el arranque MUST comprobar en la raíz histórica de la API tanto el nombre predeterminado `agroflow-demo.db` como el counterpart exacto de la ruta relativa configurada, normalizado con sus componentes `.` y `..`. La comprobación SHALL incluir el archivo principal y los sufijos `-wal`, `-shm` y `-journal`; MUST NOT explorar otros nombres. Si se encuentra alguno y sólo se configuró una ruta relativa, el arranque MUST abortar e indicar el procedimiento de transición. Una ruta absoluta explícita y SQLite en memoria SHALL conservar su comportamiento. La API MUST NOT mover, copiar, borrar ni combinar esos archivos automáticamente.
 
 #### Scenario: Base anterior detectada sin selección explícita
 
-- **GIVEN** archivos SQLite de la demo anterior en la ubicación histórica y una cadena con ruta relativa
-- **WHEN** se inicia la API renombrada
-- **THEN** el arranque aborta antes de migrar o sembrar una base alternativa e indica el procedimiento de transición
+- **GIVEN** el archivo predeterminado o el counterpart histórico exacto de una ruta relativa configurada (por ejemplo `custom.db` o `data/custom.db`), o cualquiera de sus auxiliares SQLite
+- **WHEN** se inicia la API renombrada con esa ruta relativa, incluso si contiene componentes `..`
+- **THEN** el arranque aborta antes de migrar, sembrar o crear la base destino e indica el procedimiento de transición; archivos históricos de otros nombres no amplían la detección
 
 #### Scenario: Reutilización después del respaldo
 
