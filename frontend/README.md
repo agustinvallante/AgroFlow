@@ -99,7 +99,7 @@ La integración mínima con AgroFlow API está definida en
 conecta únicamente el flujo de turnos, sin autenticación, CRUD de datos maestros
 ni interrupciones. Estas exclusiones no reducen el [MVP](../docs/product/mvp-acceptance.md):
 la [ADR-005](../docs/architecture/decisions/ADR-005-continuidad-react-vite-para-el-mvp.md)
-mantiene React/Vite para ampliar gradualmente la aplicación. El
+mantiene React/Vite para ampliar gradualmente la aplicación. La
 [replanificación tras la demo](../docs/planning/mvp-replan-2026-09-29.md) enumera lo pendiente.
 
 ### Configuración
