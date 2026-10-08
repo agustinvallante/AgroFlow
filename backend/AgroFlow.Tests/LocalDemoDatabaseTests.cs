@@ -40,6 +40,72 @@ public sealed class LocalDemoDatabaseTests : IDisposable
         Assert.False(File.Exists(resolved.DataSource));
     }
 
+    [Fact]
+    public void Fresh_checkout_resolves_custom_nested_relative_database_against_api_content_root()
+    {
+        var resolved = new SqliteConnectionStringBuilder(LocalDemoDatabase.ResolveConnectionString(
+            "Data Source=data/custom.db", ApiDirectory));
+
+        Assert.Equal(Path.Combine(ApiDirectory, "data", "custom.db"), resolved.DataSource);
+        Assert.False(File.Exists(resolved.DataSource));
+    }
+
+    [Theory]
+    [InlineData("custom.db", "")]
+    [InlineData("data/custom.db", "")]
+    [InlineData("data/../custom.db", "")]
+    [InlineData("../outside.db", "")]
+    [InlineData("data/custom.db", "-wal")]
+    [InlineData("data/custom.db", "-shm")]
+    [InlineData("data/custom.db", "-journal")]
+    public void Configured_historical_database_or_auxiliary_aborts_without_changing_either_location(
+        string relativePath, string suffix)
+    {
+        var legacyRoot = Path.Combine(_root, "backend", "Dsw2025Tpi.Api");
+        var normalizedRelativePath = Path.GetFullPath(relativePath, legacyRoot);
+        Directory.CreateDirectory(Path.GetDirectoryName(normalizedRelativePath)!);
+        File.WriteAllText(normalizedRelativePath + suffix, "historical-test-only");
+        var destination = Path.GetFullPath(relativePath, ApiDirectory);
+
+        var error = Assert.Throws<InvalidOperationException>(() => LocalDemoDatabase.ResolveConnectionString(
+            $"Data Source={relativePath}", ApiDirectory));
+
+        Assert.Contains("ruta absoluta", error.Message);
+        if (string.Equals(destination, normalizedRelativePath, StringComparison.Ordinal))
+            Assert.Equal("historical-test-only", File.ReadAllText(destination));
+        else
+            Assert.False(File.Exists(destination));
+        Assert.Equal("historical-test-only", File.ReadAllText(normalizedRelativePath + suffix));
+    }
+
+    [Fact]
+    public void Unrelated_historical_database_does_not_block_custom_relative_destination()
+    {
+        var unrelatedHistoricalFile = Path.Combine(_root, "backend", "Dsw2025Tpi.Api", "unrelated.db");
+        Directory.CreateDirectory(Path.GetDirectoryName(unrelatedHistoricalFile)!);
+        File.WriteAllText(unrelatedHistoricalFile, "unrelated-historical-test-only");
+
+        var resolved = new SqliteConnectionStringBuilder(LocalDemoDatabase.ResolveConnectionString(
+            "Data Source=data/custom.db", ApiDirectory));
+
+        Assert.Equal(Path.Combine(ApiDirectory, "data", "custom.db"), resolved.DataSource);
+        Assert.False(File.Exists(resolved.DataSource));
+        Assert.Equal("unrelated-historical-test-only", File.ReadAllText(unrelatedHistoricalFile));
+    }
+
+    [Fact]
+    public void Explicit_absolute_and_memory_data_sources_remain_unchanged()
+    {
+        var absolute = Path.Combine(_root, "chosen.db");
+        var absoluteResult = LocalDemoDatabase.ResolveConnectionString(
+            new SqliteConnectionStringBuilder { DataSource = absolute, Mode = SqliteOpenMode.ReadWrite }.ToString(),
+            ApiDirectory);
+        var memoryResult = LocalDemoDatabase.ResolveConnectionString("Data Source=:memory:", ApiDirectory);
+
+        Assert.Equal(absolute, new SqliteConnectionStringBuilder(absoluteResult).DataSource);
+        Assert.Equal(":memory:", new SqliteConnectionStringBuilder(memoryResult).DataSource);
+    }
+
     [Theory]
     [InlineData("")]
     [InlineData("-wal")]

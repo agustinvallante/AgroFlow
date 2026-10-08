@@ -25,13 +25,18 @@ public static class LocalDemoDatabase
 
         var root = Path.GetFullPath(contentRootPath);
         var backendDirectory = Path.GetDirectoryName(root);
-        // Nombre histórico usado únicamente para detectar datos ignorados por
-        // Git antes del renombre. No es un proyecto ni un namespace activo.
+        // El nombre histórico predeterminado sigue protegido aunque se configure
+        // otro destino relativo. También se busca el counterpart de la ruta
+        // configurada, normalizada desde la raíz histórica de la API.
         if (backendDirectory is not null)
         {
-            var legacyPath = Path.Combine(backendDirectory, "Dsw2025Tpi.Api", "agroflow-demo.db");
-            if (File.Exists(legacyPath) || File.Exists(legacyPath + "-wal")
-                || File.Exists(legacyPath + "-shm") || File.Exists(legacyPath + "-journal"))
+            var legacyRoot = Path.Combine(backendDirectory, "Dsw2025Tpi.Api");
+            var legacyPaths = new HashSet<string>(PathComparer)
+            {
+                Path.Combine(legacyRoot, "agroflow-demo.db"),
+                Path.GetFullPath(settings.DataSource, legacyRoot)
+            };
+            if (legacyPaths.Any(HasSqliteFiles))
             {
                 throw new InvalidOperationException(
                     "Se detectaron archivos SQLite de la demo anterior. Detenga la API, respalde los datos " +
@@ -44,4 +49,11 @@ public static class LocalDemoDatabase
         settings.DataSource = Path.GetFullPath(settings.DataSource, root);
         return settings.ToString();
     }
+
+    private static readonly StringComparer PathComparer = OperatingSystem.IsWindows()
+        ? StringComparer.OrdinalIgnoreCase
+        : StringComparer.Ordinal;
+
+    private static bool HasSqliteFiles(string path) => File.Exists(path) || File.Exists(path + "-wal")
+        || File.Exists(path + "-shm") || File.Exists(path + "-journal");
 }
