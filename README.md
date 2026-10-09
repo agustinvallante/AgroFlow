@@ -11,7 +11,9 @@ AgroFlow/
 |- openspec/   Especificaciones normativas y cambios propuestos
 |- docs/       Producto, arquitectura, contratos y guías
 |- backend/    API y persistencia
-`- frontend/   Aplicación web
+|- frontend/   Aplicación web
+|- chatbot/    Workflow de WhatsApp/n8n
+`- infra/      Compose y muestra de entorno para la demo local
 ```
 
 OpenSpec no reemplaza las carpetas de código. `backend/` y `frontend/` permanecen separados para que cada equipo trabaje con claridad, mientras `openspec/specs/` define el comportamiento común que ambos deben respetar.
@@ -35,6 +37,7 @@ Los documentos académicos originales son fuentes históricas. Una vez incorpora
 ## Cómo empezar
 
 - Leer la [guía de incorporación](docs/onboarding/getting-started.md).
+- Ejecutar la [demo local integrada](docs/development/local-demo.md) y consultar el [componente chatbot](chatbot/README.md).
 - Consultar la [visión y alcance del MVP](docs/product/vision-and-scope.md).
 - Usar la [guía de aceptación del MVP](docs/product/mvp-acceptance.md) para saber qué resultado es suficiente y qué evidencia conservar.
 - Revisar el [catálogo de casos de uso](docs/product/use-case-catalog.md).
@@ -47,7 +50,7 @@ Los documentos académicos originales son fuentes históricas. Una vez incorpora
 ## Estado técnico
 
 - El backend parte de una copia independiente de [ICS2026-backend](https://github.com/agustinvallante/ICS2026-backend), commit `dc40f7cfa515a1425f8709c73ae917e9c004266a`.
-- El frontend se integrará desde [AgroFlow-Dashboard](https://github.com/GabrielBurieque/AgroFlow-Dashboard) una vez estabilizado el contrato inicial.
+- El frontend ya está integrado en `frontend/`, desde [AgroFlow-Dashboard](https://github.com/GabrielBurieque/AgroFlow-Dashboard); la cola puede consumir la API y las demás vistas conservan datos de demostración.
 - El backend heredado todavía conserva nombres y módulos del e-commerce original; no representa aún el dominio objetivo de AgroFlow.
 
 ## Seguridad
