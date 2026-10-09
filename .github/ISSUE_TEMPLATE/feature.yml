@@ -6,7 +6,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Antes de crear la tarea, revisá `openspec/specs/` y las decisiones pendientes.
+        Antes de crear la tarea, revisá `openspec/specs/`, las decisiones pendientes y `docs/development/issue-readiness.md`. No marques la tarea como lista para implementación si el contrato o una decisión necesaria siguen abiertos.
   - type: dropdown
     id: area
     attributes:
@@ -43,6 +43,18 @@ body:
     validations:
       required: true
   - type: textarea
+    id: authority
+    attributes:
+      label: Base y fuentes normativas exactas
+      description: Commit o PR base y enlaces a requisitos/escenarios OpenSpec, operación OpenAPI, ADR y decisiones OD aplicables.
+      placeholder: |
+        Base: main @ <commit>
+        OpenSpec: openspec/specs/<capacidad>/spec.md — <Requirement>
+        OpenAPI: docs/contracts/openapi.yaml — <operationId>
+        ADR/OD: <enlaces o "no aplica">
+    validations:
+      required: true
+  - type: textarea
     id: outcome
     attributes:
       label: Resultado observable
@@ -61,7 +73,23 @@ body:
     validations:
       required: true
   - type: textarea
+    id: implementation_map
+    attributes:
+      label: Mapa de implementación y límites
+      description: Archivos existentes/nuevos, persistencia o migración, consumidores afectados, compatibilidad y fuera de alcance.
+    validations:
+      required: true
+  - type: textarea
+    id: verification
+    attributes:
+      label: Verificación reproducible
+      description: Pruebas de éxito, validación, seguridad, conflicto/reintento cuando apliquen y comandos exactos para ejecutar.
+    validations:
+      required: true
+  - type: textarea
     id: dependencies
     attributes:
       label: Dependencias o bloqueos
-      description: Contratos, decisiones abiertas u otras tareas necesarias.
+      description: Contratos, decisiones OD abiertas u otras tareas necesarias; escribir "ninguno" sólo después de verificarlos.
+    validations:
+      required: true

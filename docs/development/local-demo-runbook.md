@@ -42,13 +42,15 @@ El navegador continúa usando `http://localhost:5000`; no debe recibir `host.doc
 
 Desde un clon limpio, sin instalar SQL Server/LocalDB ni configurar JWT:
 
+Si este clon ya se usó para la demo antes del renombre, **no lo trates como un clon limpio**: seguí primero la [transición de una base existente](#actualización-desde-la-demo-anterior-sin-perder-turnos).
+
 ```bash
-cd backend/Dsw2025Tpi.Api
+cd backend/AgroFlow.Api
 dotnet run --launch-profile http --urls http://localhost:5000
 ```
 
-- **Perfil y puerto**: `--launch-profile http` usa `Properties/launchSettings.json`, que fija `ASPNETCORE_ENVIRONMENT=Development`; `appsettings.Development.json` trae `LocalDemo:Enabled=true`. `--urls` sobrescribe el puerto heredado `5142` y deja la API en `5000`. El flag `LocalDemo:Enabled` es lo que activa los endpoints de turnos sin identidad; cuando es `false`, esas rutas y `/health` de la demo no se publican y SQLite no se inicializa. El backend heredado conserva `/healthcheck` y sus propios requisitos de SQL Server/JWT.
-- **Persistencia**: SQLite embebido, un único archivo `agroflow-demo.db` (+ `-wal`/`-shm` en modo WAL) creado en el directorio de trabajo `backend/Dsw2025Tpi.Api/` con el comando anterior. No se versiona (ver `.gitignore`). Para reiniciar desde cero, cerrá la API y borrá sólo esos archivos.
+- **Perfil y puerto**: `--launch-profile http` usa `Properties/launchSettings.json`, que fija `ASPNETCORE_ENVIRONMENT=Development`; `appsettings.Development.json` trae `LocalDemo:Enabled=true`. `--urls` sobrescribe el puerto predeterminado `5142` y deja la API en `5000`. El flag `LocalDemo:Enabled` activa los endpoints de turnos sin identidad; cuando es `false`, esas rutas y `/health` de la demo no se publican y SQLite no se inicializa. Identity/JWT es sólo andamiaje externo a la demo, pendiente de B03; `/healthcheck` sigue disponible.
+- **Persistencia**: SQLite embebido, un archivo `agroflow-demo.db` con los auxiliares del modo de diario utilizado. Las rutas relativas de `ConnectionStrings:AgroFlowDb` se resuelven contra la raíz de contenido de la API (`backend/AgroFlow.Api/` en este arranque), no contra el directorio de la terminal. Por ejemplo, `Data Source=custom.db` apunta a `backend/AgroFlow.Api/custom.db` y `Data Source=data/custom.db` apunta a `backend/AgroFlow.Api/data/custom.db`; esas rutas relativas siguen siendo válidas cuando no hay datos históricos coincidentes. No se versionan los archivos. Para evitar una base alternativa silenciosa, el arranque comprueba el nombre histórico predeterminado y el counterpart exacto de la ruta relativa configurada contra la raíz histórica de la API. Normaliza componentes `.` y `..` antes de comprobar; aun si `..` deja esa raíz, se comprueba esa ruta resultante exacta. Para cada candidato sólo comprueba el principal y `-wal`, `-shm`, `-journal`; no explora otros nombres. Si alguno existe, exige selección explícita y aborta sin crear la base destino. Las rutas absolutas explícitas y `:memory:` no pasan por esta detección. Este cambio no modifica el modo de diario existente ni declara validado WAL para el MVP.
 - **Migración y seed automáticos**: al arrancar, la API aplica las migraciones pendientes de `AgroFlowDbContext` y corre el seed antes de empezar a escuchar. Si migrar o sembrar falla, el proceso **no arranca** (fail-fast): no hay riesgo de que `/health` responda `200` sin haber inicializado. El seed es idempotente: correrlo de nuevo (reiniciar la API) no duplica datos maestros, asociaciones ni ventanas, y nunca toca turnos ya creados.
 - **Fixtures fijos del seed** (siempre los mismos, para que la demo sea reproducible):
 
@@ -67,7 +69,38 @@ dotnet run --launch-profile http --urls http://localhost:5000
 3. Alta con `carrierPhone=+5493815550101`, `truckPlate=AF123BC`, `farmCode=FINCA-NORTE` → `201 ASIGNADO`.
 4. Repetí con el segundo camión (`+5493815550102` / `AF456DE` / `FINCA-SUR`); como el cupo es 2, ambos turnos pueden caer en la misma ventana.
 
-El seed debe ser repetible. Si el equipo necesita borrar la base local para volver a cero, debe confirmarlo expresamente (borrar `agroflow-demo.db*`) y no se asume como paso automático de esta guía.
+El seed debe ser repetible. Reiniciar la API no borra datos. Un reinicio del escenario desde cero requiere consentimiento explícito, respaldo previo y selección de los archivos exactos; no se ejecuta como parte de esta guía ni de la actualización.
+
+### Actualización desde la demo anterior sin perder turnos
+
+Git renombra los archivos versionados, **no** la SQLite ignorada. Su ubicación histórica era `backend/Dsw2025Tpi.Api/agroflow-demo.db`; el nombre anterior aparece aquí sólo para localizar datos previos, nunca como proyecto activo. No borres esa carpeta ni inicies una base nueva para resolver un error de arranque.
+
+1. Detené la API anterior, cualquier otra instancia, herramienta SQLite, frontend con operaciones pendientes y workflow n8n que pueda escribir. Cerrá todas las conexiones antes del respaldo y no vuelvas a abrirlas mientras lo generás. Registrá los UUID y estados de los turnos conocidos y el historial de `__EFMigrationsHistory`. Si hay archivos en ambas carpetas, o la protección detecta un nombre personalizado/anidado, no los mezcles ni sobrescribas: identificá cuál contiene los datos a conservar.
+2. Respaldá el conjunto en una carpeta nueva fuera del repositorio. Con todos los procesos detenidos, copiá el archivo principal y los auxiliares existentes (`-wal`, `-shm`, `-journal`) juntos. **No borres un WAL residual**: puede contener transacciones confirmadas que aún no llegaron al archivo principal. Para obtener una copia independiente de un solo archivo, usá una herramienta que implemente la [SQLite Backup API](https://www.sqlite.org/backup.html); no copies solamente el `.db` si existen auxiliares. Verificá la copia sin modificar el original. Este procedimiento de actualización no acredita por sí solo la puerta de recuperación `G11` del MVP.
+3. Reutilizá la ubicación elegida con una cadena absoluta en `ConnectionStrings__AgroFlowDb` y `Mode=ReadWrite`: si el archivo no existe por una ruta incorrecta, el arranque falla en lugar de crear otro. Para una base histórica con nombre personalizado o anidada, elegí su ruta absoluta exacta; el nombre del archivo no tiene que ser `agroflow-demo.db`. La detección no elige, copia ni mueve ninguna base. No hace falta mover la base ni sus auxiliares. El ejemplo siguiente se ejecuta desde la raíz del repositorio, **después de detener los procesos**:
+
+   ```powershell
+   $ErrorActionPreference = 'Stop'
+   $previousDb = (Resolve-Path -LiteralPath 'backend/Dsw2025Tpi.Api/agroflow-demo.db').Path
+   $backupRoot = Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'AgroFlow-backups'
+   New-Item -ItemType Directory -Path $backupRoot -Force | Out-Null
+   $backupDirectory = Join-Path $backupRoot ([Guid]::NewGuid().ToString('N'))
+   New-Item -ItemType Directory -Path $backupDirectory | Out-Null
+   foreach ($suffix in @('', '-wal', '-shm', '-journal')) {
+       $sourceFile = $previousDb + $suffix
+       if (Test-Path -LiteralPath $sourceFile) {
+           Copy-Item -LiteralPath $sourceFile -Destination $backupDirectory -ErrorAction Stop
+       }
+   }
+   $env:ConnectionStrings__AgroFlowDb = "Data Source=$previousDb;Mode=ReadWrite;Default Timeout=5"
+   dotnet run --project backend/AgroFlow.Api/AgroFlow.Api.csproj --launch-profile http --urls http://localhost:5000
+   ```
+
+   En Linux/macOS, configurá la misma variable con la ruta absoluta válida en ese host. Guardá la configuración fuera de Git y reaplicala al abrir otra terminal; sin ella, la protección de arranque vuelve a exigir selección explícita. Si trasladás después la base a una ubicación estable de AgroFlow, hacelo con una copia consistente verificada y conservando original/respaldo; no reemplaces una base ya existente.
+4. Comprobá `/health`, consultá los UUID registrados mediante `/api/v1/appointments/{id}` y verificá sus estados, maestros y cupos. Las migraciones pendientes se aplican al archivo seleccionado conservando su historial; el seed no duplica registros ni reemplaza turnos. Reiniciá y repetí la comprobación. Revisá la existencia de bases en ambas carpetas antes de limpiar nada.
+5. Si falla la comprobación, detené el backend y conservá todas las copias para diagnosticar. No borres ni sobreescribas la base previa como reparación. Una reversión utiliza el conjunto respaldado completo en una ubicación separada, con procesos detenidos y configuración absoluta; no mezcla el `.db` de una versión con auxiliares de otra.
+
+La prueba `LocalDemoDatabaseTests.Existing_demo_survives_api_rename_migration_seed_and_two_host_restarts` reproduce una base en la ubicación histórica con un turno `EN_CAMINO`, aplica la última migración y arranca dos veces la API real mediante la selección absoluta. Verifica detalle/listado, IDs de maestros y ventanas, cupo ocupado y continuidad del historial, con diario DELETE y WAL. Las pruebas de protección comprueban el nombre predeterminado, nombres personalizados y anidados (incluida la normalización de `..`), cada auxiliar SQLite, archivos con otros nombres que no son candidatos, ausencia de creación de destino, y rutas absolutas/memoria.
 
 ## Smoke test del contrato
 

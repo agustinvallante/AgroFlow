@@ -6,6 +6,8 @@ Esta guía convierte la pregunta «¿ya es suficiente para presentar como MVP?»
 
 Un MVP suficiente no es un porcentaje de pantallas ni una colección de endpoints: es una porción vertical coherente que funciona desde sus puntos de entrada hasta la persistencia y vuelve a mostrar el estado confirmado por la API.
 
+La [replanificación tras la demo](../planning/mvp-replan-2026-09-29.md) registra, con corte al 2026-09-29, qué base está integrada y qué evidencia falta por puerta. La [ADR-006](../architecture/decisions/ADR-006-sqlite-para-persistencia-del-mvp.md) elige SQLite para el MVP, pero su implementación y prueba operativa siguen pendientes. Ninguna de estas notas cambia los criterios de esta guía ni convierte la demo local en MVP aceptado.
+
 ## Regla de aceptación
 
 El candidato se considera **MVP aceptado** únicamente cuando se cumplen simultáneamente estas condiciones:
