@@ -5,6 +5,7 @@ Base técnica en .NET 8 reutilizada de [ICS2026-backend](https://github.com/agus
 La solución `AgroFlow.sln` tiene cinco proyectos (`Api`, `Application`, `Domain`, `Data` y `Tests`) en .NET 8. La demo local de turnos utiliza SQLite y las migraciones de `AgroFlowDbContext`. Los módulos heredados de productos, pedidos y clientes se retiraron en B01.
 
 ASP.NET Core Identity/JWT y su migración histórica permanecen como base técnica **fuera** de `LocalDemo`; no constituyen todavía la autenticación ni los permisos por ingenio del MVP (B03). Ya no existe registro público ni carga de `admins.json`/`customers.json`. La migración de comercio electrónico no forma parte de AgroFlow; no se promete compatibilidad con esa base. Ver [inventario de migraciones](../docs/backend/legacy-migration-inventory.md).
+La [ADR-006](../docs/architecture/decisions/ADR-006-sqlite-para-persistencia-del-mvp.md) elige SQLite para el MVP académico y PostgreSQL antes de la operación del primer cliente real. No vuelve seguro al perfil demo ni afirma validado WAL para el MVP. La [replanificación tras la demo](../docs/planning/mvp-replan-2026-09-29.md) especifica las brechas. Antes de iniciar sobre datos previos al renombre, aplicar la [transición no destructiva](../docs/development/local-demo-runbook.md#actualización-desde-la-demo-anterior-sin-perder-turnos).
 
 Antes de modificar comportamiento, consultar:
 

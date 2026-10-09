@@ -18,7 +18,7 @@ OpenSpec no reemplaza las carpetas de código. `backend/` y `frontend/` permanec
 
 ## Organización del trabajo
 
-El código y los issues viven en este repositorio. Los tableros [AgroFlow — Backend](https://github.com/users/agustinvallante/projects/2) y [AgroFlow — Frontend](https://github.com/users/agustinvallante/projects/1) separan la planificación por área; no son repositorios distintos. El backlog del backend desglosa tareas de base compartida, endpoints del MVP y la integración n8n. Antes de implementar rutas propuestas en esos issues, hay que cerrar el [contrato inicial y las decisiones pendientes](https://github.com/agustinvallante/AgroFlow/issues/7) en OpenSpec y OpenAPI.
+El código y los issues viven en este repositorio. Los tableros [AgroFlow — Backend](https://github.com/users/agustinvallante/projects/2) y [AgroFlow — Frontend](https://github.com/users/agustinvallante/projects/1) separan la planificación por área; no son repositorios distintos. Después de la demo, los issues describen **deltas sobre código ya integrado**. Antes de ampliar rutas o consumidores, hay que revisar [B00](https://github.com/agustinvallante/AgroFlow/issues/7), las decisiones pendientes, OpenSpec y OpenAPI.
 
 ## Fuente de verdad
 
@@ -37,9 +37,12 @@ Los documentos académicos originales son fuentes históricas. Una vez incorpora
 - Leer la [guía de incorporación](docs/onboarding/getting-started.md).
 - Consultar la [visión y alcance del MVP](docs/product/vision-and-scope.md).
 - Usar la [guía de aceptación del MVP](docs/product/mvp-acceptance.md) para saber qué resultado es suficiente y qué evidencia conservar.
+- Leer la [replanificación tras la demo](docs/planning/mvp-replan-2026-09-29.md) y la [hoja de ruta](docs/planning/implementation-roadmap.md) para distinguir lo integrado de lo pendiente.
 - Revisar el [catálogo de casos de uso](docs/product/use-case-catalog.md).
 - Consultar la [matriz de 61 reglas de negocio](docs/product/business-rules.md).
 - Leer las [políticas operativas del MVP](docs/architecture/decisions/ADR-004-politicas-operativas-del-mvp.md) y distinguirlas de los detalles todavía abiertos.
+- Aplicar la [decisión React/Vite](docs/architecture/decisions/ADR-005-continuidad-react-vite-para-el-mvp.md) para el frontend del MVP.
+- Aplicar la [decisión SQLite](docs/architecture/decisions/ADR-006-sqlite-para-persistencia-del-mvp.md) para el MVP; WAL queda condicionado a pruebas.
 - Resolver las [decisiones abiertas](docs/planning/open-decisions.md) antes de implementar los puntos bloqueados.
 - Leer el [flujo de trabajo del equipo](docs/development/team-workflow.md).
 - Antes de cambiar comportamiento, crear un cambio en `openspec/changes/`.
@@ -47,8 +50,10 @@ Los documentos académicos originales son fuentes históricas. Una vez incorpora
 ## Estado técnico
 
 - El backend parte de una copia independiente de [ICS2026-backend](https://github.com/agustinvallante/ICS2026-backend), commit `dc40f7cfa515a1425f8709c73ae917e9c004266a`.
-- El frontend React/Vite se integró desde [AgroFlow-Dashboard](https://github.com/GabrielBurieque/AgroFlow-Dashboard) para la demo local y debe evolucionar para el MVP.
-- B01 retira los módulos de comercio electrónico y renombra la solución .NET; el modelo de turnos aún debe evolucionar del recorrido de demo al MVP. Identity/JWT sigue siendo andamiaje, no la autenticación MVP terminada.
+- El frontend React/Vite importado desde [AgroFlow-Dashboard](https://github.com/GabrielBurieque/AgroFlow-Dashboard) está en `frontend/`: la cola de turnos puede usar la API de la demo; las demás vistas principales siguen con datos simulados.
+- La solución backend se llama `AgroFlow.sln`, con proyectos y namespaces `AgroFlow.*`. B01 retiró productos, pedidos y clientes del e-commerce, preservando la API de turnos y seed SQLite del perfil `LocalDemo`. Identity/JWT sigue como andamiaje: esta base todavía no equivale a una API MVP con identidad y aislamiento entre ingenios.
+- El contrato HTTP actual cubre la demo local; para el MVP faltan decisiones, ampliación de OpenAPI y evidencia de todas las puertas de aceptación.
+- Si ya existe una SQLite de la demo anterior, aplicar la [transición con respaldo y selección explícita](docs/development/local-demo-runbook.md#actualización-desde-la-demo-anterior-sin-perder-turnos) antes de iniciar la API renombrada; Git no mueve esos archivos ignorados.
 
 ## Seguridad
 
