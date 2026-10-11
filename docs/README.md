@@ -12,11 +12,12 @@ Este directorio es la entrada humana a la documentación. Los requisitos normati
 6. [Contexto del sistema](architecture/system-context.md)
 7. [Decisiones abiertas](planning/open-decisions.md)
 8. [Hoja de ruta](planning/implementation-roadmap.md)
-9. [Flujo de trabajo](development/team-workflow.md)
-10. [Automatización de GitHub](development/github-automation.md)
-11. [Definición de terminado](development/definition-of-done.md)
+9. [Replanificación tras la demo](planning/mvp-replan-2026-09-29.md)
+10. [Flujo de trabajo](development/team-workflow.md)
+11. [Automatización de GitHub](development/github-automation.md)
+12. [Definición de terminado](development/definition-of-done.md)
 
-Las políticas de prioridad, ventanas, asociaciones, alcance de catálogos y cola visual aprobadas para el MVP están resumidas en [ADR-004](architecture/decisions/ADR-004-politicas-operativas-del-mvp.md). Los detalles no aprobados permanecen identificados en [decisiones abiertas](planning/open-decisions.md).
+Las políticas de prioridad, ventanas, asociaciones, alcance de catálogos y cola visual aprobadas para el MVP están resumidas en [ADR-004](architecture/decisions/ADR-004-politicas-operativas-del-mvp.md). La continuidad de React/Vite está aceptada en [ADR-005](architecture/decisions/ADR-005-continuidad-react-vite-para-el-mvp.md) y SQLite como motor del MVP en [ADR-006](architecture/decisions/ADR-006-sqlite-para-persistencia-del-mvp.md). Los detalles no aprobados permanecen identificados en [decisiones abiertas](planning/open-decisions.md).
 
 ## Contenido
 

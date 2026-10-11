@@ -44,19 +44,15 @@ El workflow `CI` ejecuta cuatro controles coordinados:
 
 1. valida OpenSpec, OpenAPI y enlaces Markdown locales;
 2. restaura, compila y, cuando existan, prueba los proyectos .NET;
-3. inspecciona `frontend/` y, solo si encuentra `package.json` junto con `package-lock.json`, ejecuta `npm ci`, los scripts opcionales de tipos, lint y pruebas, y luego `npm run build`;
+3. si encuentra `frontend/package.json` junto con `frontend/package-lock.json`, instala mediante `npm ci`, ejecuta los scripts de tipos, lint y pruebas configurados, y compila;
 4. publica un resultado agregado estable llamado `Required checks`.
 
-Hoy `frontend/` contiene únicamente su README, por lo que el job frontend informa que el proyecto todavía no fue incorporado y no ejecuta instalación, pruebas ni build. Si apareciera código sin `package.json`, o un `package.json` sin lockfile, el job fallaría. Este comportamiento comprueba la presencia de una base ejecutable, pero no demuestra que existan funcionalidades frontend.
+La protección de `main` debe exigir `Required checks`, una aprobación y la resolución de conversaciones. El workflow conserva comprobaciones condicionales para estados anteriores. La mera existencia de proyectos o de un job no demuestra cobertura funcional: se evalúan los escenarios realmente ejecutados. La integración frontend vigente es React/Vite; los flujos todavía mock no cuentan como recorridos reales del MVP.
 
-La protección de `main` debe exigir `Required checks`, una aprobación y la resolución de conversaciones. El job también informa expresamente si aún no existen pruebas backend; un aviso no debe confundirse con cobertura.
-
-`Dependency review` rechaza dependencias nuevas con vulnerabilidades altas o críticas. Dependabot revisa semanalmente GitHub Actions y paquetes NuGet. La fuente npm se agregará cuando `frontend/` posea `package.json` y `package-lock.json`.
+`Dependency review` rechaza dependencias nuevas con vulnerabilidades altas o críticas. Dependabot revisa semanalmente GitHub Actions y paquetes NuGet. Aunque `frontend/package.json` y `frontend/package-lock.json` ya existen, **todavía falta configurar la fuente npm** en `.github/dependabot.yml`; no debe presentarse como protección activa hasta hacerlo.
 
 ## Entrega y despliegue
 
-Cada push válido a `main` publica durante 14 días un artefacto compilado del backend. El workflow actual también intenta publicar `frontend/dist` cuando detecta un proyecto frontend; esa ruta pertenece al supuesto anterior de una salida estática y todavía no se ejecuta porque la implementación frontend no existe.
+Cada push válido a `main` publica durante 14 días artefactos compilados del backend y `frontend/dist`. Esto constituye **entrega continua de artefactos**, no despliegue. La continuidad de React/Vite está aprobada por ADR-005; no se afirma una arquitectura BFF de Next.js ni se deriva una topología de despliegue de las propuestas históricas de PR #47.
 
-La arquitectura objetivo es Next.js con BFF y sesión server-side aceptados; la topología de despliegue y los detalles operativos de la sesión siguen pendientes. Empaquetar un artefacto autónomo de Next.js queda como seguimiento futuro: aún no está aplicado al workflow ni debe interpretarse como una decisión de despliegue.
-
-La publicación de artefactos constituye **entrega continua**, no despliegue. El despliegue automático se agregará después de aprobar proveedor, ambiente, dominio, base de datos, secretos y estrategia de migraciones. No se debe crear un workflow de despliegue vacío ni almacenar credenciales en el repositorio.
+El despliegue automático se agregará después de aprobar proveedor, ambiente, dominio, base de datos, secretos y estrategia de migraciones. No se debe crear un workflow de despliegue vacío ni almacenar credenciales en el repositorio.

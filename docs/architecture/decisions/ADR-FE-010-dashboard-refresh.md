@@ -1,40 +1,13 @@
-# ADR-FE-010: Refresco periódico del dashboard
+# ADR-FE-010: Propuesta sobre actualización periódica
 
-- Estado: aceptada en el mecanismo permitido; configuración bloqueada por OD-012
-- Alcance: vigencia de datos del dashboard
-- Implementación: pendiente
+> **Estado: evaluación sujeta a OpenSpec.** La especificación de monitoreo
+> permite consultas periódicas y no exige WebSockets; no se fija intervalo.
 
-## Contexto
+PR #47 recomendó TanStack Query para polling, pero la librería no fue adoptada.
+La necesidad funcional de actualizar vistas debe implementarse con la solución
+adecuada a React/Vite y al contrato aprobado. OD-012 mantiene pendientes la
+fecha operativa, fórmulas, horizonte y cadencia de refresco.
 
-La especificación de monitoreo permite que el frontend actualice el dashboard mediante consultas periódicas y no exige WebSockets para el MVP. Sin embargo, siguen abiertos el intervalo, la fecha operativa y las fórmulas de indicadores.
-
-## Decisión
-
-El frontend SHALL soportar polling como mecanismo inicial de actualización del dashboard. TanStack Query coordinará las consultas periódicas cuando la vista esté activa y de acuerdo con una configuración aprobada.
-
-Este ADR no fija frecuencia, indicadores ni comportamiento en segundo plano. El backend seguirá calculando y devolviendo el estado vigente; el navegador no derivará indicadores operativos desde filas parciales ni desde su reloj local.
-
-## Alternativas consideradas
-
-- **WebSockets obligatorios:** ofrecen actualizaciones push, pero OpenSpec no los exige para el MVP y agregan operación prematura.
-- **Actualización manual únicamente:** es simple, pero no cumple por sí sola la capacidad de refresco periódico permitida para la vista operativa.
-- **Polling configurable:** reduce complejidad inicial y conserva una ruta futura hacia otros mecanismos.
-
-## Consecuencias
-
-- La frecuencia podrá ajustarse sin modificar componentes de negocio.
-- Se deberá evitar duplicar solicitudes al cambiar visibilidad, foco o montaje.
-- Una respuesta nueva reemplazará la vista local con estado confirmado.
-- Se medirán errores y latencia antes de considerar un mecanismo en tiempo real.
-
-## Dependencias no resueltas
-
-- OD-012: fórmulas, fecha operativa e intervalo;
-- contrato de consulta del dashboard;
-- política de reintentos, pausa en segundo plano y degradación;
-- objetivos de operación de OD-011.
-
-## Referencias
-
-- [Especificación de monitoreo operativo](../../../openspec/specs/monitoreo-operativo/spec.md)
-- [ADR-FE-004](ADR-FE-004-tanstack-query.md)
+El backend entrega el estado operativo vigente; la UI no recalcula indicadores
+a partir de respuestas parciales. Este documento no autoriza frecuencia,
+política de reintentos ni comportamiento en segundo plano.

@@ -43,3 +43,19 @@ La documentación de la demo MUST declarar que no incluye login ni registro, des
 - **GIVEN** una captura, video o ejecución de la demo local
 - **WHEN** se describe su cobertura
 - **THEN** se enumeran los casos incluidos y se mantienen explícitas las exclusiones
+
+### Requirement: Aislamiento del perfil local sin identidad
+
+Las rutas de turnos y salud definidas para esta demo SHALL publicarse únicamente con `LocalDemo:Enabled=true`, después de inicializar correctamente su persistencia. Con el perfil desactivado, el backend MUST NOT publicar estas rutas ni inicializar la SQLite de la demo. Un token del sistema heredado MUST NOT habilitar operaciones del perfil sin los controles de rol e ingenio exigidos por el MVP.
+
+#### Scenario: Ejecución fuera de la demo
+
+- **GIVEN** un proceso con `LocalDemo:Enabled=false` y un usuario con un JWT válido del backend heredado
+- **WHEN** intenta acceder a una ruta de turnos de la demo
+- **THEN** esa ruta no existe en el perfil y no se consulta ni modifica la SQLite de turnos
+
+#### Scenario: Inicialización fallida de la demo
+
+- **GIVEN** el perfil `LocalDemo:Enabled=true` y un error al migrar o sembrar SQLite
+- **WHEN** se inicia el backend
+- **THEN** el proceso no comienza a escuchar solicitudes HTTP de la demo

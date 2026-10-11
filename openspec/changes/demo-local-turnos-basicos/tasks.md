@@ -2,11 +2,14 @@
 
 La asignación propone seis responsables, uno por frente. Cada casilla requiere la verificación indicada y respeta OpenAPI como contrato único.
 
+> **Nota histórica (2026-09-29).** Las PR [#61](https://github.com/agustinvallante/AgroFlow/pull/61), [#66](https://github.com/agustinvallante/AgroFlow/pull/66) y [#65](https://github.com/agustinvallante/AgroFlow/pull/65) fusionaron implementación de los frentes 2, 3 y 4 de esta demo. El workflow del frente 5 vive en el repositorio externo [agroflow-chatbot](https://github.com/BraianMedrano/agroflow-chatbot). Las casillas siguen sin marcar porque la mera fusión de código no prueba todos los criterios de verificación de cada tarea; tampoco consta aquí la doble ejecución integrada exigida al frente 6. La [replanificación del MVP](../../../docs/planning/mvp-replan-2026-09-29.md) separa estos avances de la aceptación pendiente.
+
 ## 1. Congelar alcance y contrato — Persona 1, contrato y coordinación
 
 - [x] Registrar propuesta, diseño y deltas OpenSpec de la issue #49. Verificación: `openspec validate demo-local-turnos-basicos --strict --no-interactive`.
 - [x] Publicar en OpenAPI las cuatro operaciones canónicas, `/health`, el alta con `carrierPhone`/`truckPlate`/`farmCode`, el filtro opcional `phone`, los demás DTOs, filtros, estados y errores. Verificación: validación OpenAPI disponible en el repositorio o entorno, sin instalar dependencias.
 - [x] Documentar que la demo no modifica el MVP completo y que chatbot/dashboard referencian OpenAPI. Verificación: revisión cruzada de `proposal.md`, `docs/contracts/README.md` y `docs/planning/local-demo-scope.md`.
+- [x] Congelar OpenAPI 0.3.0 tras auditarlo contra OpenSpec y la API: fecha por defecto del listado aun con otros filtros, colección vacía, parámetros no documentados, comparación de identificadores naturales, `%2B` en `phone`, desplazamiento horario de respuestas y `SERVICE_UNAVAILABLE`; publicar el traspaso en [`persona1-contract-handoff.md`](../../../docs/development/persona1-contract-handoff.md). Verificación: `openspec validate --all --strict --no-interactive`, lint de Redocly y verificación de enlaces Markdown.
 
 ## 2. Preparar modelo, persistencia y seed — Persona 2
 
@@ -15,6 +18,8 @@ La asignación propone seis responsables, uno por frente. Cada casilla requiere 
 - [ ] Configurar zona `America/Argentina/Tucuman`, duración de 30 minutos y cupo 2 como datos del seed. Verificación: prueba que lea la configuración persistida y no constantes de dominio.
 
 ## 3. Implementar API de turnos — Persona 3
+
+Avance de la rama `feat/demo-appointments-api`: el alcance implementable sin persistencia y los criterios todavía bloqueados se registran en [`docs/development/persona3-api-handoff.md`](../../../docs/development/persona3-api-handoff.md). Las casillas permanecen abiertas hasta probar el host real con el modelo y el seed de Persona 2.
 
 - [ ] Implementar alta por `carrierPhone`, `truckPlate` y `farmCode`, listado con filtros —incluido `phone`— y detalle conforme a OpenAPI, resolviendo las referencias en backend. Verificación: pruebas de integración para `201`, `200`, `400`, `404` y conflictos de capacidad/camión activo.
 - [ ] Implementar secuencia de estados y cancelación en la operación de transiciones. Verificación: pruebas de secuencia completa, salto rechazado, terminalidad y liberación de cupo.

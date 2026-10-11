@@ -1,25 +1,38 @@
 # Documentación del frontend
 
-Esta página sirve como punto de navegación. No define comportamiento ni reemplaza las fuentes con mayor autoridad.
+La aplicación existente en [`../../frontend/`](../../frontend/) usa React,
+TypeScript y Vite. La [ADR-005](../architecture/decisions/ADR-005-continuidad-react-vite-para-el-mvp.md)
+mantiene esa base para el MVP. El [README del componente](../../frontend/README.md)
+documenta comandos y estado local; esta guía delimita qué está implementado y
+qué sigue siendo planificación.
 
-## Arquitectura objetivo
+## Estado comprobado en el repositorio
 
-- [Arquitectura canónica del frontend](../architecture/frontend/frontend-architecture.md): responsabilidades, límites, estructura objetivo e integración contract-first.
-- [Decisiones de la fundación del frontend](../architecture/frontend/frontend-decisions.md): estado confirmado, propuesto o bloqueante de cada decisión y enlaces a sus ADR.
+- El flujo de turnos ofrece alta, listado y filtros, detalle, transiciones y
+  cancelación contra el contrato de demo `/api/v1/appointments` cuando se usa
+  `VITE_DATA_SOURCE=http`.
+- Panel general, chatbot, transportistas, reportes y configuración permanecen
+  conectados a repositorios mock; esos datos deben presentarse como demostración.
+- La integración de turnos no acredita autenticación, aislamiento MVP entre
+  ingenios, CRUD maestro ejecutable ni aceptación completa del MVP.
+- No se exige conectar todas las pantallas en esta etapa. Cada ampliación espera
+  el comportamiento y contrato aprobados de su capacidad propietaria.
 
-La arquitectura describe el objetivo Next.js con TypeScript, App Router, TanStack Query y Zustand. No afirma que exista una implementación: `frontend/` todavía contiene solo este README. OpenAPI ya publica contratos parciales de datos maestros y recibos de mutación, pero aún no incluye autenticación/sesión/contexto ni consultas de turnos.
+El frontend presenta respuestas confirmadas; el backend decide estado operativo,
+permisos, aislamiento, capacidad y reglas. Los mocks pueden servir para desarrollo
+claramente identificado, pero no sustituyen recorridos reales de aceptación.
 
-Para el MVP, la cola visual debe mostrar las franjas del día —incluidas las vacías— y los cupos restantes obtenidos de la API. La duración y el cupo se preparan por ingenio al iniciar el ambiente; su edición desde la pantalla de Configuración no forma parte del MVP. El calendario y la zona horaria siguen pendientes de `OD-004`. La interfaz interna permite a operador y supervisor gestionar los tres catálogos y crear o cancelar turnos de su ingenio conforme a las specs aprobadas.
+## Arquitectura y propuestas
 
-## Jerarquía de autoridad
+La arquitectura vigente es la aplicación React/Vite ya incorporada y sus
+patrones actuales. Los documentos `ADR-FE-*`, `frontend-architecture.md` y
+`frontend-decisions.md` conservan ideas de PR #47 como propuestas o registro
+histórico para evaluación; no establecen Next.js, App Router, BFF, TanStack Query,
+Zustand ni una organización obligatoria. La custodia de sesión web sigue sin
+selección: no se elige aquí una alternativa.
 
-Ante una diferencia, se aplica la jerarquía establecida por [ADR-002](../architecture/decisions/ADR-002-jerarquia-documental-y-openspec.md):
-
-1. [`openspec/specs/`](../../openspec/specs/) define el comportamiento vigente.
-2. [`docs/contracts/`](../contracts/) define la forma técnica aprobada de interacción.
-3. [`docs/architecture/decisions/`](../architecture/decisions/) registra decisiones técnicas y su estado.
-4. La arquitectura y las guías del frontend explican cómo orientar una implementación sin crear requisitos funcionales.
-5. Los README facilitan navegación e instrucciones rápidas.
-6. El prototipo y otros antecedentes son referencia histórica o visual no normativa.
-
-El modelo de sesión aceptado es un identificador opaco en cookie `HttpOnly` y una sesión del lado servidor en el BFF de Next.js; no hay implementación y su ciclo operativo y contrato siguen pendientes. El backend continúa siendo la fuente operativa de verdad para reglas, permisos, aislamiento y estado confirmado.
+Para políticas de negocio, consultar [`openspec/specs/`](../../openspec/specs/);
+para operaciones HTTP aprobadas, [`docs/contracts/openapi.yaml`](../contracts/openapi.yaml);
+y para bloqueos vigentes, [`docs/planning/open-decisions.md`](../planning/open-decisions.md).
+Las rutas y DTO de maestros, sesión y capacidades MVP no se deben deducir de
+borradores descartados ni introducir como si estuvieran expuestos.

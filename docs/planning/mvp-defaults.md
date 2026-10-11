@@ -1,12 +1,12 @@
 # Defaults y propuestas para el MVP
 
-> **Estado: reconciliado con `main`, ADR-004 y B00.** Este documento registra los límites de las decisiones aprobadas y conserva ideas para una revisión futura; no es un baseline normativo. Solo tienen autoridad las porciones aprobadas explícitamente que se indican abajo. Una conversación o propuesta aceptada no se vuelve normativa por aparecer aquí ni por archivarse un cambio documental. Cada opción abierta requiere aprobación explícita y un cambio OpenSpec de la capacidad propietaria antes de implementarse.
+> **Estado: referencia de planificación reconciliada con `main`, ADR-004/005/006 y B00.** No es baseline normativo. Solo tienen autoridad las porciones aprobadas explícitamente y consolidadas en OpenSpec. Las ideas futuras aquí registradas no autorizan implementación; cada opción abierta requiere aprobación explícita y un cambio OpenSpec de la capacidad propietaria.
 
 ## Propósito y autoridad
 
 Esta referencia registra los límites de las decisiones del MVP. El comportamiento normativo corresponde a las especificaciones de capacidades en [`openspec/specs/`](../../openspec/specs/), de acuerdo con [ADR-002](../architecture/decisions/ADR-002-jerarquia-documental-y-openspec.md). El backend sigue siendo la fuente operativa de verdad, según [ADR-003](../architecture/decisions/ADR-003-backend-fuente-de-verdad.md).
 
-El prototipo de [`docs/contexto/AgroFlow-Dashboard/README.md`](../contexto/AgroFlow-Dashboard/README.md) es solo una referencia visual. No define comportamiento, campos, contratos ni datos operativos.
+El prototipo histórico de AgroFlow-Dashboard es solo una referencia visual. No define comportamiento, campos, contratos ni datos operativos.
 
 ## Resumen del estado de las decisiones
 
@@ -25,6 +25,8 @@ El prototipo de [`docs/contexto/AgroFlow-Dashboard/README.md`](../contexto/AgroF
 | OD-011 | No hay una solución detallada aprobada por esta corrección | Operación, recuperación, privacidad y calidad de servicio |
 | OD-012 | La cola incluye franjas vacías y cupos restantes obtenidos del estado de la API | Fórmulas de indicadores, fecha operativa, zona horaria, horizonte y cadencia de actualización |
 | OD-013 | Operador y supervisor pueden listar, crear, editar e inhabilitar transportistas, camiones y fincas | Campos editables y validaciones, gestión de asociaciones y reactivación |
+
+La base frontend vigente es React/TypeScript/Vite conforme a [ADR-005](../architecture/decisions/ADR-005-continuidad-react-vite-para-el-mvp.md). La cola de turnos ya consume HTTP en la demo; otras vistas permanecen mock y no hay que rehacer ni completar todas las pantallas ahora. Next.js, App Router, BFF, TanStack Query y Zustand de PR #47 son propuestas históricas/evaluables, no decisiones adoptadas. La custodia de sesión web sigue sin selección. La persistencia MVP aprobada es SQLite según [ADR-006](../architecture/decisions/ADR-006-sqlite-para-persistencia-del-mvp.md), con WAL condicionado a pruebas y PostgreSQL como etapa futura.
 
 Consultá [`open-decisions.md`](open-decisions.md) para el registro vigente de decisiones abiertas y [ADR-004](../architecture/decisions/ADR-004-politicas-operativas-del-mvp.md) para las políticas aprobadas y sus detalles explícitamente pendientes.
 

@@ -361,10 +361,14 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
-/backend/Dsw2025Tpi.Api/admins.json
+admins.json
 
 # Local configuration and generated logs
 .env
 .env.*
 !.env.example
 Logs/
+
+# SQLite de la demo local de turnos (Persona 2): generado en runtime, no se versiona.
+agroflow-demo.db
+agroflow-demo.db-*
