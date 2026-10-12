@@ -15,6 +15,7 @@ body:
         - Backend
         - Frontend
         - Compartida
+        - Integración
         - Documentación
     validations:
       required: true

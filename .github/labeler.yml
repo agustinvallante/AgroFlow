@@ -13,6 +13,8 @@ area:frontend:
 area:shared:
   - changed-files:
       - any-glob-to-any-file:
+          - 'chatbot/**'
+          - 'docs/integrations/**'
           - "openspec/**"
           - "docs/architecture/**"
           - "docs/contracts/**"
@@ -22,6 +24,7 @@ area:shared:
 area:docs-devops:
   - changed-files:
       - any-glob-to-any-file:
+          - 'infra/**'
           - ".github/**"
           - "docs/development/**"
           - "docs/onboarding/**"
