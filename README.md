@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/agustinvallante/AgroFlow/actions/workflows/ci.yml/badge.svg)](https://github.com/agustinvallante/AgroFlow/actions/workflows/ci.yml)
 
-Proyecto académico de **Administración de Sistemas** para coordinar turnos y operaciones logísticas de la zafra azucarera. El objetivo es convertir el prototipo visual en una aplicación funcional con una API .NET, un frontend web y una integración controlada con WhatsApp mediante n8n.
+Proyecto académico de **Administración de Sistemas** para coordinar turnos y operaciones logísticas de la zafra azucarera. El objetivo es construir una aplicación funcional con una API .NET, un frontend web y una integración controlada con WhatsApp mediante n8n. El prototipo visual es material de referencia y no constituye una implementación ni una fuente normativa.
 
 ## Organización del repositorio
 
@@ -50,9 +50,9 @@ Los documentos académicos originales son fuentes históricas. Una vez incorpora
 ## Estado técnico
 
 - El backend parte de una copia independiente de [ICS2026-backend](https://github.com/agustinvallante/ICS2026-backend), commit `dc40f7cfa515a1425f8709c73ae917e9c004266a`.
-- El frontend React/Vite importado desde [AgroFlow-Dashboard](https://github.com/GabrielBurieque/AgroFlow-Dashboard) está en `frontend/`: la cola de turnos puede usar la API de la demo; las demás vistas principales siguen con datos simulados.
+- El frontend React/Vite importado desde [AgroFlow-Dashboard](https://github.com/GabrielBurieque/AgroFlow-Dashboard) está en `frontend/`: la cola de turnos puede usar la API de la demo; las demás vistas principales siguen con datos simulados. Las propuestas de Next.js y sus librerías asociadas no son arquitectura aprobada; ver [ADR-005](docs/architecture/decisions/ADR-005-continuidad-react-vite-para-el-mvp.md).
 - La solución backend se llama `AgroFlow.sln`, con proyectos y namespaces `AgroFlow.*`. B01 retiró productos, pedidos y clientes del e-commerce, preservando la API de turnos y seed SQLite del perfil `LocalDemo`. Identity/JWT sigue como andamiaje: esta base todavía no equivale a una API MVP con identidad y aislamiento entre ingenios.
-- El contrato HTTP actual cubre la demo local; para el MVP faltan decisiones, ampliación de OpenAPI y evidencia de todas las puertas de aceptación.
+- El contrato HTTP actual cubre exclusivamente la demo local de turnos; para el MVP faltan decisiones, aprobación de rutas y DTO, ampliación de OpenAPI y evidencia de todas las puertas de aceptación. Las propuestas de maestros no forman parte de la superficie publicada.
 - Si ya existe una SQLite de la demo anterior, aplicar la [transición con respaldo y selección explícita](docs/development/local-demo-runbook.md#actualización-desde-la-demo-anterior-sin-perder-turnos) antes de iniciar la API renombrada; Git no mueve esos archivos ignorados.
 
 ## Seguridad

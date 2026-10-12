@@ -37,6 +37,43 @@ public sealed class MasterDataDomainTests
     }
 
     [Fact]
+    public void Transportista_updates_normalize_dni_digits_and_preserve_whatsapp_rules()
+    {
+        var transportista = new Transportista(Guid.NewGuid(), "Ana", "12.345.678", "+54 (381) 555-0123");
+
+        transportista.Update("Bea", "45.678.901", "+54 222");
+        Assert.Equal("45678901", transportista.NormalizedDni);
+        Assert.Equal("54222", transportista.NormalizedWhatsApp);
+
+        transportista.UpdateContactDetails("Ceci", "98 765 432", "+54 (381) 555-0123");
+        Assert.Equal("98765432", transportista.NormalizedDni);
+        Assert.Equal("543815550123", transportista.NormalizedWhatsApp);
+
+        Assert.Throws<ArgumentException>(() => transportista.UpdateContactDetails("Dora", "---", "+54 333"));
+        Assert.Equal("Ceci", transportista.Name);
+        Assert.Equal("98765432", transportista.NormalizedDni);
+        Assert.Equal("543815550123", transportista.NormalizedWhatsApp);
+    }
+
+    [Fact]
+    public void Transportista_normalizes_whatsapp_consistently_across_creation_and_update_paths()
+    {
+        const string whatsapp = "+54 (381) 555-0123";
+        const string expectedNormalizedWhatsApp = "543815550123";
+        var ingenioId = Guid.NewGuid();
+        var transportista = new Transportista(ingenioId, "Ana", "123", whatsapp);
+        var updated = new Transportista(ingenioId, "Ana", "123", "+54111");
+        var contactUpdated = new Transportista(ingenioId, "Ana", "123", "+54111");
+
+        updated.Update("Bea", "456", whatsapp);
+        contactUpdated.UpdateContactDetails("Ceci", "789", whatsapp);
+
+        Assert.Equal(expectedNormalizedWhatsApp, transportista.NormalizedWhatsApp);
+        Assert.Equal(transportista.NormalizedWhatsApp, updated.NormalizedWhatsApp);
+        Assert.Equal(transportista.NormalizedWhatsApp, contactUpdated.NormalizedWhatsApp);
+    }
+
+    [Fact]
     public void Camion_normalizes_plate_and_enforces_the_approved_fleet_types()
     {
         var camion = new Camion(Guid.NewGuid(), " ab-123.cd ", "propia");
@@ -105,6 +142,7 @@ public sealed class MasterDataDomainTests
 
         Assert.Equal("Ana", transportista.Name);
         Assert.Equal("123", transportista.DNI);
+        Assert.Equal("+54111", transportista.WhatsApp);
         Assert.Equal("54111", transportista.NormalizedWhatsApp);
     }
 

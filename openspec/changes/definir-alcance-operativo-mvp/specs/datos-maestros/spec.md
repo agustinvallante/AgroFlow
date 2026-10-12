@@ -1,3 +1,21 @@
+## MODIFIED Requirements
+
+### Requirement: Identidad única del transportista (RN-043, RN-044)
+
+AgroFlow SHALL exigir que el DNI y el número de WhatsApp de cada transportista sean únicos dentro del sistema. El DNI SHALL normalizarse a su representación de solo dígitos para comparar identidad, y MUST rechazarse un valor sin dígitos.
+
+#### Scenario: Alta con identificador duplicado
+
+- **GIVEN** un transportista existente con un DNI o número de WhatsApp determinado
+- **WHEN** un usuario autorizado intenta registrar otro transportista con el mismo valor
+- **THEN** AgroFlow rechaza el alta e identifica el campo en conflicto
+
+#### Scenario: Normalización de DNI
+
+- **GIVEN** un DNI que contiene dígitos y separadores
+- **WHEN** AgroFlow crea o actualiza el transportista
+- **THEN** AgroFlow usa únicamente los dígitos del DNI para comparar su identidad y rechaza un DNI sin dígitos
+
 ## ADDED Requirements
 
 ### Requirement: Gestión de catálogos del MVP
