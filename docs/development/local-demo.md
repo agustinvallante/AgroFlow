@@ -2,6 +2,12 @@
 
 La API y el frontend integrado se ejecutan en el host; n8n, Evolution API, PostgreSQL y Redis se ejecutan en Docker. Esta guía empaqueta la demo existente: no habilita un despliegue productivo ni nuevas rutas de registro de transportistas. El backend sigue siendo la fuente operativa de verdad.
 
+## Antes de iniciar: conservar la SQLite existente
+
+Si esta instalación ya tenía datos antes del renombre de la API, **no seguir el camino rápido como si fuera una instalación nueva**. El [runbook canónico: actualización desde la demo anterior sin perder turnos](local-demo-runbook.md#actualización-desde-la-demo-anterior-sin-perder-turnos) es la autoridad para detener las conexiones, respaldar el archivo SQLite junto con sus auxiliares y verificar la continuidad de los turnos.
+
+Antes de iniciar `backend/AgroFlow.Api`, completar ese respaldo y configurar en la terminal de la API `ConnectionStrings__AgroFlowDb` con la **ruta absoluta del archivo existente** y `Mode=ReadWrite`. La selección explícita evita crear una base vacía si la ruta es incorrecta; debe reaplicarse al abrir otra terminal. Git no mueve los datos ignorados. **No borrar ni mover SQLite, ni iniciar una base nueva para resolver la transición.** Los comandos siguientes no sustituyen ese procedimiento.
+
 ## Camino rápido
 
 Requisitos: **.NET 8 SDK**, **Node.js 22** (base de CI), Docker con Compose y, para WhatsApp, acceso a OpenAI y dos números de prueba. Todos los comandos parten de la raíz de `AgroFlow/`, salvo los `cd` indicados.
@@ -10,7 +16,7 @@ Requisitos: **.NET 8 SDK**, **Node.js 22** (base de CI), Docker con Compose y, p
 2. Abrir una terminal para la **API**:
 
    ```bash
-   cd backend/Dsw2025Tpi.Api
+   cd backend/AgroFlow.Api
    dotnet run --launch-profile http --urls http://localhost:5000
    ```
 

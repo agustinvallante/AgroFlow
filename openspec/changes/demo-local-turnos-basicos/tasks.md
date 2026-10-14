@@ -2,6 +2,8 @@
 
 La asignación propone seis responsables, uno por frente. Cada casilla requiere la verificación indicada y respeta OpenAPI como contrato único.
 
+> **Nota histórica (2026-09-29).** Las PR [#61](https://github.com/agustinvallante/AgroFlow/pull/61), [#66](https://github.com/agustinvallante/AgroFlow/pull/66) y [#65](https://github.com/agustinvallante/AgroFlow/pull/65) fusionaron implementación de los frentes 2, 3 y 4 de esta demo. El workflow del frente 5 vive en el repositorio externo [agroflow-chatbot](https://github.com/BraianMedrano/agroflow-chatbot). Las casillas siguen sin marcar porque la mera fusión de código no prueba todos los criterios de verificación de cada tarea; tampoco consta aquí la doble ejecución integrada exigida al frente 6. La [replanificación del MVP](../../../docs/planning/mvp-replan-2026-09-29.md) separa estos avances de la aceptación pendiente.
+
 ## 1. Congelar alcance y contrato — Persona 1, contrato y coordinación
 
 - [x] Registrar propuesta, diseño y deltas OpenSpec de la issue #49. Verificación: `openspec validate demo-local-turnos-basicos --strict --no-interactive`.

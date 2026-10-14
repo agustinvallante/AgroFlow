@@ -44,15 +44,15 @@ El workflow `CI` ejecuta cuatro controles coordinados:
 
 1. valida OpenSpec, OpenAPI y enlaces Markdown locales;
 2. restaura, compila y, cuando existan, prueba los proyectos .NET;
-3. instala, analiza, prueba y compila el frontend cuando esté incorporado;
+3. instala con `npm ci`, analiza, prueba y compila el frontend React/Vite ya incorporado;
 4. publica un resultado agregado estable llamado `Required checks`.
 
-La protección de `main` debe exigir `Required checks`, una aprobación y la resolución de conversaciones. El job informa expresamente si aún no existen pruebas backend o si el frontend todavía no fue importado; un aviso no debe confundirse con cobertura.
+La protección de `main` debe exigir `Required checks`, una aprobación y la resolución de conversaciones. El workflow conserva comprobaciones condicionales para estados antiguos del repositorio, pero actualmente existen proyectos de prueba backend y `frontend/package.json` con lockfile; la cobertura se evalúa por los escenarios ejecutados, no por la mera presencia del job.
 
-`Dependency review` rechaza dependencias nuevas con vulnerabilidades altas o críticas. Dependabot revisa semanalmente GitHub Actions y paquetes NuGet. La fuente npm se agregará cuando `frontend/` posea `package.json` y `package-lock.json`.
+`Dependency review` rechaza dependencias nuevas con vulnerabilidades altas o críticas. Dependabot revisa semanalmente GitHub Actions y paquetes NuGet. Aunque `frontend/package.json` y `frontend/package-lock.json` ya existen, **todavía falta configurar la fuente npm** en `.github/dependabot.yml`; no debe presentarse como protección activa hasta hacerlo.
 
 ## Entrega y despliegue
 
-Cada push válido a `main` publica durante 14 días un artefacto compilado del backend y, cuando exista, `frontend/dist`. Esto constituye **entrega continua de artefactos**, no despliegue.
+Cada push válido a `main` publica durante 14 días artefactos compilados del backend y `frontend/dist`. Esto constituye **entrega continua de artefactos**, no despliegue.
 
 El despliegue automático se agregará después de aprobar proveedor, ambiente, dominio, base de datos, secretos y estrategia de migraciones. No se debe crear un workflow de despliegue vacío ni almacenar credenciales en el repositorio.
