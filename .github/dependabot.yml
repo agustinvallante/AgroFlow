@@ -1,19 +1,53 @@
+# Routine maintenance is proposed monthly; nothing merges automatically.
+# Major upgrades require a separate compatibility decision. Security alerts
+# remain enabled; urgent fixes must not wait for the monthly window.
 version: 2
 updates:
   - package-ecosystem: github-actions
     directory: /
     schedule:
-      interval: weekly
-      day: monday
-      time: "09:00"
+      interval: monthly
+      time: '12:00'
       timezone: America/Argentina/Buenos_Aires
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 2
+    groups:
+      actions-maintenance:
+        patterns: ['*']
+        update-types: [minor, patch]
+    ignore:
+      - dependency-name: '*'
+        update-types: [version-update:semver-major]
 
   - package-ecosystem: nuget
-    directory: /backend
+    directories:
+      - /backend/AgroFlow.Api
+      - /backend/AgroFlow.Application
+      - /backend/AgroFlow.Data
+      - /backend/AgroFlow.Tests
     schedule:
-      interval: weekly
-      day: monday
-      time: "09:30"
+      interval: monthly
+      time: '12:30'
       timezone: America/Argentina/Buenos_Aires
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 2
+    groups:
+      dotnet-maintenance:
+        patterns: ['*']
+        update-types: [minor, patch]
+    ignore:
+      - dependency-name: '*'
+        update-types: [version-update:semver-major]
+
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule:
+      interval: monthly
+      time: '13:00'
+      timezone: America/Argentina/Buenos_Aires
+    open-pull-requests-limit: 2
+    groups:
+      frontend-maintenance:
+        patterns: ['*']
+        update-types: [minor, patch]
+    ignore:
+      - dependency-name: '*'
+        update-types: [version-update:semver-major]
