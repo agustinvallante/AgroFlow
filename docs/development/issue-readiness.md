@@ -2,9 +2,9 @@
 
 Un agente que usa Pi, Gentle-AI, Claude u OpenCode **no necesita el historial de este chat**. Sí necesita acceso al repositorio y a la versión concreta de la documentación que rige la tarea. La fuente de verdad es `openspec/specs/`, luego `docs/contracts/openapi.yaml`, los ADR y las guías (ADR-002); el texto de una issue no puede sobrescribirlos.
 
-## Formato del backlog backend
+## Formato del backlog backend y frontend
 
-Las issues `Bxx` se redactaron en Markdown con clave estable y, según el tipo de tarea, objetivo, operación/ruta propuesta, trabajo incluido, archivos a considerar, criterios de aceptación, dependencias/decisiones, fuera de alcance y fuentes normativas. Las `B25`–`B32` son más compactas y **no equivalen todavía a una especificación ejecutable completa**. Rutas y nombres de archivo marcados como propuestos no son contrato aprobado.
+Las issues `Bxx` y `Fxx` se redactan en Markdown con clave estable, objetivo, base integrada y PRs condicionales, trabajo incluido, archivos existentes/propuestos, criterios de aceptación, dependencias/decisiones, fuera de alcance y fuentes normativas. La [actualización del 2026-10-15](../planning/mvp-backlog-sync-2026-10-15.md) amplía también `B25`–`B32` y elimina dependencias circulares. **Actualizar una descripción no la convierte en una especificación ejecutable ni en Ready**: rutas, DTOs y nombres marcados como propuestos necesitan su contrato aprobado.
 
 ## Puerta «Ready for implementation»
 
@@ -50,4 +50,4 @@ El agente debe leer `AGENTS.md`, las specs y ADR enlazados y el contrato del com
 - Decisiones o PRs pendientes (o «ninguno»):
 ```
 
-**Estado al 2026-09-30:** B01 puede implementarse como refactor técnico acotado, preservando la demo y sin inventar reglas del MVP. B00 es el primer trabajo contractual, pero no puede cerrarse mientras las decisiones pendientes afecten el contrato. Las issues de endpoints que dependen de B00 se deben refinar con esta puerta antes de considerarlas listas para implementación autónoma.
+**Estado al 2026-10-15:** B01 #8 está cerrada y #76/#77 integradas; no rehacer el renombre/retiro del e-commerce. B00 #7 sigue siendo el primer trabajo contractual: cerrar las decisiones y operaciones del slice, sin inventar pendientes ni exigir completar todo el MVP antes de cualquier avance. Las fundaciones de #47, el empaquetado #79 y los controles #80 siguen condicionados a revisión/integración; el documento #88 no aprueba historial conversacional. Antes de delegar una implementación, aplicar esta puerta sobre main y las PRs efectivamente incorporadas. No mover estados/assignees/Projects por el solo hecho de refrescar la descripción.
