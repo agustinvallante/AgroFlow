@@ -4,6 +4,8 @@
 - Propósito: distinguir trabajo **integrado**, brechas y evidencia pendiente para la [épica #46](https://github.com/agustinvallante/AgroFlow/issues/46). Este documento es un mapa de implementación, no modifica las especificaciones vigentes.
 - Fuentes normativas: [`openspec/specs/`](../../openspec/specs/), [OpenAPI](../contracts/openapi.yaml) y [guía de aceptación](../product/mvp-acceptance.md). Las simplificaciones de la [demo local](local-demo-scope.md) no reducen el MVP.
 
+**Seguimiento vigente al 2026-10-15:** [actualización del backlog y aportes pendientes](mvp-backlog-sync-2026-10-15.md). #76/#77 ya se integraron y B01 #8 está cerrada. La tabla de este documento conserva el relevamiento histórico de `ef4cc5b`; no usarla para volver a planificar código retirado. Las PRs #47/#79/#80 se consideran aportes condicionales, y #88 sólo una propuesta documental no implementada.
+
 Actualización de integración (2026-10-07): la PR #76 se revisa sobre la rama de #77 para reconciliar la documentación sin perder las decisiones de este corte. El orden previsto es #77 primero, luego #76 hacia `main`. El resultado combinado usa `AgroFlow.sln` y `AgroFlow.*`, retira el e-commerce y protege la continuidad de la SQLite anterior según el [runbook](../development/local-demo-runbook.md#actualización-desde-la-demo-anterior-sin-perder-turnos). La tabla siguiente conserva el relevamiento histórico de `ef4cc5b`; las guías actuales reflejan el resultado reconciliado, no presentan el e-commerce como código aún pendiente de retiro.
 
 ## Qué quedó reutilizable
@@ -54,19 +56,19 @@ Los `Bxx` son issues existentes del [Project Backend](https://github.com/users/a
 
 | Frente | Issues | Inicio verificable |
 |---|---|---|
-| Contrato y plataforma | `B00`–`B05`, `B10` | Cerrar sólo los detalles `OD-*` que bloquean el primer recorrido, ampliar OpenSpec/OpenAPI, implementar el perfil SQLite MVP, retirar dominio heredado, identidad y aislamiento. `B01` puede avanzar con limpieza no conductual en paralelo. |
+| Contrato y plataforma | `B00`–`B05`, `B10` | Cerrar sólo los detalles `OD-*` del primer recorrido, ampliar OpenSpec/OpenAPI e implementar el perfil SQLite MVP, identidad y aislamiento. B01 #8 ya completó el retiro/renombre; conservarlo, no rehacerlo. |
 | Catálogos y asociaciones | `B11`–`B24`, `B38`; `F02`–`F05` | Modelos existentes sirven de base; acordar campos/validaciones y contratos antes de CRUD backend y UI. |
 | Turnos del MVP | `B25`–`B29`; `F06` | Extender `/api/v1/appointments` y `/transitions` en vez de crear rutas paralelas heredadas de títulos antiguos; completar política, seguridad, idempotencia y experiencia UI. |
 | Dashboard | `B35`, `B39`; `F07` | Backend provee métricas y franjas/cupos reales; frontend deja de alimentar panel desde mock. |
 | Interrupciones y notificaciones | `B33`, `B34`, `B36`, `B37`; `F08` | Definir decisiones restantes, persistir/reprogramar, exponer lecturas y conectar UI y avisos. |
-| Canal conversacional | `B30`–`B32`, `B07` | Reusar las operaciones canónicas cuando correspondan; cerrar seguridad y semántica del canal, adaptar el workflow en su repositorio real y probar reintentos. |
+| Canal conversacional | `B30`–`B32`, `B07` | Reusar las operaciones canónicas; cerrar seguridad y semántica del canal, adaptar la copia compartida `chatbot/workflows/Chatbot.json` tras #79 y probar reintentos, sin segunda importación paralela. |
 | Calidad y límites visuales | `B06`; `F09` | Pruebas de contrato/E2E, evidencia G01–G12, accesibilidad y distinción visible de vistas no-MVP; no convertir mapa/reportes/configuración en requisitos sin OpenSpec. |
 
 ## Primer incremento recomendado
 
 1. Revisar `B00` con [OD-004 a OD-014](open-decisions.md): calendario/horizonte, validaciones, idempotencia, seguridad de n8n, auditoría y métricas. Para SQLite (`OD-014`), acordar pruebas del diario/WAL, migración y recuperación sin tratar estos detalles como ya implementados.
 2. Preparar un cambio OpenSpec y una ampliación de OpenAPI para el primer recorrido autenticado, reutilizando las cuatro operaciones de turnos de la demo. Revisar el contrato con responsables de backend, frontend y n8n.
-3. En paralelo, ejecutar `B01` para retirar el dominio heredado y `F01` para preparar la capa de sesión/UI contra el contrato acordado; `B02`/`B03` proveen persistencia e identidad para ese recorrido.
+3. En paralelo, conservar B01 ya integrada y preparar `F01` contra el contrato de sesión acordado; `B02`/`B03` proveen persistencia e identidad para ese recorrido y evalúan el delta útil de #47.
 4. Completar un corte vertical pequeño —solicitud, consulta, avance y cancelación de turno autenticado y aislado— antes de abrir varias pantallas CRUD a la vez. Después incorporar catálogos y dashboard real, interrupciones, canal y verificación final.
 
 La [hoja de ruta](implementation-roadmap.md) detalla esta secuencia. Una tarea no se considera cerrada por existir código de demo o una PR: debe cumplir su delta y la [definición de terminado](../development/definition-of-done.md).
