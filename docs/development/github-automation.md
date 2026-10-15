@@ -62,6 +62,22 @@ El control está preparado antes de integrar el bot de la PR #79: si aún no exi
 - Los archivos privados `.env`/`.env.*` no pueden estar versionados; sólo se admiten los ejemplos. La protección se ejecuta también antes de incorporar el bot.
 - El validador detecta algunos patrones de claves/cabeceras y no imprime sus valores. Es un control heurístico, no una certificación de ausencia de secretos/datos personales; sigue siendo necesaria revisión humana.
 
+### Límites verificables del validador
+
+Las URLs de las herramientas HTTP de negocio admiten el formato exportado `={{ $env.AGROFLOW_API_URL }}/api/v1/appointments`, con el ID dinámico opcional y el sufijo `/transitions` cuando corresponda. La base debe ocupar el inicio de la plantilla: no basta mencionar esa variable o la ruta en otra URL. No se evalúa JavaScript; concatenaciones, transformaciones de la base y otros formatos requieren adaptar expresamente el control y sus regresiones. Los filtros se pasan por `queryParameters`, no como una URL arbitraria.
+
+La búsqueda de UUID de turno fijos cubre URL y campos de body/query: parámetros por nombre, objetos, JSON y plantillas JSON de n8n. Se reconocen `appointmentId`, `appointment_id`, `turnoId`, `id_turno` y variantes de guion/capitalización; `id` se considera turno en la raíz de la petición, como parámetro por nombre o dentro de `appointment`/`turno`. Los UUID de otras entidades (`carrierId`, `truckId`, `farmId`, o `truck.id`) no se prohíben globalmente. Es análisis estático de las formas soportadas, no ejecución de expresiones ni una garantía de identidad o seguridad runtime.
+
+La detección de eliminación completa compara contra el SHA base del pull request o `before` del push. `workflow_dispatch` no proporciona ninguno: en una ejecución manual sin base se emite un aviso `Historical integration removal check NOT RUN`; no debe presentarse como comparación histórica superada. El resto de controles sí se ejecuta. Una base inválida o no disponible falla en lugar de omitirse silenciosamente. También puede comprobarse localmente una base explícita, usando un **SHA completo de commit disponible en el clon**:
+
+```powershell
+$env:INTEGRATION_BASE_REF = '<SHA completo del commit base>'
+node .github/scripts/validate-integrations.mjs
+Remove-Item Env:INTEGRATION_BASE_REF
+```
+
+Las regresiones usan repositorios Git temporales y datos inventados: comprueban la eliminación respecto de una base real, la validación de referencias y el aviso de comparación omitida, además de las rutas y los IDs. No acceden a servicios ni datos del equipo.
+
 CI no inicia n8n/Evolution, no vincula WhatsApp, no utiliza credenciales reales ni ejecuta llamadas pagas. Estos controles no prueban compatibilidad runtime del agente/modelo, autenticación del remitente, E2E de turnos ni aceptación G01–G12. Esos recorridos siguen en B07 y sus dependencias. `chatbot/**` recibe `area:shared`; `infra/**`, `area:docs-devops`. Las plantillas admiten Integración y los títulos manuales `[Backend]`, `[Frontend]` o `[Integración]` también pueden etiquetarse.
 
 ## Política de mantenimiento de dependencias

@@ -143,6 +143,7 @@ jobs:
         run: node --test .github/scripts/tests/integrations.test.mjs
       - name: Validate portable workflow and example configuration
         env:
+          # Manual runs have no base/before; the validator explicitly reports the skipped historical check.
           INTEGRATION_BASE_REF: ${{ github.event.pull_request.base.sha || github.event.before }}
         run: node .github/scripts/validate-integrations.mjs
       - name: Validate Compose without starting containers or reading private environment

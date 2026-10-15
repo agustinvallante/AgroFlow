@@ -11,6 +11,76 @@ export const integrationPaths = [
 
 const secretName = /^(authorization|apikey|api[-_]?key|access[-_]?token|password|secret)$/i;
 const secretValue = /sk-[a-zA-Z0-9_-]{20,}|gh[pousr]_[a-zA-Z0-9]{20,}|-----BEGIN [A-Z ]*PRIVATE KEY-----/;
+const uuid = /[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}/i;
+// Deliberately accept the exported n8n template format, not arbitrary JavaScript.
+const businessUrl = /^=\{\{\s*\$env\.AGROFLOW_API_URL\s*\}\}\/api\/v1\/appointments(?:\/(?:[a-zA-Z0-9-]+|\{\{(?:(?!\{\{|\}\})[\s\S])+\}\})(?:\/transitions)?)?$/;
+
+function appointmentField(name, parent = '', namedParameter = false) {
+  const normalized = name.replace(/[_-]/g, '').toLowerCase();
+  return ['appointmentid', 'turnoid', 'idturno'].includes(normalized)
+    || (normalized === 'id' && (namedParameter || ['', 'appointment', 'turno'].includes(parent.toLowerCase())));
+}
+
+function rejectFixedAppointmentId(value) {
+  assert.ok(!uuid.test(JSON.stringify(value) ?? ''), 'Hardcoded appointment UUID forbidden');
+}
+
+function parseRequestJson(text) {
+  const source = text.trim().replace(/^=/, '');
+  // Replace template tokens before parsing JSON, without evaluating expressions.
+  // Restore them afterwards so a literal UUID inside an expression is still checked.
+  const expressions = new Map();
+  let quoted = false;
+  let escaped = false;
+  let json = '';
+  for (let index = 0; index < source.length; index++) {
+    if (source.startsWith('{{', index)) {
+      const end = source.indexOf('}}', index + 2);
+      if (end < 0) return undefined;
+      const marker = `__agroflow_expression_${expressions.size}__`;
+      expressions.set(marker, source.slice(index, end + 2));
+      json += quoted ? marker : JSON.stringify(marker);
+      index = end + 1;
+      continue;
+    }
+    const char = source[index];
+    json += char;
+    if (escaped) escaped = false;
+    else if (quoted && char === '\\') escaped = true;
+    else if (char === '"') quoted = !quoted;
+  }
+  try {
+    return JSON.parse(json, (_key, value) => typeof value === 'string'
+      ? value.replace(/__agroflow_expression_\d+__/g, marker => expressions.get(marker) ?? marker) : value);
+  } catch { return undefined; }
+}
+
+function checkRequestIdentifiers(value, parent = '') {
+  if (typeof value === 'string') {
+    const parsed = parseRequestJson(value);
+    if (parsed && typeof parsed === 'object') checkRequestIdentifiers(parsed, parent);
+    else {
+      // Also catch named literal IDs in an opaque n8n object expression. This is
+      // a static guard, not a JavaScript evaluator or a runtime identity check.
+      for (const match of value.matchAll(/(?:^|[,{])\s*["']?(?:appointment[_-]?id|turno[_-]?id|id[_-]?turno)["']?\s*:\s*([^,}\r\n]*)/gi)) {
+        rejectFixedAppointmentId(match[1]);
+      }
+    }
+    return;
+  }
+  if (!value || typeof value !== 'object') return;
+  if (Array.isArray(value)) {
+    for (const item of value) checkRequestIdentifiers(item, parent);
+    return;
+  }
+  if (typeof value.name === 'string' && appointmentField(value.name, parent, true)) {
+    rejectFixedAppointmentId(value.value);
+  }
+  for (const [key, child] of Object.entries(value)) {
+    if (appointmentField(key, parent)) rejectFixedAppointmentId(child);
+    checkRequestIdentifiers(child, key);
+  }
+}
 
 function checkSecrets(value, path = 'workflow') {
   if (typeof value === 'string') {
@@ -86,9 +156,13 @@ export function validateWorkflow(workflow) {
     checkNodeReferences(node.parameters ?? {}, names);
     if (node.type !== 'n8n-nodes-base.httpRequestTool') continue;
     const url = node.parameters?.url ?? '';
-    assert.ok(url.includes('$env.AGROFLOW_API_URL') && url.includes('/api/v1/appointments'),
-      `Business tool ${node.name} must use configured AgroFlow API`);
-    assert.ok(!/[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}/i.test(url), 'Hardcoded appointment UUID forbidden');
+    const match = typeof url === 'string' ? businessUrl.exec(url) : null;
+    assert.ok(match && match[0] === url,
+      `Business tool ${node.name} must use configured AgroFlow API as the URL base in the supported template format`);
+    assert.ok(!uuid.test(url), 'Hardcoded appointment UUID forbidden');
+    for (const field of ['bodyParameters', 'queryParameters', 'jsonBody', 'jsonQuery', 'body', 'query']) {
+      checkRequestIdentifiers(node.parameters?.[field]);
+    }
   }
   checkSecrets(workflow);
 }
@@ -131,8 +205,11 @@ export function checkRepository(root, baseRef = '') {
   let required = existsSync(resolve(root, 'chatbot'));
   if (baseRef && !/^0+$/.test(baseRef)) {
     assert.match(baseRef, /^[a-f0-9]{40}$/i, 'CI base must be a commit SHA');
-    const baseFiles = execFileSync('git', ['-c', `safe.directory=${root}`, 'ls-tree', '-r', '--name-only', baseRef],
-      { cwd: root, encoding: 'utf8' }).split(/\r?\n/);
+    let baseFiles;
+    try {
+      baseFiles = execFileSync('git', ['-c', `safe.directory=${root}`, 'ls-tree', '-r', '--name-only', `${baseRef}^{commit}`],
+        { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).split(/\r?\n/);
+    } catch { throw new Error('CI base must resolve to an available commit'); }
     required ||= integrationPaths.some(path => baseFiles.includes(path));
   }
   return validateIntegrationAssets(files, required);
@@ -141,7 +218,12 @@ export function checkRepository(root, baseRef = '') {
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
   const root = resolve(process.argv[2] ?? '.');
   try {
-    const present = checkRepository(root, process.env.INTEGRATION_BASE_REF ?? '');
+    const baseRef = process.env.INTEGRATION_BASE_REF ?? '';
+    const present = checkRepository(root, baseRef);
+    if (!baseRef || /^0+$/.test(baseRef)) {
+      console.log('::notice::Historical integration removal check NOT RUN: no comparison commit SHA was supplied. '
+        + 'workflow_dispatch has no automatic base; supply INTEGRATION_BASE_REF locally to enable this check.');
+    }
     console.log(present ? 'Portable chatbot export/environment validated; no runtime or paid calls executed.'
       : 'Chatbot not yet integrated: validator unit tests still run; partial imports will fail.');
   } catch (error) {
