@@ -29,7 +29,7 @@ public sealed class EfMasterDataUnitOfWork(AgroFlowDbContext context) : IMasterD
 
     public async Task<IReadOnlyList<TransportistaCamion>> ListAssociations(Guid ingenioId, bool? active, CancellationToken ct) =>
         await context.Asociaciones.AsNoTracking().Where(x => x.IngenioId == ingenioId && (!active.HasValue || x.IsActive == active.Value))
-            .OrderBy(x => x.CreatedAtUtc).ToListAsync(ct);
+            .OrderBy(x => x.Id).ToListAsync(ct);
 
     public async Task<IReadOnlyList<ActiveTruckAssociationProjection>> ListActiveTrucksForTransportista(Guid ingenioId, Guid transportistaId, CancellationToken ct)
     {
