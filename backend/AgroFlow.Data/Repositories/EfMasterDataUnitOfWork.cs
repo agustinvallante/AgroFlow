@@ -38,6 +38,7 @@ public sealed class EfMasterDataUnitOfWork(AgroFlowDbContext context) : IMasterD
         var rows = from association in context.Asociaciones.AsNoTracking()
                    join truck in context.Camiones.AsNoTracking() on association.CamionId equals truck.Id
                    where association.IngenioId == ingenioId && association.TransportistaId == transportistaId && association.IsActive
+                       && truck.IngenioId == ingenioId
                    orderby truck.Plate, association.CamionId
                    select new ActiveTruckAssociationProjection(association.CamionId, truck.Plate, truck.FleetType, association.IsActive, truck.IsActive);
         return await rows.ToListAsync(ct);
