@@ -4,19 +4,23 @@ La [demo local](local-demo-scope.md) dejó una base integrada, pero su perfil si
 
 Los identificadores `Bxx` y `Fxx` son prefijos de issues, no versiones de API. OpenSpec define el comportamiento y [OpenAPI](../contracts/openapi.yaml) las operaciones aprobadas. Las rutas históricas en títulos de issues son propuestas: para turnos ya existe el contrato de demo `/api/v1/appointments`, que debe ampliarse para el MVP sin duplicar endpoints por inercia.
 
+El [corte de backlog del 2026-10-15](mvp-backlog-sync-2026-10-15.md) distingue lo integrado de los aportes pendientes #47/#79/#80. B01 #8 ya está completada. La propuesta de historial #88 no se transforma en alcance obligatorio ni API disponible. Las issues conservan sus estados y necesitan el refinamiento del contrato antes de considerarse Ready.
+
 ## Secuencia por incrementos verificables
 
 | Incremento | Backend | Frontend/integración | Condición para avanzar |
 |---|---|---|---|
-| 0. Acordar el primer corte | `B00` y decisiones `OD-*`; `B01` limpieza independiente | Revisar contrato con responsables de `F01`, `F06` y n8n | Cambio OpenSpec, OpenAPI y criterio de aceptación del primer recorrido coherentes; plan de SQLite MVP y pruebas de diario/recuperación de `B02` acordado. |
+| 0. Acordar el primer corte | `B00` y decisiones `OD-*`; conservar B01 ya integrada | Revisar contrato con responsables de `B02/B03`, `F01`, `F06` y n8n | Contrato y decisiones del slice coherentes, sin esperar todas las decisiones del MVP; plan de SQLite MVP y pruebas de diario/recuperación de `B02` acordado. |
 | 1. Base segregada | `B02`–`B05`, `B10` | `F01` acceso/sesión | Identidad, contexto de ingenio, configuración reproducible, rechazo cruzado y pruebas. La API de demo no se expone sin seguridad como perfil MVP. |
 | 2. Turno vertical real | `B25`–`B29` como extensiones del servicio actual | `F06` adapta el recorrido HTTP existente | Alta, consulta, transición y cancelación desde UI con estado persistido, prioridad/capacidad/idempotencia y errores previstos. |
 | 3. Maestros y asociaciones | `B11`–`B24`, `B38` | `F02`–`F05` | Listado, alta, edición e inhabilitación por rol/ingenio, asociación administrable e historial conservado. |
 | 4. Operación visible | `B35`, `B39`, `B33`–`B34` | `F07` dashboard; `F08` interrupciones | Métricas y ventanas incluso vacías desde API; interrupciones y tratamiento por estado visibles sin cálculos de negocio en UI. |
-| 5. Canal y entrega | `B30`–`B32`, `B36`–`B37`, `B07` | Workflow en [agroflow-chatbot](https://github.com/BraianMedrano/agroflow-chatbot) | Canal de prueba importable, autenticado y deduplicado; notificación al destinatario indicado por API. |
+| 5. Canal y entrega | `B30`–`B32`, `B36`–`B37`, `B07` | Reutilizar `chatbot/workflows/Chatbot.json` tras [#79](https://github.com/agustinvallante/AgroFlow/pull/79); repositorio externo como origen histórico | Canal de prueba importable, autenticado y deduplicado; notificación al destinatario indicado por API. Empaquetado y saludo no son E2E. |
 | 6. Aceptación | `B06` | `F09` y QA transversal | Evidencia de `G01`–`G12`, dos recorridos completos fechados, reinicio, respaldo/restauración y sin defectos bloqueantes. |
 
 Se permite trabajar en paralelo dentro de un incremento cuando el contrato de la porción está acordado. La secuencia no obliga a terminar todos los catálogos antes de probar un turno; sí exige datos de arranque válidos y no confundir ese atajo de integración con la aceptación posterior de `G03`.
+
+Separar coordinación de prerrequisito: B28 provee estados a B32; B29 libera cupo que B39 consulta; B25–B29 proveen la API a F06. No hacer que sus consumidores sean a su vez bloqueos de inicio. La fundación de #47 se revisa/reutiliza sin asumir CRUD publicado ni contratos de idempotencia/sesión aprobados; #80 prepara controles y no implementa seguridad/E2E del canal.
 
 ## Políticas y decisiones que no debe inventar un equipo
 
