@@ -44,15 +44,15 @@ El workflow `CI` ejecuta cuatro controles coordinados:
 
 1. valida OpenSpec, OpenAPI y enlaces Markdown locales;
 2. restaura, compila y, cuando existan, prueba los proyectos .NET;
-3. instala con `npm ci`, analiza, prueba y compila el frontend React/Vite ya incorporado;
+3. si encuentra `frontend/package.json` junto con `frontend/package-lock.json`, instala mediante `npm ci`, ejecuta los scripts de tipos, lint y pruebas configurados, y compila;
 4. publica un resultado agregado estable llamado `Required checks`.
 
-La protección de `main` debe exigir `Required checks`, una aprobación y la resolución de conversaciones. El workflow conserva comprobaciones condicionales para estados antiguos del repositorio, pero actualmente existen proyectos de prueba backend y `frontend/package.json` con lockfile; la cobertura se evalúa por los escenarios ejecutados, no por la mera presencia del job.
+La protección de `main` debe exigir `Required checks`, una aprobación y la resolución de conversaciones. El workflow conserva comprobaciones condicionales para estados anteriores. La mera existencia de proyectos o de un job no demuestra cobertura funcional: se evalúan los escenarios realmente ejecutados. La integración frontend vigente es React/Vite; los flujos todavía mock no cuentan como recorridos reales del MVP.
 
 `Dependency review` rechaza dependencias nuevas con vulnerabilidades altas o críticas. Dependabot revisa semanalmente GitHub Actions y paquetes NuGet. Aunque `frontend/package.json` y `frontend/package-lock.json` ya existen, **todavía falta configurar la fuente npm** en `.github/dependabot.yml`; no debe presentarse como protección activa hasta hacerlo.
 
 ## Entrega y despliegue
 
-Cada push válido a `main` publica durante 14 días artefactos compilados del backend y `frontend/dist`. Esto constituye **entrega continua de artefactos**, no despliegue.
+Cada push válido a `main` publica durante 14 días artefactos compilados del backend y `frontend/dist`. Esto constituye **entrega continua de artefactos**, no despliegue. La continuidad de React/Vite está aprobada por ADR-005; no se afirma una arquitectura BFF de Next.js ni se deriva una topología de despliegue de las propuestas históricas de PR #47.
 
 El despliegue automático se agregará después de aprobar proveedor, ambiente, dominio, base de datos, secretos y estrategia de migraciones. No se debe crear un workflow de despliegue vacío ni almacenar credenciales en el repositorio.

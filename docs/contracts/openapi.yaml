@@ -11,14 +11,17 @@ info:
     sembrado (`America/Argentina/Tucuman` en la demo); los consumidores deben
     interpretar el desplazamiento recibido y no asumir uno fijo. Esta regla de
     presentación es propia de la demo local y no define la del MVP completo.
+    Esta especificación publica solo salud y appointments de la demo. Rutas,
+    DTO, paginación e idempotencia para datos maestros siguen pendientes de B00,
+    OD-006 y OD-013; las propuestas no constituyen contrato HTTP.
 servers:
   - url: http://localhost:5000
     description: API ejecutada en el host local
   - url: http://host.docker.internal:5000
     description: API del host vista desde n8n en Docker Desktop
 
-# La demo local no incluye autenticación. El MVP completo definirá su propio esquema.
-security: []
+# La demo local no incluye autenticación. La seguridad de operaciones MVP sigue
+# definida por sus capacidades y se especificará en contratos aprobados.
 
 tags:
   - name: Salud
@@ -31,6 +34,7 @@ paths:
     get:
       tags: [Salud]
       operationId: obtenerSalud
+      security: []
       summary: Comprobar la salud técnica de la API
       responses:
         '200':
@@ -58,6 +62,7 @@ paths:
     post:
       tags: [Turnos]
       operationId: crearTurno
+      security: []
       summary: Crear y asignar un turno
       description: >-
         Crea un turno resolviendo el teléfono del transportista, la patente del
@@ -95,6 +100,7 @@ paths:
     get:
       tags: [Turnos]
       operationId: listarTurnos
+      security: []
       summary: Listar y filtrar turnos
       description: >-
         Devuelve los turnos del ingenio sembrado cuya ventana comienza en la
@@ -168,6 +174,7 @@ paths:
     get:
       tags: [Turnos]
       operationId: obtenerTurno
+      security: []
       summary: Consultar el detalle vigente de un turno
       responses:
         '200':
@@ -189,6 +196,7 @@ paths:
     post:
       tags: [Turnos]
       operationId: transicionarTurno
+      security: []
       summary: Avanzar o cancelar un turno
       description: >-
         Aplica el siguiente estado de la secuencia operativa o CANCELADO desde un
@@ -214,7 +222,6 @@ paths:
           $ref: '#/components/responses/BusinessConflict'
         '500':
           $ref: '#/components/responses/InternalError'
-
 components:
   parameters:
     AppointmentId:
@@ -448,7 +455,6 @@ components:
             type: array
             items:
               type: string
-
   responses:
     ValidationError:
       description: >-
