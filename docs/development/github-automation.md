@@ -45,7 +45,7 @@ El workflow `CI` ejecuta cinco controles coordinados:
 1. valida OpenSpec, OpenAPI y enlaces Markdown locales;
 2. restaura, compila y prueba obligatoriamente `backend/AgroFlow.sln` y su proyecto de tests;
 3. instala con `npm ci`, audita el lockfile y ejecuta typecheck, lint, tests y build del frontend; los scripts ya no se omiten con `--if-present`;
-4. prueba las reglas de validación de integraciones y, cuando se incorpora el bot, valida su export, ejemplo de entorno y Compose;
+4. prueba las reglas de validación de integraciones y valida el export, ejemplo de entorno y Compose del bot integrado;
 5. publica `Required checks`, que exige el éxito de los cuatro jobs anteriores, también el de integraciones.
 
 El ruleset activo de `main` exige `Required checks`, `Reject vulnerable dependency changes`, una aprobación, conversaciones resueltas y base actualizada. No se usa bypass para integrar cambios. Los checkouts CI no conservan credenciales Git; el etiquetado con `pull_request_target` no ejecuta código de la rama propuesta.
@@ -56,7 +56,9 @@ La mera existencia de proyectos, de un job o de una CI verde no demuestra cobert
 
 ## Integraciones y privacidad
 
-El control está preparado antes de integrar el bot de la PR #79: si aún no existen sus archivos, lo indica y ejecuta igualmente los tests del validador. Una incorporación parcial falla; si la base ya tenía el componente, tampoco se permite que desaparezca silenciosamente. Se esperan `chatbot/workflows/Chatbot.json`, `chatbot/README.md`, `infra/compose.yaml` e `infra/env.example`.
+El bot de la PR #79 ya está integrado en `main`. El job comprueba sus archivos reales: `chatbot/workflows/Chatbot.json`, `chatbot/README.md`, `infra/compose.yaml` e `infra/env.example`. Una incorporación parcial falla; si la base ya tenía el componente, tampoco se permite que desaparezca silenciosamente. Los tests conservan cobertura para estados previos sin bot, pero ese caso ya no describe el candidato actual.
+
+La evidencia del candidato posterior a #79 debe mostrar tanto la validación del export y entorno existentes como la ejecución de Compose con el ejemplo de entorno. Que pasen solamente los tests del validador no acredita esos dos pasos; tampoco corresponde presentar el mensaje de componente todavía ausente como una validación del bot integrado.
 
 - Export inactivo, sin `pinData`, metadatos de instancia ni IDs/valores de credenciales; referencias de credenciales genéricas por nombre.
 - Nombres/IDs de nodo únicos, conexiones y referencias de expresión válidas; herramientas de negocio contra la API configurada, sin UUID de turno fijo.
@@ -100,7 +102,7 @@ node .github/scripts/validate-integrations.mjs
 node .github/scripts/check-local-markdown-links.mjs
 ```
 
-Tras incorporar el bot, ejecutar también `docker compose --env-file infra/env.example -f infra/compose.yaml config --quiet`. No se exige una nueva capacidad OpenSpec por este cambio de tooling: no modifica reglas ni contrato de producto.
+Para el bot integrado, ejecutar también `docker compose --env-file infra/env.example -f infra/compose.yaml config --quiet`. No se exige una nueva capacidad OpenSpec por este cambio de tooling: no modifica reglas ni contrato de producto.
 
 ## Entrega y despliegue
 

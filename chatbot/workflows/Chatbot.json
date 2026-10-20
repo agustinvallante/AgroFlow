@@ -1,0 +1,438 @@
+{
+  "name": "Chatbot",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "d01e7ba4-e412-47e5-a841-dafc71257beb",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -96,
+        16
+      ],
+      "id": "ff2ced70-3172-4abc-a055-73ce0e61d1d2",
+      "name": "Webhook",
+      "webhookId": "d01e7ba4-e412-47e5-a841-dafc71257beb"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        112,
+        16
+      ],
+      "id": "075c5891-ea7f-44af-8d79-18c26ae42ec7",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "b67c9ec7-f7d3-4259-a327-c64d909e2eb6",
+              "leftValue": "={{ $json.body.data.key.fromMe }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "false",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "26163016-ca5e-4e1f-bd4a-d59e734467f2",
+              "leftValue": "={{ $json.body.data.messageType }}",
+              "rightValue": "conversation",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            },
+            {
+              "id": "20355ee0-d752-4682-b1a1-798b0d423a8f",
+              "leftValue": "={{ $json.body.data.key.remoteJid }}",
+              "rightValue": "@g.us",
+              "operator": {
+                "type": "string",
+                "operation": "notContains"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.3,
+      "position": [
+        288,
+        16
+      ],
+      "id": "cf4ccc44-a6f9-4fe0-92ca-3040b7dc0134",
+      "name": "Filter"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "5a66e889-027e-4e5a-be36-38d0c49f8590",
+              "name": "chatId",
+              "value": "={{ $json.body.data.key.remoteJid }}",
+              "type": "string"
+            },
+            {
+              "id": "52b95d0e-7eac-49db-9e16-b2ffe287315b",
+              "name": "phone",
+              "value": "={{ $json.body.data.key.remoteJid.split('@')[0] }}",
+              "type": "string"
+            },
+            {
+              "id": "f36ef671-476e-4d43-9f4e-a5255da3215d",
+              "name": "name",
+              "value": "={{ $json.body.data.pushName || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "b694c93d-a5df-4a84-a897-e5eca1f3a8ca",
+              "name": "messageId",
+              "value": "={{ $json.body.data.key.id }}",
+              "type": "string"
+            },
+            {
+              "id": "59401569-b4e5-4b1d-b88c-87ed0111e3e4",
+              "name": "instance",
+              "value": "={{ $json.body.instance }}",
+              "type": "string"
+            },
+            {
+              "id": "c13033a7-f961-4005-b85c-f5e3e90dfcbc",
+              "name": "text",
+              "value": "={{ $json.body.data.message.conversation.trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "437c3bdb-8890-4f28-9326-6fa4650a5330",
+              "name": "textNormalized",
+              "value": "={{ $json.body.data.message.conversation.trim().toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g, '') }}",
+              "type": "string"
+            },
+            {
+              "id": "72ed8c43-13d9-4e0f-8454-f8468ccf049a",
+              "name": "receivedAt",
+              "value": "={{ new Date($json.body.data.messageTimestamp * 1000).toISOString() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        480,
+        16
+      ],
+      "id": "a8b074a2-3a64-4e58-b8b2-395305ee91ac",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-5.4-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-5.4-mini"
+        },
+        "builtInTools": {},
+        "options": {
+          "temperature": 0.2
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        496,
+        240
+      ],
+      "id": "9cb76311-f0d2-480c-828e-58fbaf95ca76",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Edit Fields').item.json.chatId }}",
+        "contextWindowLength": 10
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        656,
+        240
+      ],
+      "id": "f9028c81-876d-4eef-9ec8-a876c3035f4e",
+      "name": "Window Buffer Memory"
+    },
+    {
+      "parameters": {
+        "toolDescription": "Looks up existing appointments (turnos) for the WhatsApp caller's own phone number, which is attached automatically and already normalized; never ask the caller for their phone or pass it yourself. Use this to check whether the caller already has an appointment, to read its current persisted status and assigned window, or to find the appointment id before reporting EN_CAMINO. Returns an array of appointments (empty if none) or a problem+json error body.",
+        "url": "={{ $env.AGROFLOW_API_URL }}/api/v1/appointments",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "phone",
+              "value": "=+{{ $('Edit Fields').item.json.phone }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.2,
+      "position": [
+        976,
+        240
+      ],
+      "id": "d2198674-59c5-46b5-a0b6-92f84dba1df8",
+      "name": "Lookup Appointments By Phone"
+    },
+    {
+      "parameters": {
+        "toolDescription": "Reports that a confirmed truck has departed toward the farm, transitioning its appointment to EN_CAMINO. Call this only after using the lookup tool and confirming the truck plate with the caller so you have the correct appointment id; never guess or invent the appointment id. On success (200) returns the updated appointment with status EN_CAMINO. On failure returns a problem+json body, for example 404 APPOINTMENT_NOT_FOUND or 409 INVALID_TRANSITION when the current state cannot move to EN_CAMINO.",
+        "method": "POST",
+        "url": "={{ $env.AGROFLOW_API_URL }}/api/v1/appointments/{{ /*n8n-auto-generated-fromAI-override*/ $fromAI('appointmentId', 'UUID of the appointment to transition, obtained from a prior lookup for this caller after confirming the truck plate. Never invent this value.', 'string') }}/transitions",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"newStatus\": \"EN_CAMINO\"\n}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.2,
+      "position": [
+        1136,
+        240
+      ],
+      "id": "3f9eb777-8044-494d-a688-6008d5e1d5be",
+      "name": "Report En Camino"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.EVOLUTION_INTERNAL_URL }}/message/sendText/{{ $env.EVOLUTION_INSTANCE }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ number: $('Edit Fields').item.json.chatId, text: $json.output }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1104,
+        16
+      ],
+      "id": "cfedb76b-469e-4809-a917-5e87af3de251",
+      "name": "Send WhatsApp reply",
+      "credentials": {
+        "httpHeaderAuth": {
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $('Edit Fields').item.json.text }}",
+        "options": {
+          "systemMessage": "=You are the AgroFlow WhatsApp assistant for truck drivers (transportistas) who deliver sugar cane to the mill. Always reply in neutral, professional Spanish, in short WhatsApp-style messages. No slang, no regional expressions, no emojis unless the caller uses them first.\n\n## Scope\n\nYou support exactly three intents and nothing else:\n1. Request an appointment (turno).\n2. Look up the caller's own appointment(s).\n3. Report that the truck is EN_CAMINO (departed toward the farm).\n\nAny other request (small talk aside) gets a short reply explaining it is outside this demo's scope. Do not call any tool for an unsupported intent, and never invent capabilities such as cancellations, other transitions, maps, or incident reports.\n\n## Identity\n\nThe caller's WhatsApp phone number is already known to the workflow and is attached automatically by every tool. Never ask the caller for their phone number and never invent one.\n\n## Requesting an appointment\n\nCollect, and explicitly read back to the caller for confirmation before calling the creation tool:\n- truck plate;\n- seeded farm code;\n- cane cut date and time;\n- estimated load in tons.\n\nResolve relative expressions (\"today\", \"tomorrow\", \"at 3pm\") against the current date and time in Tucumán: {{ $now.setZone('America/Argentina/Tucuman').toISO() }}. The cut time you send to the tool must be an explicit ISO 8601 timestamp with a UTC offset (normally -03:00).\n\nCall the creation tool only after the caller has confirmed all four values in the same conversation. Never invent an assigned window, a priority, or a state. Confirm the appointment to the caller only using the tool's successful response (assigned window and status ASIGNADO); do not predict or guess it beforehand.\n\n## Looking up an appointment\n\nCall the lookup tool and use the persisted status and window exactly as it returns them; never reconstruct them from earlier conversation turns. If more than one appointment comes back, ask the caller to confirm the truck plate to identify the right one.\n\n## Reporting EN_CAMINO\n\nFirst call the lookup tool and confirm the truck plate with the caller to identify the correct appointment, then call the transition tool with that appointment's id. Confirm the departure to the caller only after a successful response reporting status EN_CAMINO.\n\n## Errors\n\nEvery tool returns the AgroFlow API's error body with a stable \"code\" field when the call fails. React without ever claiming success:\n- VALIDATION_ERROR: briefly say which piece of information looks wrong or incomplete and ask again for it.\n- REFERENCE_NOT_FOUND: the phone, truck plate, or farm code is not registered for this demo; ask the caller to double-check the plate or farm code.\n- APPOINTMENT_NOT_FOUND: no appointment matches that lookup; tell the caller.\n- ACTIVE_APPOINTMENT_EXISTS: that truck already has an active appointment; explain the conflict and do not create a new one.\n- NO_CAPACITY: there is no room left in that window; say so plainly.\n- INVALID_TRANSITION: the appointment cannot move to EN_CAMINO from its current state; explain briefly.\n- Any other or unrecognized error (including HTTP 500): apologize, say something went wrong on the system side, and ask the caller to try again shortly.\n\n## Hard rules\n\n- Never invent an appointment window, priority, status, or a successful outcome. Communicate a result only after receiving it from a successful tool response.\n- Keep every reply short, like a real WhatsApp message.\n- Always reply in Spanish, regardless of the language the caller used.\n\nCurrent date and time in Tucumán: {{ $now.setZone('America/Argentina/Tucuman').toISO() }}"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        704,
+        16
+      ],
+      "id": "1f154d2e-9478-4e35-b0fe-462f36443763",
+      "name": "AI Agent1"
+    },
+    {
+      "parameters": {
+        "toolDescription": "Creates one appointment (turno) for a seeded carrier truck at a seeded farm. Call this only after the caller has explicitly confirmed the truck plate, farm code, cane cut date and time (with an explicit UTC offset), and estimated load in tons in this conversation. The carrier phone is added automatically from the WhatsApp sender; never ask for it or pass it yourself. On success (201) returns the persisted appointment, including its id, assigned window, and status ASIGNADO. On failure returns a problem+json body with a `code` field such as VALIDATION_ERROR, REFERENCE_NOT_FOUND, ACTIVE_APPOINTMENT_EXISTS, or NO_CAPACITY; never treat a failure response as a created appointment.",
+        "method": "POST",
+        "url": "={{ $env.AGROFLOW_API_URL }}/api/v1/appointments",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"carrierPhone\": \"+{{ $('Edit Fields').item.json.phone }}\",\n  \"truckPlate\": \"{{ /*n8n-auto-generated-fromAI-override*/ $fromAI('truckPlate', 'Seeded truck plate confirmed by the caller, e.g. AF123BC (6 to 10 alphanumeric characters).', 'string') }}\",\n  \"farmCode\": \"{{ /*n8n-auto-generated-fromAI-override*/ $fromAI('farmCode', 'Seeded farm code confirmed by the caller, e.g. FINCA-NORTE or FINCA-SUR.', 'string') }}\",\n  \"cutAt\": \"{{ /*n8n-auto-generated-fromAI-override*/ $fromAI('cutAt', 'Cane cut date and time confirmed by the caller, as ISO 8601 with an explicit UTC offset, e.g. 2026-09-28T14:30:00-03:00.', 'string') }}\",\n  \"estimatedLoadTons\": {{ /*n8n-auto-generated-fromAI-override*/ $fromAI('estimatedLoadTons', 'Estimated load in tons confirmed by the caller, a positive number.', 'number') }}\n}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.2,
+      "position": [
+        816,
+        240
+      ],
+      "id": "d69d56c4-409b-48b4-8bd2-b36d83f62cfc",
+      "name": "Create Appointment"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respond to Webhook": {
+      "main": [
+        [
+          {
+            "node": "Filter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Window Buffer Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lookup Appointments By Phone": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Report En Camino": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Appointment": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent1": {
+      "main": [
+        [
+          {
+            "node": "Send WhatsApp reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  }
+}
