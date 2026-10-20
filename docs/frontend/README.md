@@ -1,15 +1,38 @@
-# Guías del frontend
+# Documentación del frontend
 
-La aplicación web existente está en [`../../frontend/`](../../frontend/) y usa React, TypeScript y Vite. La [ADR-005](../architecture/decisions/ADR-005-continuidad-react-vite-para-el-mvp.md) mantiene esa base para el MVP. El [README del componente](../../frontend/README.md) contiene comandos de instalación, estructura y configuración local; esta guía ubica su alcance frente a las especificaciones.
+La aplicación existente en [`../../frontend/`](../../frontend/) usa React,
+TypeScript y Vite. La [ADR-005](../architecture/decisions/ADR-005-continuidad-react-vite-para-el-mvp.md)
+mantiene esa base para el MVP. El [README del componente](../../frontend/README.md)
+documenta comandos y estado local; esta guía delimita qué está implementado y
+qué sigue siendo planificación.
 
-El prototipo orienta la experiencia visual, pero no reemplaza OpenSpec ni el contrato. La interfaz debe representar el estado confirmado por el backend y no calcular por su cuenta prioridad, capacidad, permisos o transiciones.
+## Estado comprobado en el repositorio
 
-Para el MVP, la cola visual debe mostrar las franjas del día —incluidas las vacías— y los cupos restantes obtenidos de la API. La duración y el cupo se preparan por ingenio al iniciar el ambiente; su edición desde la pantalla de configuración no forma parte del MVP. El calendario y la zona horaria siguen pendientes de `OD-004`. La interfaz interna permite a operador y supervisor gestionar los tres catálogos y crear o cancelar turnos de su ingenio conforme a las specs aprobadas.
+- El flujo de turnos ofrece alta, listado y filtros, detalle, transiciones y
+  cancelación contra el contrato de demo `/api/v1/appointments` cuando se usa
+  `VITE_DATA_SOURCE=http`.
+- Panel general, chatbot, transportistas, reportes y configuración permanecen
+  conectados a repositorios mock; esos datos deben presentarse como demostración.
+- La integración de turnos no acredita autenticación, aislamiento MVP entre
+  ingenios, CRUD maestro ejecutable ni aceptación completa del MVP.
+- No se exige conectar todas las pantallas en esta etapa. Cada ampliación espera
+  el comportamiento y contrato aprobados de su capacidad propietaria.
 
-## Estado actual y trabajo pendiente
+El frontend presenta respuestas confirmadas; el backend decide estado operativo,
+permisos, aislamiento, capacidad y reglas. Los mocks pueden servir para desarrollo
+claramente identificado, pero no sustituyen recorridos reales de aceptación.
 
-Las PR [#66](https://github.com/agustinvallante/AgroFlow/pull/66) y [#65](https://github.com/agustinvallante/AgroFlow/pull/65) importaron el dashboard y conectaron la cola de turnos a la API de la demo. Con `VITE_DATA_SOURCE=http`, alta, listado/filtros, detalle, avance y cancelación utilizan `/api/v1/appointments`; existe polling y pruebas automatizadas. Con `VITE_DATA_SOURCE=mock`, el recorrido usa datos en memoria. El [contrato de la demo](../contracts/openapi.yaml) no incluye todavía autenticación ni todos los recursos del MVP.
+## Arquitectura y propuestas
 
-Panel general, catálogos, chatbot, reportes y configuración permanecen en mock incluso en modo HTTP. Sólo las vistas que pertenecen al MVP deben pasar gradualmente a datos reales; mapa, reportes y edición de configuración no se convierten en obligaciones por aparecer en el prototipo. Los issues `F01`–`F09` del [Project Frontend](https://github.com/users/agustinvallante/projects/1) describen los deltas: sesión, catálogos/asociaciones, turnos, dashboard, interrupciones y experiencia/QA.
+La arquitectura vigente es la aplicación React/Vite ya incorporada y sus
+patrones actuales. Los documentos `ADR-FE-*`, `frontend-architecture.md` y
+`frontend-decisions.md` conservan ideas de PR #47 como propuestas o registro
+histórico para evaluación; no establecen Next.js, App Router, BFF, TanStack Query,
+Zustand ni una organización obligatoria. La custodia de sesión web sigue sin
+selección: no se elige aquí una alternativa.
 
-Cada conexión nueva debe esperar un contrato aprobado y mostrar estados de carga, error, vacío y permiso denegado sin predecir un resultado que aún no confirmó la API. La UI debe distinguir claramente cualquier dato simulado. La [replanificación tras la demo](../planning/mvp-replan-2026-09-29.md) indica las puertas aún no satisfechas y enlaza `F01`–`F09`.
+Para políticas de negocio, consultar [`openspec/specs/`](../../openspec/specs/);
+para operaciones HTTP aprobadas, [`docs/contracts/openapi.yaml`](../contracts/openapi.yaml);
+y para bloqueos vigentes, [`docs/planning/open-decisions.md`](../planning/open-decisions.md).
+Las rutas y DTO de maestros, sesión y capacidades MVP no se deben deducir de
+borradores descartados ni introducir como si estuvieran expuestos.

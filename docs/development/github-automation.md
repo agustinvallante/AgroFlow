@@ -50,6 +50,8 @@ El workflow `CI` ejecuta cinco controles coordinados:
 
 El ruleset activo de `main` exige `Required checks`, `Reject vulnerable dependency changes`, una aprobación, conversaciones resueltas y base actualizada. No se usa bypass para integrar cambios. Los checkouts CI no conservan credenciales Git; el etiquetado con `pull_request_target` no ejecuta código de la rama propuesta.
 
+La mera existencia de proyectos, de un job o de una CI verde no demuestra cobertura funcional del MVP: se evalúan los escenarios realmente ejecutados. La integración frontend vigente es React/Vite; los flujos todavía mock no cuentan como recorridos reales del MVP.
+
 `Dependency review` bloquea nuevas dependencias vulnerables altas/críticas. Además, `npm audit --audit-level=high` comprueba todas las dependencias frontend, incluidas las transitivas de desarrollo: una vulnerabilidad heredada también impide CI verde. La auditoría programada revisa el lockfile cada lunes a las 09:00 de Argentina, sin instalar, cambiar archivos, abrir issues ni hacer merges. Los schedules de GitHub pueden ejecutarse con demora; el control por PR también sigue activo. Dependabot alerts, security updates y secret scanning/push protection permanecen habilitados.
 
 ## Integraciones y privacidad
@@ -102,6 +104,6 @@ Tras incorporar el bot, ejecutar también `docker compose --env-file infra/env.e
 
 ## Entrega y despliegue
 
-Cada push válido a `main` publica durante 14 días artefactos compilados del backend y `frontend/dist`. Esto constituye **entrega continua de artefactos**, no despliegue.
+Cada push válido a `main` publica durante 14 días artefactos compilados del backend y `frontend/dist`. Esto constituye **entrega continua de artefactos**, no despliegue. La continuidad de React/Vite está aprobada por ADR-005; no se afirma una arquitectura BFF de Next.js ni se deriva una topología de despliegue de las propuestas históricas de PR #47.
 
 El despliegue automático se agregará después de aprobar proveedor, ambiente, dominio, base de datos, secretos y estrategia de migraciones. No se debe crear un workflow de despliegue vacío ni almacenar credenciales en el repositorio.

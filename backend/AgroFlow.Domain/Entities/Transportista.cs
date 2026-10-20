@@ -2,15 +2,14 @@ namespace AgroFlow.Domain.Entities;
 
 public sealed class Transportista : EntityBase
 {
-    private Transportista()
-    {
-    }
+    private Transportista() { }
 
     public Transportista(Guid ingenioId, string name, string dni, string whatsApp)
     {
         IngenioId = MasterDataValidation.RequireIngenioId(ingenioId);
         Apply(name, dni, whatsApp);
         IsActive = true;
+        CreatedAtUtc = DateTime.UtcNow;
     }
 
     public Guid IngenioId { get; private set; }
@@ -20,20 +19,41 @@ public sealed class Transportista : EntityBase
     public string WhatsApp { get; private set; } = string.Empty;
     public string NormalizedWhatsApp { get; private set; } = string.Empty;
     public bool IsActive { get; private set; }
+    public DateTime CreatedAtUtc { get; private set; }
+    public DateTime? InactivatedAtUtc { get; private set; }
 
-    public void Update(string name, string dni, string whatsApp) => Apply(name, dni, whatsApp);
+    public void Update(string name, string dni, string whatsApp) => UpdateContactDetails(name, dni, whatsApp);
 
-    public void Inactivate() => IsActive = false;
+    public void UpdateContactDetails(string name, string dni, string whatsApp) => Apply(name, dni, whatsApp);
 
-    public void Reactivate() => IsActive = true;
+    public void Inactivate() => Inactivate(DateTime.UtcNow);
+
+    public void Inactivate(DateTime occurredAtUtc)
+    {
+        MasterDataValidation.EnsureUtc(occurredAtUtc, nameof(occurredAtUtc));
+        IsActive = false;
+        InactivatedAtUtc = occurredAtUtc;
+    }
+
+    public void Reactivate()
+    {
+        IsActive = true;
+        InactivatedAtUtc = null;
+    }
+
+    public static string NormalizeDni(string value) =>
+        MasterDataValidation.NormalizeDigits(MasterDataValidation.RequireText(value, nameof(value)), nameof(value));
+
+    public static string NormalizeWhatsApp(string value) =>
+        MasterDataValidation.NormalizeDigits(MasterDataValidation.RequireText(value, nameof(value)), nameof(value));
 
     private void Apply(string name, string dni, string whatsApp)
     {
         var validatedName = MasterDataValidation.RequireText(name, nameof(name));
         var validatedDni = MasterDataValidation.RequireText(dni, nameof(dni));
-        var normalizedDni = MasterDataValidation.NormalizeDigits(validatedDni, nameof(dni));
         var validatedWhatsApp = MasterDataValidation.RequireText(whatsApp, nameof(whatsApp));
-        var normalizedWhatsApp = MasterDataValidation.NormalizeDigits(validatedWhatsApp, nameof(whatsApp));
+        var normalizedDni = NormalizeDni(validatedDni);
+        var normalizedWhatsApp = NormalizeWhatsApp(validatedWhatsApp);
 
         Name = validatedName;
         DNI = validatedDni;
@@ -43,11 +63,7 @@ public sealed class Transportista : EntityBase
     }
 }
 
-/// <summary>
-/// Público a propósito: el adaptador de persistencia (Data) reutiliza estas
-/// mismas reglas de normalización para resolver referencias, en vez de
-/// duplicar una versión propia que podría divergir.
-/// </summary>
+/// <summary>Shared validation primitives used by the AgroFlow domain entities.</summary>
 public static class MasterDataValidation
 {
     public static Guid RequireIngenioId(Guid ingenioId) => ingenioId == Guid.Empty
@@ -79,4 +95,10 @@ public static class MasterDataValidation
         string.IsNullOrWhiteSpace(value)
             ? throw new ArgumentException("Value is required.", parameterName)
             : value.Trim().ToUpperInvariant();
+
+    public static void EnsureUtc(DateTime value, string parameterName)
+    {
+        if (value.Kind != DateTimeKind.Utc)
+            throw new ArgumentException("Timestamp must be UTC.", parameterName);
+    }
 }

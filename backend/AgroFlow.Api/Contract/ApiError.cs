@@ -1,17 +1,23 @@
+using Microsoft.AspNetCore.Mvc;
+using System.Text.Json.Serialization;
 
-namespace AgroFlow.Api.Contract
+namespace AgroFlow.Api.Contract;
+
+public sealed class ApiError : ProblemDetails
 {
-    public class ApiError
+    public ApiError(string? code, string? message)
     {
+        Code = code;
+        Message = message;
+    }
 
-        public ApiError(string? code, string? message)
-        {
-            Code = code;
-            Message = message;
+    [JsonPropertyName("code")]
+    public string? Code { get; set; }
 
-        }
-        public string? Code { get; set; }
-        public string? Message { get; set; }
-
+    [JsonPropertyName("message")]
+    public string? Message
+    {
+        get => Detail;
+        set => Detail = value;
     }
 }

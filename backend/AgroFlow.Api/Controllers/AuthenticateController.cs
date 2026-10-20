@@ -43,11 +43,12 @@ public sealed class AuthenticateController : ControllerBase
         }
 
         var roles = await _userManager.GetRolesAsync(user);
-        var role = roles.FirstOrDefault();
-        if (string.IsNullOrEmpty(role))
+        if (roles.Count != 1 || roles[0] is not ("OPERADOR" or "SUPERVISOR"))
         {
             return Unauthorized("Credenciales inválidas.");
         }
+
+        var role = roles[0];
 
         return Ok(new
         {

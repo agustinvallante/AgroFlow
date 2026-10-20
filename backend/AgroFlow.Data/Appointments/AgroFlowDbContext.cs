@@ -37,6 +37,9 @@ public sealed class AgroFlowDbContext : DbContext
         modelBuilder.Entity<Transportista>(eb =>
         {
             eb.ToTable("Transportistas");
+            // These preparatory audit timestamps are not persisted until B02 establishes their schema.
+            eb.Ignore(t => t.CreatedAtUtc);
+            eb.Ignore(t => t.InactivatedAtUtc);
             eb.Property(t => t.Name).HasMaxLength(150).IsRequired();
             eb.Property(t => t.DNI).HasMaxLength(20).IsRequired();
             eb.Property(t => t.NormalizedDni).HasMaxLength(20).IsRequired();
@@ -48,6 +51,9 @@ public sealed class AgroFlowDbContext : DbContext
         modelBuilder.Entity<Camion>(eb =>
         {
             eb.ToTable("Camiones");
+            // These preparatory audit timestamps are not persisted until B02 establishes their schema.
+            eb.Ignore(c => c.CreatedAtUtc);
+            eb.Ignore(c => c.InactivatedAtUtc);
             eb.Property(c => c.Plate).HasMaxLength(10).IsRequired();
             eb.Property(c => c.NormalizedPlate).HasMaxLength(10).IsRequired();
             eb.Property(c => c.FleetType).HasMaxLength(20).IsRequired();
@@ -57,6 +63,9 @@ public sealed class AgroFlowDbContext : DbContext
         modelBuilder.Entity<Finca>(eb =>
         {
             eb.ToTable("Fincas");
+            // These preparatory audit timestamps are not persisted until B02 establishes their schema.
+            eb.Ignore(f => f.CreatedAtUtc);
+            eb.Ignore(f => f.InactivatedAtUtc);
             eb.Property(f => f.Code).HasMaxLength(50).IsRequired();
             eb.Property(f => f.NormalizedCode).HasMaxLength(50).IsRequired();
             eb.Property(f => f.Name).HasMaxLength(150).IsRequired();
@@ -67,6 +76,9 @@ public sealed class AgroFlowDbContext : DbContext
         modelBuilder.Entity<TransportistaCamion>(eb =>
         {
             eb.ToTable("TransportistaCamiones");
+            // These preparatory audit timestamps are not persisted until B02 establishes their schema.
+            eb.Ignore(a => a.CreatedAtUtc);
+            eb.Ignore(a => a.InactivatedAtUtc);
             // Evita asociaciones duplicadas para el mismo par, incluso si una
             // quedó inactiva: reactivar la existente en vez de insertar otra.
             eb.HasIndex(a => new { a.TransportistaId, a.CamionId }).IsUnique();
