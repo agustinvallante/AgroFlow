@@ -33,10 +33,16 @@ La entidad/servicio de idempotencia no aprueba un encabezado público, semántic
 
 El delta de `datos-maestros` se conserva como propuesta revisable, no como requisito consolidado. OD-013 deja pendientes campos y validaciones; no aplicar normalización de WhatsApp como comportamiento normativo sin aprobación explícita. El acuerdo DNI solo dígitos sí está vigente en la spec canónica.
 
-## Evidencia y procedencia
+## Evidencia histórica y procedencia
 
 Verificador independiente `mvflj67n-9-ia7f`, 2026-10-19 18:37:12–18:40:16 UTC, comprobó el HEAD `efe8c7c8c00d8faad5c4c912c6adf5e57b3d1ea1` más el diff local que contenía las dos correcciones. Restore y build Release pasaron (build: 0 warnings/0 errors); backend 209/209 sin fallas ni omitidos; frontend 37/37, typecheck/lint/build pasaron. OpenSpec estricto 17/17; archived sin cambios; Redocly válido con warning de health sin 4XX; enlaces locales 107 archivos.
 
 Ese código se consolidó después en `34f1c3ad624acdd244e96ca8e838aa3c920e98ff` (`fix(master-data): order associations by persisted identifier`) y `25784be056b0c94d932325e146ff2092eae419de` (`fix(master-data): enforce truck tenant scope in projections`). Los hashes de las tres fuentes siguieron idénticos hasta el cierre documental, pero la suite completa no se volvió a ejecutar en esos commits. El CI `38101125508` corresponde únicamente al SHA anterior `efe8c7c`; no hay CI nuevo para los fixes. Avisos no remediados: cinco warnings de lint y un advisory alto de npm. Ninguno de estos resultados acredita CRUD/MVP, B03/B38 ni G01–G12.
 
-En la consulta posterior, main estaba en `a6b38e2400fab10be9fd7fefb1e1d07496ee3ca6` y GitHub reportó la PR en conflicto (`CONFLICTING`/`DIRTY`). No se afirma validación o integración contra ese main. Tras actualizar estos documentos, OpenSpec estricto pasó 17/17, archived no encontró cambios archivados, Redocly validó OpenAPI con un warning y enlaces locales pasaron en 108 archivos; whitespace también pasó. Esa comprobación documental no sustituye las suites backend/frontend ni resuelve el conflicto.
+Antes de la sincronización, main estaba en `a6b38e2400fab10be9fd7fefb1e1d07496ee3ca6` y GitHub reportó conflicto (`CONFLICTING`/`DIRTY`). La validación documental de aquella etapa pasó OpenSpec 17/17, archived sin cambios, Redocly válido con un warning y enlaces locales en 108 archivos. Es evidencia histórica, no CI del candidato integrado.
+
+## Integración posterior autorizada
+
+El mantenedor autorizó actualizar la misma PR y verificarla antes de aprobar/fusionar. En `32d63ac5562ff86f8b098ae7270c1d4f1253a180` se incorporó ese main, resolviendo únicamente el conflicto de `AgroFlow.Tests.csproj`: TestHost/MVC Testing 8.0.31 junto con la referencia SQLite 9.0.7 necesaria para las regresiones. Los workflows y el lockfile conservan los parches de main, incluido `source-map-js` 1.2.2.
+
+La nueva ejecución local de esa integración pasó 209/209 backend y 37/37 frontend, con restore/build, typecheck/lint/build y auditoría npm sin vulnerabilidades. No se agregaron endpoints, registros DI, migraciones ni reglas. Los resultados de CI del head final se vinculan en [PR #47](https://github.com/agustinvallante/AgroFlow/pull/47), separados del CI antiguo. Persisten las dependencias B00/B02/B03/B05 y la ausencia de CRUD/MVP aceptado; el historial de la PR registra aprobación e integración, no este snapshot documental.

@@ -21,9 +21,17 @@ Dos consultas se corrigieron y se consolidaron en commits de trabajo:
 1. `34f1c3ad624acdd244e96ca8e838aa3c920e98ff` (`fix(master-data): order associations by persisted identifier`) ordena `ListAssociations` por el `Id` persistido, sin prometer cronología ni modificar el esquema. Incluye las regresiones de UoW.
 2. `25784be056b0c94d932325e146ff2092eae419de` (`fix(master-data): enforce truck tenant scope in projections`) comprueba `truck.IngenioId` además de conservar los filtros de asociación/transportista, excluyendo el vínculo inconsistente desde una asociación del ingenio A hacia un camión del ingenio B. Incluye las regresiones de proyección.
 
-La verificación independiente del 2026-10-19 se ejecutó antes de esos commits, sobre HEAD `efe8c7c8c00d8faad5c4c912c6adf5e57b3d1ea1` más el diff local que contenía exactamente estos cambios: backend 209/209, frontend 37/37, OpenSpec 17/17 y OpenAPI válido. Los tres archivos fuente mantuvieron sus hashes verificados hasta el cierre de documentación (108 archivos con enlaces locales). No se volvió a ejecutar la suite completa sobre los SHAs de los commits. El build Release previo tuvo cero warnings y errores; Redocly emitió un warning sobre health sin 4XX, frontend lint cinco warnings y `npm ci` reportó un advisory alto.
+### Evidencia histórica previa a la sincronización
 
-El CI `38101125508` corresponde al SHA previo `efe8c7c`, no a estos commits. No hay CI nuevo. Main avanzó a `a6b38e2400fab10be9fd7fefb1e1d07496ee3ca6`; la PR figura `CONFLICTING`/`DIRTY` respecto de main. No se afirma integración ni validación contra el nuevo main; se conserva Draft y no se autoriza resolver el conflicto en esta etapa.
+La verificación independiente del 2026-10-19 se ejecutó antes de esos commits, sobre HEAD `efe8c7c8c00d8faad5c4c912c6adf5e57b3d1ea1` más el diff local que contenía exactamente estos cambios: backend 209/209, frontend 37/37, OpenSpec 17/17 y OpenAPI válido. Los tres archivos fuente mantuvieron sus hashes verificados hasta el cierre de documentación (108 archivos con enlaces locales). En esa verificación no se volvió a ejecutar la suite completa sobre los SHAs de los commits. El build Release previo tuvo cero warnings y errores; Redocly emitió un warning sobre health sin 4XX, frontend lint cinco warnings y `npm ci` reportó un advisory alto. Estos resultados describen el candidato anterior, no la integración actualizada.
+
+El CI `38101125508` corresponde al SHA previo `efe8c7c`, no a la integración actual. La publicación `f2b6a93` ya salió de Draft; su conflicto con main motivó la sincronización posterior autorizada por el mantenedor.
+
+### Sincronización autorizada con main
+
+El commit `32d63ac5562ff86f8b098ae7270c1d4f1253a180` incorpora main `a6b38e2400fab10be9fd7fefb1e1d07496ee3ca6` y resuelve el conflicto del proyecto de pruebas conservando TestHost/MVC Testing 8.0.31 y SQLite 9.0.7. Conserva también `source-map-js` 1.2.2 del parche de seguridad ya integrado en main. No cambia reglas, esquema ni habilita datos maestros.
+
+Sobre esa integración se repitieron restore/build y las suites: backend 209/209, frontend 37/37, typecheck/lint/build y auditoría npm sin vulnerabilidades. La evidencia de CI del candidato final y la decisión de revisión se registran por SHA en [PR #47](https://github.com/agustinvallante/AgroFlow/pull/47); la CI antigua no las sustituye. Las dependencias funcionales y la aceptación del MVP siguen pendientes.
 
 ## Fuera de alcance
 
