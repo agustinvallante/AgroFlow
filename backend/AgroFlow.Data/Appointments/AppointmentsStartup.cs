@@ -15,9 +15,16 @@ public static class AppointmentsStartup
     public static async Task InitializeAsync(
         AgroFlowDbContext db,
         TimeProvider timeProvider,
+        CancellationToken cancellationToken = default) =>
+        await InitializeAsync(db, timeProvider, whatsAppInstance: null, cancellationToken);
+
+    public static async Task InitializeAsync(
+        AgroFlowDbContext db,
+        TimeProvider timeProvider,
+        string? whatsAppInstance,
         CancellationToken cancellationToken = default)
     {
         await db.Database.MigrateAsync(cancellationToken);
-        await AppointmentsSeeder.SeedAsync(db, timeProvider, cancellationToken);
+        await AppointmentsSeeder.SeedAsync(db, timeProvider, whatsAppInstance, cancellationToken);
     }
 }

@@ -92,10 +92,28 @@ n8n y Evolution publican exclusivamente en `127.0.0.1`; Vite también se inicia 
 1. En n8n, crear la cuenta local si la instancia es nueva. Importar [`chatbot/workflows/Chatbot.json`](../../chatbot/workflows/Chatbot.json).
 2. Verificar soporte para **AI Agent 3.1**, **OpenAI Chat Model 1.3** y **gpt-5.4-mini**, incluido el acceso al modelo en la cuenta OpenAI. No restaurar el agente antiguo 2.1. Las imágenes fijadas están en la muestra de entorno.
 3. Crear o reutilizar una credencial OpenAI llamada `OpenAI account` y seleccionarla en `OpenAI Chat Model`.
-4. Crear o reutilizar una credencial Header Auth llamada `Header Auth account`: Name `apikey`, Value igual a `EVOLUTION_API_KEY` del entorno local. Seleccionarla en `Send WhatsApp reply`.
-5. Guardar y **publicar/activar** el workflow. El export está inactivo y las referencias por nombre no sustituyen la vinculación de credenciales de cada instancia.
+4. Crear o reutilizar una credencial Header Auth llamada `Header Auth account`: Name `apikey`, Value igual a `EVOLUTION_API_KEY` del entorno local. Seleccionarla **sólo** en `Send WhatsApp reply`.
+5. Crear una credencial Header Auth distinta llamada `AgroFlow Service Key account`: Name `X-AgroFlow-Service-Key`, Value igual a `ChannelIntegration__ServiceKey` de la API. Seleccionarla en los cinco nodos del canal: `Register Inbound Message`, `Register Reply Intent`, `Update Send Status`, `Report Agent Failure` y `Report Reply Failure`. Sin ella, la API responde `401` y el workflow contesta `503` al webhook sin invocar al agente.
+6. Guardar y **publicar/activar** el workflow. El export está inactivo y las referencias por nombre no sustituyen la vinculación de credenciales de cada instancia.
 
-La memoria, los prompts y las herramientas se conservan. Las herramientas leen `$env.AGROFLOW_API_URL`; la respuesta lee `$env.EVOLUTION_INTERNAL_URL` y `$env.EVOLUTION_INSTANCE`. Compose habilita el acceso a `$env` para esta demo con un autor confiable: no es una configuración multiusuario productiva.
+La memoria, los prompts y las herramientas de turnos se conservan. Las herramientas y los nodos del canal leen `$env.AGROFLOW_API_URL`; la respuesta lee `$env.EVOLUTION_INTERNAL_URL` y `$env.EVOLUTION_INSTANCE`. Compose habilita el acceso a `$env` para esta demo con un autor confiable: no es una configuración multiusuario productiva.
+
+### Historial de ejecuciones de n8n
+
+Compose fija que n8n **no guarde** los datos de ejecuciones exitosas, manuales ni el progreso (`EXECUTIONS_DATA_SAVE_ON_SUCCESS=none`, entre otras); las fallidas se conservan para diagnóstico y se depuran a las 24 h, con un máximo de 50. El workflow exportado repite esa política en sus `settings` y el validador de CI la exige. El historial autoritativo de conversaciones vive en AgroFlow API. Para depurar una ejecución exitosa, habilitar temporalmente el guardado desde la configuración del workflow en n8n y volver a deshabilitarlo; no versionar ese cambio. Las ejecuciones previas a este ajuste no se borran solas: eliminarlas desde **Executions** si contienen datos de personas.
+
+### Webhook Evolution → n8n sin autenticación
+
+El webhook de n8n no verifica que el evento provenga de Evolution: quien alcance la URL podría inyectar un mensaje, que la API registraría y al que el bot respondería por WhatsApp. Mitigaciones aplicadas en LocalDemo:
+
+- n8n publica sólo en `127.0.0.1` y Evolution lo llama por la red interna de Docker (`http://n8n:5678/...`); no abrir ni reenviar ese puerto.
+- La ruta del webhook es un identificador aleatorio; no compartirla.
+- El workflow descarta eventos de otra instancia que `EVOLUTION_INSTANCE`, mensajes propios, grupos, difusiones y estados, y direcciones que no sean `<dígitos>@s.whatsapp.net` o `<dígitos>@lid`.
+- AgroFlow API exige la clave de servicio: el webhook no la recibe ni la expone.
+
+Pendiente de verificar con Evolution real: si la versión fijada admite encabezados propios en el webhook, agregar autenticación por encabezado al nodo `Webhook` (credencial aparte). No se activó porque, sin esa verificación, rechazaría todos los eventos.
+
+Recorrido del workflow (detalle en el [README del chatbot](../../chatbot/README.md)): valida el evento → registra el mensaje en la API → sólo entonces responde `200` al webhook → si es repetido se detiene → si el remitente es un transportista registrado invoca al agente, si no usa una plantilla fija → registra la intención de respuesta → envía exactamente ese texto por Evolution → informa `accepted`, `failed` o `unknown`. Si la API no persiste el mensaje, responde `503` y no hay agente ni respuesta.
 
 El editor puede advertir que no resuelve `$env` en una **vista previa**; eso no prueba una falla de ejecución. Revisar el resultado real en Executions. Un error de ejecución de acceso al entorno o de conexión sí requiere revisar la configuración; no reemplazar expresiones por secretos o URLs hardcodeadas.
 
@@ -119,9 +137,9 @@ La URL usa el servicio `n8n` dentro de Docker, no `localhost`. `/webhook/` requi
 
 ## Qué se verificó y qué falta
 
-Sólo se confirmó una respuesta al **saludo** con la actualización Agent 3.1 / GPT-5.4-mini. No se verificó el E2E de turnos ni las tres herramientas (alta, consulta y aviso `EN_CAMINO`). El remitente real probado no está registrado en la API.
+Antes de este cambio sólo se había confirmado en vivo una respuesta al **saludo** con Agent 3.1 / GPT-5.4-mini. La persistencia de conversaciones se verificó **sin Docker**: el workflow exportado se ejecutó con un simulador y fixtures sintéticos de Evolution contra la API real y SQLite temporal (`node chatbot/tests/acceptance.mjs`), con Evolution, WhatsApp y el agente simulados. **No se verificó en vivo** el workflow importado en n8n, Evolution, WhatsApp ni OpenAI con este cambio, ni el E2E de turnos con las tres herramientas.
 
-El seed contiene únicamente transportistas ficticios. La demo no ofrece una ruta soportada para registrar un número real; un remitente no reconocido debe recibir el rechazo de la API. **No editar teléfonos del código ni borrar SQLite para registrar usuarios o reiniciar ensayos.** La preparación segura de identidades de prueba sigue pendiente de un mecanismo aprobado; no confirmar un turno si la API lo rechaza.
+El seed contiene únicamente transportistas ficticios. Un número de prueba consentido se registra desde la vista **Transportistas** del frontend (o `POST /api/v1/drivers`) en formato E.164; un remitente no identificado recibe la plantilla fija sin invocar al agente. **Un transportista registrado así es reconocido por el canal, pero no puede solicitar turnos**: un turno exige una asociación activa con un camión, y la gestión de asociaciones sigue pendiente (OD-002, OD-013) sin ruta publicada. La vista Transportistas lo indica como "sin camión asociado". Para el recorrido de turnos usar los transportistas del seed (`+5493815550101` con `AF123BC`, `+5493815550102` con `AF456DE`), cuyo WhatsApp puede editarse sin perder la asociación. **No editar teléfonos del código ni borrar SQLite para registrar usuarios o reiniciar ensayos.** No confirmar un turno si la API lo rechaza. La [guía de demostración](local-demo-runbook.md#demostración-conversación-persistida-en-el-dashboard) muestra el recorrido completo.
 
 Referencias autoritativas, sin duplicar DTOs ni reglas:
 
@@ -138,6 +156,9 @@ Referencias autoritativas, sin duplicar DTOs ni reglas:
 | El filtro detiene el mensaje | Remitente distinto del bot, mensaje de texto, no grupo. |
 | Herramienta sin conexión | API iniciada, puertos coordinados y listener alcanzable desde Docker en Linux. |
 | `REFERENCE_NOT_FOUND` | Identidad o referencia fuera del seed; no implica un problema de credenciales. |
+| Webhook responde `503 not_persisted` | API detenida, credencial `AgroFlow Service Key account` ausente o distinta, o instancia distinta de `LocalDemo:WhatsAppInstance`. |
+| Webhook responde `200 ignored` | Mensaje propio, de grupo, sin texto o de una instancia distinta de `EVOLUTION_INSTANCE`. |
+| Dashboard muestra error de clave | Falta `AGROFLOW_DASHBOARD_KEY` en el entorno de Vite o no coincide con `Dashboard__ApiKey`. |
 | `NO_CAPACITY` | Rechazo operativo de la API; no borrar la base ni prometer asignación. |
 | Respuesta con `401` | Credencial Header Auth vinculada y coherente con la clave local de Evolution. |
 

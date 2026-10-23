@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using AgroFlow.Domain.Entities;
 using AgroFlow.Domain.Interfaces;
 
@@ -28,6 +29,7 @@ public sealed class MasterDataConflictException(string code, string message) : E
 public sealed class MasterDataService(IMasterDataUnitOfWork unitOfWork, ITenantContext tenant)
 {
     private static readonly JsonSerializerOptions HashJsonOptions = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+    private static readonly Regex InternationalPhonePattern = new(@"\A\+[1-9][0-9]{7,14}\z", RegexOptions.CultureInvariant, TimeSpan.FromSeconds(1));
 
     public async Task<IReadOnlyList<MasterDataItem>> Drivers(bool? active, CancellationToken ct) =>
         (await unitOfWork.ListTransportistas(tenant.IngenioId, active, ct)).Select(DriverItem).ToArray();
@@ -257,6 +259,10 @@ public sealed class MasterDataService(IMasterDataUnitOfWork unitOfWork, ITenantC
         ValidateRequired(data.Name, nameof(data.Name), 160);
         ValidateRequired(data.Dni, nameof(data.Dni), 40);
         ValidateRequired(data.WhatsApp, nameof(data.WhatsApp), 40);
+        // Mismo patrón que carrierPhone: el valor normalizado debe coincidir
+        // exactamente con el número del JID de WhatsApp, sin inferir dígitos.
+        if (!InternationalPhonePattern.IsMatch(data.WhatsApp.Trim()))
+            throw new ArgumentException("WhatsApp must be an E.164 number.", nameof(data.WhatsApp));
     }
     private static void ValidateTruck(TruckData data)
     {

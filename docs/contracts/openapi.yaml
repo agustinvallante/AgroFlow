@@ -1,33 +1,46 @@
 openapi: 3.1.0
 info:
   title: AgroFlow API
-  version: 0.3.0
+  version: 0.4.0
   description: >-
     Contrato HTTP canónico para la demo local de turnos básicos aprobada en la
-    issue #49. El perfil local opera con un único ingenio sembrado y sin
-    autenticación; no representa el contrato de seguridad ni el alcance completo
-    del MVP. Todas las fechas y horas (`date-time`) de las respuestas se emiten
-    en RFC 3339 con el desplazamiento horario explícito de la zona del ingenio
+    issue #49. El perfil local opera con un único ingenio sembrado; no
+    representa el contrato de seguridad ni el alcance completo del MVP. Todas
+    las fechas y horas (`date-time`) de las respuestas de turnos se emiten en
+    RFC 3339 con el desplazamiento horario explícito de la zona del ingenio
     sembrado (`America/Argentina/Tucuman` en la demo); los consumidores deben
     interpretar el desplazamiento recibido y no asumir uno fijo. Esta regla de
     presentación es propia de la demo local y no define la del MVP completo.
-    Esta especificación publica solo salud y appointments de la demo. Rutas,
-    DTO, paginación e idempotencia para datos maestros siguen pendientes de B00,
-    OD-006 y OD-013; las propuestas no constituyen contrato HTTP.
+    Además de salud y appointments (sin autenticación), publica el canal de
+    WhatsApp para n8n, las consultas de conversaciones y la gestión de
+    transportistas del cambio `persistir-conversaciones-whatsapp`. Esas rutas
+    existen sólo en el perfil LocalDemo y nunca son anónimas: el canal exige
+    `ServiceKey` y el dashboard `DashboardKey`. Sus fechas y horas se emiten en
+    UTC. Camiones, fincas y asociaciones siguen sin ruta publicada.
 servers:
   - url: http://localhost:5000
     description: API ejecutada en el host local
   - url: http://host.docker.internal:5000
     description: API del host vista desde n8n en Docker Desktop
 
-# La demo local no incluye autenticación. La seguridad de operaciones MVP sigue
-# definida por sus capacidades y se especificará en contratos aprobados.
+# Turnos y salud no incluyen autenticación en la demo local. Canal,
+# conversaciones y transportistas usan claves estáticas del perfil LocalDemo
+# hasta que B03 emita identidades por ingenio. La seguridad de operaciones MVP
+# sigue definida por sus capacidades y se especificará en contratos aprobados.
 
 tags:
   - name: Salud
     description: Disponibilidad técnica de la API local.
   - name: Turnos
     description: Alta, consulta y ciclo de vida mínimo de turnos.
+  - name: Canal
+    description: >-
+      Registro idempotente de mensajes de WhatsApp, intenciones de respuesta y
+      resultados, invocado por n8n como servicio.
+  - name: Conversaciones
+    description: Consulta paginada de conversaciones y mensajes del ingenio.
+  - name: Transportistas
+    description: Alta, edición, inhabilitación y consulta de transportistas del ingenio.
 
 paths:
   /health:
@@ -222,7 +235,443 @@ paths:
           $ref: '#/components/responses/BusinessConflict'
         '500':
           $ref: '#/components/responses/InternalError'
+
+  /api/v1/conversation-events:
+    post:
+      tags: [Canal]
+      operationId: registrarMensajeEntrante
+      security:
+        - ServiceKey: []
+      summary: Registrar un mensaje de texto entrante de WhatsApp
+      description: >-
+        Registra el mensaje antes de su procesamiento. La clave natural es la
+        instancia, la dirección remota y `providerMessageId`. El primer registro
+        responde `201` con `disposition: process` y la única autorización de
+        procesamiento (`claimToken`, entregado una sola vez). Una repetición con
+        el mismo contenido responde `200` con `disposition: duplicate_stop`, los
+        mismos identificadores y sin token, aunque la autorización haya vencido.
+        El ingenio sale de la instancia registrada; cualquier propiedad no
+        documentada, como un identificador de ingenio, se rechaza.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConversationEventInput'
+      responses:
+        '201':
+          description: Mensaje registrado y procesamiento autorizado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConversationEventResult'
+        '200':
+          description: Repetición idéntica; no se autoriza un nuevo procesamiento.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConversationEventResult'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ChannelInstanceNotAllowed'
+        '409':
+          $ref: '#/components/responses/ChannelConflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/v1/conversation-events/{messageId}/processing:
+    parameters:
+      - name: messageId
+        in: path
+        required: true
+        description: Identificador del mensaje entrante.
+        schema:
+          type: string
+          format: uuid
+    patch:
+      tags: [Canal]
+      operationId: informarProcesamientoFallido
+      security:
+        - ServiceKey: []
+      summary: Cerrar sin respuesta el procesamiento de un mensaje
+      description: >-
+        El titular de una autorización vigente informa que el procesamiento
+        terminó sin respuesta, con un código del catálogo cerrado. Repetir el
+        mismo cierre responde `200` sin cambios.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProcessingResultInput'
+      responses:
+        '200':
+          description: Procesamiento cerrado como fallido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProcessingResult'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/ChannelResourceNotFound'
+        '409':
+          $ref: '#/components/responses/ChannelConflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/v1/conversation-reply-intents:
+    post:
+      tags: [Canal]
+      operationId: registrarIntencionRespuesta
+      security:
+        - ServiceKey: []
+      summary: Registrar la respuesta antes de enviarla
+      description: >-
+        Persiste la respuesta como `PENDING_SEND` y devuelve la instancia, el
+        destinatario y el texto que n8n debe enviar, sin cambios. Exige el
+        `claimToken` vigente del mensaje entrante. Hay una sola intención por
+        mensaje entrante: repetirla con el mismo texto responde `200` con la
+        misma intención; con otro texto, `409 REPLY_INTENT_CONFLICT`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReplyIntentInput'
+      responses:
+        '201':
+          description: Intención registrada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReplyIntent'
+        '200':
+          description: Repetición de la intención existente.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReplyIntent'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ChannelInstanceNotAllowed'
+        '404':
+          $ref: '#/components/responses/ChannelResourceNotFound'
+        '409':
+          $ref: '#/components/responses/ChannelConflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/v1/conversation-reply-intents/{replyId}/send-status:
+    parameters:
+      - name: replyId
+        in: path
+        required: true
+        description: Identificador de la intención de respuesta.
+        schema:
+          type: string
+          format: uuid
+    patch:
+      tags: [Canal]
+      operationId: informarEstadoEnvio
+      security:
+        - ServiceKey: []
+      summary: Informar el resultado del envío de una respuesta
+      description: >-
+        Transiciones admitidas: `PENDING_SEND` a `ACCEPTED`, `FAILED` o
+        `UNKNOWN`, y `UNKNOWN` a `ACCEPTED` o `FAILED`. Repetir el estado actual
+        responde `200`; cualquier otra transición, `409`. `providerMessageId`
+        sólo se admite con `accepted`. Informar el resultado cierra el
+        procesamiento del mensaje entrante. No existe un estado de entregado.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SendStatusInput'
+      responses:
+        '200':
+          description: Estado de envío vigente.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReplyIntent'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/ChannelResourceNotFound'
+        '409':
+          $ref: '#/components/responses/ChannelConflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/v1/conversations:
+    get:
+      tags: [Conversaciones]
+      operationId: listarConversaciones
+      security:
+        - DashboardKey: []
+      summary: Listar las conversaciones del ingenio
+      description: >-
+        Ordenadas por última actividad descendente. Las direcciones remotas se
+        devuelven enmascaradas. Consultar no modifica ningún estado.
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Página de conversaciones.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConversationSummaryPage'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/v1/conversations/{id}:
+    parameters:
+      - $ref: '#/components/parameters/ConversationId'
+    get:
+      tags: [Conversaciones]
+      operationId: obtenerConversacion
+      security:
+        - DashboardKey: []
+      summary: Consultar la cabecera de una conversación
+      responses:
+        '200':
+          description: Cabecera de la conversación.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConversationSummary'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/ConversationNotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/v1/conversations/{id}/messages:
+    parameters:
+      - $ref: '#/components/parameters/ConversationId'
+    get:
+      tags: [Conversaciones]
+      operationId: listarMensajesConversacion
+      security:
+        - DashboardKey: []
+      summary: Listar los mensajes de una conversación
+      description: >-
+        En el orden en que fueron persistidos. La paginación no repite ni omite
+        mensajes aunque lleguen otros entre páginas; un cursor que no señala un
+        mensaje de la conversación es un error de validación.
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Página de mensajes.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConversationMessagePage'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/ConversationNotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/v1/drivers:
+    get:
+      tags: [Transportistas]
+      operationId: listarTransportistas
+      security:
+        - DashboardKey: []
+      summary: Listar los transportistas del ingenio
+      parameters:
+        - name: active
+          in: query
+          required: false
+          description: Filtra por transportistas habilitados o inhabilitados.
+          schema:
+            type: string
+            enum: ['true', 'false']
+      responses:
+        '200':
+          description: Transportistas ordenados por nombre.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Driver'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    post:
+      tags: [Transportistas]
+      operationId: crearTransportista
+      security:
+        - DashboardKey: []
+      summary: Registrar un transportista
+      description: >-
+        El WhatsApp en formato E.164 es el que reconoce al remitente del canal.
+        El alta no crea camión ni asociación: hasta tenerla, el transportista es
+        reconocido por el canal pero no puede solicitar turnos.
+        DNI y WhatsApp son únicos en todo el sistema; un valor usado en otro
+        ingenio responde `DUPLICATE_IDENTIFIER` sin revelar cuál. Repetir la
+        misma `Idempotency-Key` con los mismos datos devuelve el recibo original.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DriverInput'
+      responses:
+        '201':
+          description: Transportista registrado o recibo de la operación original.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MutationReceipt'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '409':
+          $ref: '#/components/responses/DriverConflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/v1/drivers/{id}:
+    parameters:
+      - $ref: '#/components/parameters/DriverId'
+    get:
+      tags: [Transportistas]
+      operationId: obtenerTransportista
+      security:
+        - DashboardKey: []
+      summary: Consultar un transportista del ingenio
+      responses:
+        '200':
+          description: Datos del transportista.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Driver'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/DriverNotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    put:
+      tags: [Transportistas]
+      operationId: editarTransportista
+      security:
+        - DashboardKey: []
+      summary: Editar un transportista habilitado
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DriverInput'
+      responses:
+        '200':
+          description: Transportista editado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MutationReceipt'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/DriverNotFound'
+        '409':
+          $ref: '#/components/responses/DriverConflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/v1/drivers/{id}/inactivation:
+    parameters:
+      - $ref: '#/components/parameters/DriverId'
+    post:
+      tags: [Transportistas]
+      operationId: inhabilitarTransportista
+      security:
+        - DashboardKey: []
+      summary: Inhabilitar un transportista
+      description: >-
+        Desde la inhabilitación, sus mensajes se registran como de un remitente
+        no reconocido; las conversaciones conservan el vínculo histórico.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Transportista inhabilitado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MutationReceipt'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/DriverNotFound'
+        '409':
+          $ref: '#/components/responses/DriverConflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
 components:
+  securitySchemes:
+    ServiceKey:
+      type: apiKey
+      in: header
+      name: X-AgroFlow-Service-Key
+      description: >-
+        Clave de servicio de n8n (`ChannelIntegration:ServiceKey`, al menos 32
+        bytes, desde secretos o variables de entorno). Sin clave configurada,
+        las rutas del canal responden `401`.
+    DashboardKey:
+      type: apiKey
+      in: header
+      name: X-AgroFlow-Dashboard-Key
+      description: >-
+        Clave del dashboard en el perfil LocalDemo (`Dashboard:ApiKey`, al menos
+        32 bytes y distinta de la de servicio). Medida de demo, no una identidad
+        de usuario: B03 la reemplaza por JWT con ingenio.
+
   parameters:
     AppointmentId:
       name: id
@@ -232,6 +681,54 @@ components:
       schema:
         type: string
         format: uuid
+
+    ConversationId:
+      name: id
+      in: path
+      required: true
+      description: Identificador de la conversación.
+      schema:
+        type: string
+        format: uuid
+
+    DriverId:
+      name: id
+      in: path
+      required: true
+      description: Identificador del transportista.
+      schema:
+        type: string
+        format: uuid
+
+    Cursor:
+      name: cursor
+      in: query
+      required: false
+      description: Cursor opaco devuelto como `nextCursor` por la página anterior.
+      schema:
+        type: string
+        maxLength: 64
+
+    Limit:
+      name: limit
+      in: query
+      required: false
+      description: Tamaño de página.
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 50
+        default: 20
+
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: Clave de idempotencia de la mutación, única por operación.
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 200
 
   schemas:
     HealthResponse:
@@ -410,6 +907,367 @@ components:
           type: string
           format: date-time
 
+    ConversationEventInput:
+      type: object
+      additionalProperties: false
+      required: [provider, instance, providerMessageId, remoteAddress, contentType, text]
+      properties:
+        provider:
+          type: string
+          const: evolution
+        instance:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: Instancia del proveedor; debe estar habilitada para un ingenio.
+        providerMessageId:
+          type: string
+          minLength: 1
+          maxLength: 128
+        remoteAddress:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: >-
+            JID remoto. Sólo `<dígitos>@s.whatsapp.net` deriva un teléfono; un
+            `@lid` u otra dirección se registra sin teléfono y como no
+            reconocida. Las direcciones de grupo (`@g.us`) se rechazan.
+        providerTimestamp:
+          type: string
+          format: date-time
+          description: Momento informado por el proveedor; se muestra, pero no ordena.
+        contentType:
+          type: string
+          const: text
+        text:
+          type: string
+          minLength: 1
+          maxLength: 4096
+      examples:
+        - provider: evolution
+          instance: fixture-instance-A
+          providerMessageId: fixture-in-001
+          remoteAddress: '<REMITENTE_ENMASCARADO>@s.whatsapp.net'
+          providerTimestamp: '2030-01-01T12:00:00Z'
+          contentType: text
+          text: '[SINTÉTICO] mensaje de prueba'
+
+    ProcessingStatus:
+      type: string
+      description: >-
+        `EXPIRED` se deriva de una autorización `PROCESSING` vencida; no
+        habilita reprocesar.
+      enum: [PROCESSING, COMPLETED, FAILED, EXPIRED]
+
+    ConversationEventResult:
+      type: object
+      additionalProperties: false
+      required: [disposition, conversationId, messageId, processing, sender]
+      properties:
+        disposition:
+          type: string
+          enum: [process, duplicate_stop]
+        conversationId:
+          type: string
+          format: uuid
+        messageId:
+          type: string
+          format: uuid
+        processing:
+          type: object
+          additionalProperties: false
+          required: [status, expiresAt]
+          properties:
+            status:
+              $ref: '#/components/schemas/ProcessingStatus'
+            claimToken:
+              type: string
+              description: Sólo en `process`; se entrega una única vez.
+            expiresAt:
+              type: string
+              format: date-time
+        sender:
+          type: object
+          additionalProperties: false
+          required: [recognized]
+          properties:
+            recognized:
+              type: boolean
+              description: Transportista activo del ingenio de la instancia.
+            transportistaId:
+              type: string
+              format: uuid
+
+    ReplyIntentInput:
+      type: object
+      additionalProperties: false
+      required: [inboundMessageId, claimToken, text]
+      properties:
+        inboundMessageId:
+          type: string
+          format: uuid
+        claimToken:
+          type: string
+          minLength: 1
+          maxLength: 128
+        text:
+          type: string
+          minLength: 1
+          maxLength: 4096
+
+    SendStatus:
+      type: string
+      enum: [PENDING_SEND, ACCEPTED, FAILED, UNKNOWN]
+
+    ReplyIntent:
+      type: object
+      additionalProperties: false
+      required: [replyId, conversationId, inboundMessageId, instance, recipientAddress, text, sendStatus, providerMessageId]
+      properties:
+        replyId:
+          type: string
+          format: uuid
+        conversationId:
+          type: string
+          format: uuid
+        inboundMessageId:
+          type: string
+          format: uuid
+        instance:
+          type: string
+        recipientAddress:
+          type: string
+        text:
+          type: string
+        sendStatus:
+          $ref: '#/components/schemas/SendStatus'
+        providerMessageId:
+          type: [string, 'null']
+
+    SendStatusInput:
+      type: object
+      additionalProperties: false
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [accepted, failed, unknown]
+        providerMessageId:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: Evidencia del proveedor; sólo con `accepted`.
+
+    ProcessingResultInput:
+      type: object
+      additionalProperties: false
+      required: [claimToken, status, errorCode]
+      properties:
+        claimToken:
+          type: string
+          minLength: 1
+          maxLength: 128
+        status:
+          type: string
+          const: failed
+        errorCode:
+          type: string
+          enum: [AGENT_ERROR, REPLY_NOT_SENT, WORKFLOW_ERROR]
+
+    ProcessingResult:
+      type: object
+      additionalProperties: false
+      required: [messageId, status, errorCode]
+      properties:
+        messageId:
+          type: string
+          format: uuid
+        status:
+          $ref: '#/components/schemas/ProcessingStatus'
+        errorCode:
+          type: [string, 'null']
+
+    ConversationSummary:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - addressKind
+        - remoteAddressMasked
+        - sender
+        - lastMessageAt
+        - lastMessagePreview
+        - lastMessageDirection
+        - needsAttention
+      properties:
+        id:
+          type: string
+          format: uuid
+        addressKind:
+          type: string
+          enum: [PHONE, LID, OTHER]
+        remoteAddressMasked:
+          type: string
+          description: Nunca la dirección completa.
+        sender:
+          type: object
+          additionalProperties: false
+          required: [recognized, transportistaId, name]
+          properties:
+            recognized:
+              type: boolean
+            transportistaId:
+              type: [string, 'null']
+              format: uuid
+            name:
+              type: [string, 'null']
+        lastMessageAt:
+          type: string
+          format: date-time
+        lastMessagePreview:
+          type: [string, 'null']
+          maxLength: 80
+        lastMessageDirection:
+          type: [string, 'null']
+          enum: [INBOUND, OUTBOUND, null]
+        needsAttention:
+          type: boolean
+          description: Procesamiento fallido o vencido, o envío incierto.
+
+    ConversationSummaryPage:
+      type: object
+      additionalProperties: false
+      required: [items, nextCursor]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConversationSummary'
+        nextCursor:
+          type: [string, 'null']
+
+    ConversationMessage:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - direction
+        - text
+        - providerTimestamp
+        - persistedAt
+        - inReplyToMessageId
+        - sendStatus
+        - processingStatus
+      properties:
+        id:
+          type: string
+          format: uuid
+        direction:
+          type: string
+          enum: [INBOUND, OUTBOUND]
+        text:
+          type: string
+        providerTimestamp:
+          type: [string, 'null']
+          format: date-time
+        persistedAt:
+          type: string
+          format: date-time
+        inReplyToMessageId:
+          type: [string, 'null']
+          format: uuid
+        sendStatus:
+          oneOf:
+            - $ref: '#/components/schemas/SendStatus'
+            - type: 'null'
+        processingStatus:
+          oneOf:
+            - $ref: '#/components/schemas/ProcessingStatus'
+            - type: 'null'
+
+    ConversationMessagePage:
+      type: object
+      additionalProperties: false
+      required: [items, nextCursor]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConversationMessage'
+        nextCursor:
+          type: [string, 'null']
+
+    DriverInput:
+      type: object
+      additionalProperties: false
+      required: [name, dni, whatsApp]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 150
+        dni:
+          type: string
+          minLength: 1
+          maxLength: 20
+          description: Se compara normalizado a dígitos.
+        whatsApp:
+          type: string
+          pattern: '^\+[1-9][0-9]{7,14}$'
+          description: >-
+            Formato E.164, igual que `carrierPhone`. Su forma normalizada se
+            compara exactamente con el número del JID, sin inferir dígitos.
+      examples:
+        - name: Transportista Ficticio
+          dni: '20555555555'
+          whatsApp: '+5493815550155'
+
+    Driver:
+      type: object
+      additionalProperties: false
+      required: [id, name, dni, whatsApp, isActive, activeTruckPlates, canRequestAppointments]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        dni:
+          type: string
+        whatsApp:
+          type: string
+        isActive:
+          type: boolean
+        activeTruckPlates:
+          type: array
+          description: >-
+            Patentes de camiones activos con asociación activa a este
+            transportista. Sólo lectura: la gestión de asociaciones sigue
+            pendiente (OD-002, OD-013) y no tiene ruta publicada.
+          items:
+            type: string
+        canRequestAppointments:
+          type: boolean
+          description: >-
+            Lo decide el backend: un turno exige transportista activo y una
+            asociación activa con un camión activo. Un transportista recién
+            registrado no puede solicitar turnos hasta tener esa asociación.
+
+    MutationReceipt:
+      type: object
+      additionalProperties: false
+      required: [resourceId, resourceType, outcome]
+      properties:
+        resourceId:
+          type: string
+          format: uuid
+        resourceType:
+          type: string
+          const: driver
+        outcome:
+          type: string
+          enum: [created, updated, inactivated]
+
     ProblemDetails:
       type: object
       additionalProperties: false
@@ -442,6 +1300,22 @@ components:
             - INVALID_TRANSITION
             - INTERNAL_ERROR
             - SERVICE_UNAVAILABLE
+            - UNAUTHENTICATED
+            - FORBIDDEN
+            - CHANNEL_INSTANCE_NOT_ALLOWED
+            - CONVERSATION_EVENT_CONFLICT
+            - MESSAGE_NOT_FOUND
+            - PROCESSING_CLAIM_INVALID
+            - REPLY_INTENT_CONFLICT
+            - REPLY_NOT_FOUND
+            - INVALID_SEND_STATUS_TRANSITION
+            - CONVERSATION_NOT_FOUND
+            - DRIVER_NOT_FOUND
+            - DUPLICATE_DNI
+            - DUPLICATE_WHATSAPP
+            - DUPLICATE_IDENTIFIER
+            - IDEMPOTENCY_KEY_REUSED
+            - RESOURCE_INACTIVE
         traceId:
           type: string
           minLength: 1
@@ -547,3 +1421,147 @@ components:
             status: 500
             code: INTERNAL_ERROR
             traceId: 00-demo-trace
+
+    Unauthenticated:
+      description: Clave ausente, inválida, de otro esquema o no configurada.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+          example:
+            type: 'about:blank'
+            title: No autenticado
+            status: 401
+            code: UNAUTHENTICATED
+            traceId: 00-demo-trace
+
+    ChannelInstanceNotAllowed:
+      description: La instancia no existe o está inhabilitada.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+          example:
+            type: 'about:blank'
+            title: Instancia del canal no habilitada
+            status: 403
+            code: CHANNEL_INSTANCE_NOT_ALLOWED
+            traceId: 00-demo-trace
+
+    ChannelResourceNotFound:
+      description: No existe el mensaje entrante o la respuesta indicada.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+          examples:
+            message:
+              value:
+                type: 'about:blank'
+                title: Mensaje entrante inexistente
+                status: 404
+                code: MESSAGE_NOT_FOUND
+                traceId: 00-demo-trace
+            reply:
+              value:
+                type: 'about:blank'
+                title: Respuesta inexistente
+                status: 404
+                code: REPLY_NOT_FOUND
+                traceId: 00-demo-trace
+
+    ChannelConflict:
+      description: >-
+        La operación contradice el registro vigente: misma clave con otro
+        contenido, autorización inválida o vencida, otra respuesta para el mismo
+        mensaje o una transición de envío no admitida.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+          examples:
+            eventConflict:
+              value:
+                type: 'about:blank'
+                title: El mensaje ya fue registrado con otro contenido
+                status: 409
+                code: CONVERSATION_EVENT_CONFLICT
+                traceId: 00-demo-trace
+            claimInvalid:
+              value:
+                type: 'about:blank'
+                title: Autorización de procesamiento inválida o vencida
+                status: 409
+                code: PROCESSING_CLAIM_INVALID
+                traceId: 00-demo-trace
+            replyConflict:
+              value:
+                type: 'about:blank'
+                title: El mensaje ya tiene otra respuesta
+                status: 409
+                code: REPLY_INTENT_CONFLICT
+                traceId: 00-demo-trace
+            invalidSendStatus:
+              value:
+                type: 'about:blank'
+                title: Transición de estado de envío inválida
+                status: 409
+                code: INVALID_SEND_STATUS_TRANSITION
+                traceId: 00-demo-trace
+
+    ConversationNotFound:
+      description: No existe la conversación en el ingenio.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+          example:
+            type: 'about:blank'
+            title: Conversación inexistente
+            status: 404
+            code: CONVERSATION_NOT_FOUND
+            traceId: 00-demo-trace
+
+    DriverNotFound:
+      description: No existe el transportista en el ingenio.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+          example:
+            type: 'about:blank'
+            title: Transportista inexistente
+            status: 404
+            code: DRIVER_NOT_FOUND
+            traceId: 00-demo-trace
+
+    DriverConflict:
+      description: >-
+        DNI o WhatsApp en uso, clave de idempotencia reutilizada con otros datos
+        o transportista inhabilitado.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+          examples:
+            duplicateWhatsApp:
+              value:
+                type: 'about:blank'
+                title: Ya existe un transportista con ese WhatsApp
+                status: 409
+                code: DUPLICATE_WHATSAPP
+                traceId: 00-demo-trace
+            duplicateIdentifier:
+              value:
+                type: 'about:blank'
+                title: El identificador ya está en uso
+                status: 409
+                code: DUPLICATE_IDENTIFIER
+                traceId: 00-demo-trace
+            keyReused:
+              value:
+                type: 'about:blank'
+                title: La clave de idempotencia ya se usó con otros datos
+                status: 409
+                code: IDEMPOTENCY_KEY_REUSED
+                traceId: 00-demo-trace

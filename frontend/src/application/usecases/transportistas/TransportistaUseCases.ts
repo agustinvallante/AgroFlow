@@ -22,10 +22,12 @@ export class CrearTransportista {
     this.repo = repo;
   }
   execute(datos: NuevoTransportista): Promise<Transportista> {
-    if (!datos.nombre || !datos.patente || !datos.finca) {
-      return Promise.reject(new Error("Completá al menos nombre, patente y finca."));
+    // El WhatsApp es lo que identifica al transportista en el canal.
+    const telefono = datos.telefono.replace(/[\s().-]/g, "");
+    if (!datos.nombre.trim() || !telefono) {
+      return Promise.reject(new Error("Completá al menos nombre y teléfono (WhatsApp)."));
     }
-    return this.repo.crear({ ...datos, patente: datos.patente.toUpperCase() });
+    return this.repo.crear({ ...datos, telefono, patente: datos.patente.toUpperCase() });
   }
 }
 

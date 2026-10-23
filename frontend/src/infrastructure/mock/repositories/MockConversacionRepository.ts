@@ -16,6 +16,10 @@ export class MockConversacionRepository implements ConversacionRepository {
     return delay([...this.conversaciones]);
   }
 
+  async obtenerMensajes(conversacionId: string) {
+    return delay([...(this.conversaciones.find((c) => c.id === conversacionId)?.mensajes ?? [])]);
+  }
+
   async obtenerMetricasChatbot() {
     return delay({
       mensajesHoy: 186,

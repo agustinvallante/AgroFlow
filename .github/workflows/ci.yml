@@ -141,6 +141,9 @@ jobs:
           package-manager-cache: false
       - name: Test integration validation rules
         run: node --test .github/scripts/tests/integrations.test.mjs
+      - name: Simulate the chatbot workflow with synthetic Evolution fixtures
+        # In-memory doubles for AgroFlow API, Evolution and the agent: no live or paid calls.
+        run: node --test chatbot/tests/workflow.test.mjs
       - name: Validate portable workflow and example configuration
         env:
           # Manual runs have no base/before; the validator explicitly reports the skipped historical check.

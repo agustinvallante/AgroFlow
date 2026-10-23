@@ -62,6 +62,29 @@ dotnet run --launch-profile http --urls http://localhost:5000
   | Fincas | `FINCA-NORTE`, `FINCA-SUR` |
   | Ventanas | 30 minutos, cupo **2** camiones, de 08:00 a 18:00 hora local, para hoy y mañana |
 
+### Canal de WhatsApp, conversaciones y transportistas
+
+Estas rutas existen sólo en el perfil LocalDemo y **nunca son anónimas** ([contrato](../contracts/openapi.yaml), etiquetas `Canal`, `Conversaciones` y `Transportistas`):
+
+| Consumidor | Encabezado | Configuración |
+|---|---|---|
+| n8n (canal) | `X-AgroFlow-Service-Key` | `ChannelIntegration__ServiceKey` |
+| Dashboard (conversaciones y transportistas) | `X-AgroFlow-Dashboard-Key` | `Dashboard__ApiKey` |
+
+- Cada clave debe tener al menos 32 bytes y ser distinta de la otra. Se cargan desde variables de entorno o `dotnet user-secrets`, nunca desde `appsettings*.json` versionados ni desde el JSON del workflow. Generación sugerida: `openssl rand -hex 32`.
+- Sin clave configurada la API arranca igual (la demo de turnos no cambia) y registra un aviso: las rutas de esa clave responden `401` hasta configurarla. Una clave presente pero corta, o igual a la otra, aborta el arranque.
+- La clave del dashboard es una medida de demo en loopback, no una identidad de usuario; B03 la reemplaza por JWT con ingenio.
+- El seed habilita la instancia de Evolution `LocalDemo:WhatsAppInstance` (`agroflow-demo` en `appsettings.Development.json`, igual que `EVOLUTION_INSTANCE`) para el ingenio sembrado. Si usás otro nombre, configurá `LocalDemo__WhatsAppInstance` con el mismo valor que `EVOLUTION_INSTANCE`; un evento de una instancia no habilitada responde `403`.
+- El seed identifica sus filas por una clave estable (`SeedRecords`): editar por la API el WhatsApp, DNI o nombre de un transportista sembrado se conserva tras reiniciar, sin duplicados ni sobrescrituras.
+- Las migraciones `AddMasterDataFoundationTables`, `AddWhatsAppConversations` y `AddSeedRecords` se aplican solas al arrancar, sobre la base existente y sin perder turnos. Si la base ya repite un DNI o un WhatsApp entre transportistas, la migración aborta con el check `resolve_duplicated_transportista_dni_or_whatsapp_before_migrating` y no modifica datos.
+- Los transportistas se registran con el WhatsApp en formato E.164 (`+549…`) y el encabezado `Idempotency-Key`; ese número es el que reconoce al remitente del canal.
+
+```powershell
+$env:ChannelIntegration__ServiceKey = "<clave de n8n, 32 bytes o más>"
+$env:Dashboard__ApiKey = "<clave del dashboard, distinta>"
+dotnet run --launch-profile http --urls http://localhost:5000
+```
+
 ### Recorrido reproducible
 
 1. Ejecutá el comando de backend anterior, luego iniciá frontend y n8n con sus URLs base.
@@ -101,6 +124,44 @@ Git renombra los archivos versionados, **no** la SQLite ignorada. Su ubicación 
 5. Si falla la comprobación, detené el backend y conservá todas las copias para diagnosticar. No borres ni sobreescribas la base previa como reparación. Una reversión utiliza el conjunto respaldado completo en una ubicación separada, con procesos detenidos y configuración absoluta; no mezcla el `.db` de una versión con auxiliares de otra.
 
 La prueba `LocalDemoDatabaseTests.Existing_demo_survives_api_rename_migration_seed_and_two_host_restarts` reproduce una base en la ubicación histórica con un turno `EN_CAMINO`, aplica la última migración y arranca dos veces la API real mediante la selección absoluta. Verifica detalle/listado, IDs de maestros y ventanas, cupo ocupado y continuidad del historial, con diario DELETE y WAL. Las pruebas de protección comprueban el nombre predeterminado, nombres personalizados y anidados (incluida la normalización de `..`), cada auxiliar SQLite, archivos con otros nombres que no son candidatos, ausencia de creación de destino, y rutas absolutas/memoria.
+
+## Demostración: conversación persistida en el dashboard
+
+Objetivo: registrar un transportista, simular un mensaje de WhatsApp y verlo almacenado y mostrado en el frontend. Sin Docker, el mensaje se simula ejecutando el workflow exportado contra la API real; Evolution, WhatsApp y el agente se reemplazan por dobles y **no se envía nada a WhatsApp**. Usar sólo números ficticios (rango `+549381555…`) o de prueba consentida.
+
+1. **Claves** (una sola vez por terminal; no versionarlas). En PowerShell:
+
+   ```powershell
+   $env:ChannelIntegration__ServiceKey = -join ((1..64) | ForEach-Object { '{0:x}' -f (Get-Random -Maximum 16) })
+   $env:Dashboard__ApiKey = -join ((1..64) | ForEach-Object { '{0:x}' -f (Get-Random -Maximum 16) })
+   ```
+
+2. **API** (en esa misma terminal, desde `backend/AgroFlow.Api`): `dotnet run --launch-profile http --urls http://localhost:5000`. Verificar `GET http://localhost:5000/health` → `200`.
+3. **Frontend** (otra terminal, desde `frontend/`, con la clave del dashboard copiada sin prefijo `VITE_`):
+
+   ```powershell
+   $env:AGROFLOW_DASHBOARD_KEY = "<mismo valor que Dashboard__ApiKey>"
+   $env:VITE_DATA_SOURCE = "http"
+   npm run dev
+   ```
+
+4. **Registrar el transportista**: en `http://localhost:5173` → **Transportistas** → **+ Nuevo transportista**, con nombre, DNI y WhatsApp E.164, por ejemplo `+5493815550155`. Aparece en el listado leído de la API como "sin camión asociado": el canal lo reconoce, pero todavía no puede solicitar turnos, porque la gestión de asociaciones transportista–camión sigue pendiente (OD-002, OD-013). Para probar turnos por el chatbot, usar un transportista del seed.
+5. **Simular el mensaje** (tercera terminal, desde la raíz del repositorio):
+
+   ```powershell
+   $env:AGROFLOW_SERVICE_KEY = "<mismo valor que ChannelIntegration__ServiceKey>"
+   node chatbot/tests/simulate-message.mjs --from +5493815550155 --text "Hola, quiero consultar mi turno" --id DEMO-0001
+   ```
+
+   Debe informar `Ingesta: HTTP 201 process`, `Remitente reconocido: sí` y `Estado de envío registrado: ACCEPTED`.
+6. **Ver la conversación**: **Chatbot WhatsApp** (o **Actualizar**) muestra al transportista por nombre, el mensaje entrante y la respuesta con "Aceptado por el proveedor".
+7. **Duplicado**: repetir el paso 5 con el mismo `--id`. Debe informar `duplicate_stop`, sin nueva respuesta ni mensaje en el dashboard.
+8. **No registrado**: `--from +5493815550199 --id DEMO-0002`. Se registra como "Remitente no registrado" con la plantilla fija, sin agente.
+9. **Persistencia**: detener la API (`Ctrl+C`), volver a iniciarla y actualizar el dashboard: la conversación sigue ahí.
+
+Prueba automatizada equivalente, con base y claves temporales (no toca la base de la demo): `node chatbot/tests/acceptance.mjs`, después de `dotnet build backend/AgroFlow.Api` y `npm ci` en `frontend/`.
+
+Para usar WhatsApp real hace falta n8n y Evolution en Docker con las credenciales de la [guía de la demo](local-demo.md#importar-el-workflow-y-vincular-credenciales); ese recorrido no se verificó con este cambio.
 
 ## Smoke test del contrato
 

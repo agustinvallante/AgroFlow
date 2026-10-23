@@ -4,9 +4,11 @@ using Microsoft.EntityFrameworkCore;
 namespace AgroFlow.Data.Appointments;
 
 /// <summary>
-/// Seed ficticio y repetible de la demo local. Cada paso resuelve por clave
-/// natural antes de insertar, así correr el seed varias veces no duplica
-/// datos maestros, asociaciones ni ventanas, y nunca toca turnos existentes.
+/// Seed ficticio y repetible de la demo local. Los datos maestros se resuelven
+/// por una clave estable registrada en <see cref="SeedRecord"/> (no por
+/// WhatsApp, DNI, patente o código, que el usuario puede editar), así correr
+/// el seed varias veces no duplica datos maestros, asociaciones ni ventanas,
+/// no sobrescribe ediciones y nunca toca turnos existentes.
 /// </summary>
 public static class AppointmentsSeeder
 {
@@ -19,6 +21,17 @@ public static class AppointmentsSeeder
     public static async Task SeedAsync(
         AgroFlowDbContext db,
         TimeProvider timeProvider,
+        CancellationToken cancellationToken = default) =>
+        await SeedAsync(db, timeProvider, whatsAppInstance: null, cancellationToken);
+
+    /// <param name="whatsAppInstance">
+    /// Nombre de la instancia de Evolution habilitada para el ingenio sembrado
+    /// (configuración, no secreto). Sin valor no se habilita ningún canal.
+    /// </param>
+    public static async Task SeedAsync(
+        AgroFlowDbContext db,
+        TimeProvider timeProvider,
+        string? whatsAppInstance,
         CancellationToken cancellationToken = default)
     {
         var ingenio = await db.Ingenios.FirstOrDefaultAsync(cancellationToken);
@@ -29,94 +42,161 @@ public static class AppointmentsSeeder
             await db.SaveChangesAsync(cancellationToken);
         }
 
-        var transportistaUno = await GetOrCreateTransportistaAsync(
-            db, ingenio.Id, "Transportista Demo Uno", "20111111111", "+5493815550101", cancellationToken);
-        var transportistaDos = await GetOrCreateTransportistaAsync(
-            db, ingenio.Id, "Transportista Demo Dos", "20222222222", "+5493815550102", cancellationToken);
+        var now = timeProvider.GetUtcNow().UtcDateTime;
+        var transportistaUno = await SeedTransportistaAsync(
+            db, "transportista:demo-uno", ingenio.Id, "Transportista Demo Uno", "20111111111", "+5493815550101", now, cancellationToken);
+        var transportistaDos = await SeedTransportistaAsync(
+            db, "transportista:demo-dos", ingenio.Id, "Transportista Demo Dos", "20222222222", "+5493815550102", now, cancellationToken);
 
-        var camionUno = await GetOrCreateCamionAsync(
-            db, ingenio.Id, "AF123BC", Camion.FleetTypePropia, cancellationToken);
-        var camionDos = await GetOrCreateCamionAsync(
-            db, ingenio.Id, "AF456DE", Camion.FleetTypePropia, cancellationToken);
+        var camionUno = await SeedCamionAsync(
+            db, "camion:demo-uno", ingenio.Id, "AF123BC", Camion.FleetTypePropia, now, cancellationToken);
+        var camionDos = await SeedCamionAsync(
+            db, "camion:demo-dos", ingenio.Id, "AF456DE", Camion.FleetTypePropia, now, cancellationToken);
 
-        await GetOrCreateAsociacionAsync(db, ingenio.Id, transportistaUno.Id, camionUno.Id, cancellationToken);
-        await GetOrCreateAsociacionAsync(db, ingenio.Id, transportistaDos.Id, camionDos.Id, cancellationToken);
+        await SeedAsociacionAsync(db, "asociacion:demo-uno", ingenio.Id, transportistaUno, camionUno, now, cancellationToken);
+        await SeedAsociacionAsync(db, "asociacion:demo-dos", ingenio.Id, transportistaDos, camionDos, now, cancellationToken);
 
-        await GetOrCreateFincaAsync(db, ingenio.Id, "FINCA-NORTE", "Finca Norte", "Ruta 9, km 12", cancellationToken);
-        await GetOrCreateFincaAsync(db, ingenio.Id, "FINCA-SUR", "Finca Sur", "Ruta 38, km 5", cancellationToken);
+        await SeedFincaAsync(db, "finca:norte", ingenio.Id, "FINCA-NORTE", "Finca Norte", "Ruta 9, km 12", now, cancellationToken);
+        await SeedFincaAsync(db, "finca:sur", ingenio.Id, "FINCA-SUR", "Finca Sur", "Ruta 38, km 5", now, cancellationToken);
 
         var timeZone = TimeZoneInfo.FindSystemTimeZoneById(ingenio.TimeZoneId);
         var today = DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(timeProvider.GetUtcNow(), timeZone).Date);
         await SeedWindowsForLocalDayAsync(db, ingenio.Id, timeZone, today, cancellationToken);
         await SeedWindowsForLocalDayAsync(db, ingenio.Id, timeZone, today.AddDays(1), cancellationToken);
-    }
 
-    private static async Task<Transportista> GetOrCreateTransportistaAsync(
-        AgroFlowDbContext db, Guid ingenioId, string name, string dni, string whatsApp, CancellationToken ct)
-    {
-        var normalizedPhone = MasterDataValidation.NormalizeDigits(whatsApp, nameof(whatsApp));
-        var existing = await db.Transportistas
-            .FirstOrDefaultAsync(t => t.IngenioId == ingenioId && t.NormalizedWhatsApp == normalizedPhone, ct);
-        if (existing is not null)
+        if (!string.IsNullOrWhiteSpace(whatsAppInstance))
         {
-            return existing;
+            await GetOrCreateChannelInstanceAsync(db, ingenio.Id, whatsAppInstance, cancellationToken);
         }
-
-        var transportista = new Transportista(ingenioId, name, dni, whatsApp);
-        db.Transportistas.Add(transportista);
-        await db.SaveChangesAsync(ct);
-        return transportista;
     }
 
-    private static async Task<Camion> GetOrCreateCamionAsync(
-        AgroFlowDbContext db, Guid ingenioId, string plate, string fleetType, CancellationToken ct)
+    private static async Task GetOrCreateChannelInstanceAsync(
+        AgroFlowDbContext db, Guid ingenioId, string instanceName, CancellationToken ct)
     {
-        var normalizedPlate = MasterDataValidation.NormalizeLettersAndDigits(plate, nameof(plate));
-        var existing = await db.Camiones
-            .FirstOrDefaultAsync(c => c.IngenioId == ingenioId && c.NormalizedPlate == normalizedPlate, ct);
-        if (existing is not null)
+        var normalizedName = ChannelInstance.NormalizeInstanceName(instanceName);
+        var exists = await db.ChannelInstances.AnyAsync(
+            c => c.Provider == ChannelInstance.ProviderEvolution && c.InstanceName == normalizedName, ct);
+        if (exists)
         {
-            return existing;
-        }
-
-        var camion = new Camion(ingenioId, plate, fleetType);
-        db.Camiones.Add(camion);
-        await db.SaveChangesAsync(ct);
-        return camion;
-    }
-
-    private static async Task<Finca> GetOrCreateFincaAsync(
-        AgroFlowDbContext db, Guid ingenioId, string code, string name, string locationReference, CancellationToken ct)
-    {
-        var normalizedCode = MasterDataValidation.NormalizeUpperInvariant(code, nameof(code));
-        var existing = await db.Fincas
-            .FirstOrDefaultAsync(f => f.IngenioId == ingenioId && f.NormalizedCode == normalizedCode, ct);
-        if (existing is not null)
-        {
-            return existing;
-        }
-
-        var finca = new Finca(ingenioId, code, name, locationReference);
-        db.Fincas.Add(finca);
-        await db.SaveChangesAsync(ct);
-        return finca;
-    }
-
-    private static async Task GetOrCreateAsociacionAsync(
-        AgroFlowDbContext db, Guid ingenioId, Guid transportistaId, Guid camionId, CancellationToken ct)
-    {
-        var existing = await db.Asociaciones.FirstOrDefaultAsync(
-            a => a.TransportistaId == transportistaId && a.CamionId == camionId, ct);
-        if (existing is not null)
-        {
-            // Idempotente pero no correctivo: si alguien la inactivó a
-            // propósito (por ejemplo para probar el conflicto de asociación
-            // única), el seed no debe reactivarla por su cuenta.
+            // Una instancia existente conserva su ingenio y su estado: el seed
+            // no la reasigna ni la reactiva por su cuenta.
             return;
         }
 
-        db.Asociaciones.Add(new TransportistaCamion(ingenioId, transportistaId, camionId));
+        db.ChannelInstances.Add(new ChannelInstance(ingenioId, ChannelInstance.ProviderEvolution, normalizedName));
         await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>
+    /// Resuelve una fila del seed por su clave estable. Con la clave
+    /// registrada devuelve la fila tal como está (editada o inhabilitada por
+    /// el usuario) y nunca la recrea ni la sobrescribe. Sin clave, adopta una
+    /// sola vez la fila que una versión anterior del seed creó con los valores
+    /// originales, o la crea; si los valores ya pertenecen a otra fila no crea
+    /// nada, para no violar la unicidad ni pisar datos ajenos.
+    /// </summary>
+    private static async Task<T?> SeedEntityAsync<T>(
+        AgroFlowDbContext db, string key, DateTime nowUtc, CancellationToken ct,
+        Func<IQueryable<T>, IQueryable<T>> legacyMatch, Func<Task<T?>> create) where T : EntityBase
+    {
+        var record = await db.SeedRecords.FirstOrDefaultAsync(r => r.Key == key, ct);
+        if (record is not null)
+        {
+            return await db.Set<T>().FirstOrDefaultAsync(e => e.Id == record.EntityId, ct);
+        }
+
+        var claimed = db.SeedRecords.Select(r => r.EntityId);
+        var entity = await legacyMatch(db.Set<T>()).Where(e => !claimed.Contains(e.Id)).FirstOrDefaultAsync(ct)
+            ?? await create();
+        if (entity is null)
+        {
+            return null;
+        }
+
+        db.SeedRecords.Add(new SeedRecord(key, entity.Id, nowUtc));
+        await db.SaveChangesAsync(ct);
+        return entity;
+    }
+
+    private static Task<Transportista?> SeedTransportistaAsync(
+        AgroFlowDbContext db, string key, Guid ingenioId, string name, string dni, string whatsApp, DateTime nowUtc,
+        CancellationToken ct)
+    {
+        var phone = Transportista.NormalizeWhatsApp(whatsApp);
+        var normalizedDni = Transportista.NormalizeDni(dni);
+        return SeedEntityAsync<Transportista>(db, key, nowUtc, ct,
+            query => query.Where(t => t.IngenioId == ingenioId && (t.NormalizedWhatsApp == phone || t.NormalizedDni == normalizedDni)),
+            async () =>
+            {
+                // DNI y WhatsApp son únicos en todo el sistema.
+                var inUse = await db.Transportistas.AnyAsync(t => t.NormalizedWhatsApp == phone || t.NormalizedDni == normalizedDni, ct);
+                if (inUse)
+                {
+                    return null;
+                }
+
+                var transportista = new Transportista(ingenioId, name, dni, whatsApp);
+                db.Transportistas.Add(transportista);
+                return transportista;
+            });
+    }
+
+    private static Task<Camion?> SeedCamionAsync(
+        AgroFlowDbContext db, string key, Guid ingenioId, string plate, string fleetType, DateTime nowUtc, CancellationToken ct)
+    {
+        var normalizedPlate = Camion.NormalizePlate(plate);
+        return SeedEntityAsync<Camion>(db, key, nowUtc, ct,
+            query => query.Where(c => c.IngenioId == ingenioId && c.NormalizedPlate == normalizedPlate),
+            () =>
+            {
+                var camion = new Camion(ingenioId, plate, fleetType);
+                db.Camiones.Add(camion);
+                return Task.FromResult<Camion?>(camion);
+            });
+    }
+
+    private static Task<Finca?> SeedFincaAsync(
+        AgroFlowDbContext db, string key, Guid ingenioId, string code, string name, string locationReference,
+        DateTime nowUtc, CancellationToken ct)
+    {
+        var normalizedCode = MasterDataValidation.NormalizeUpperInvariant(code, nameof(code));
+        return SeedEntityAsync<Finca>(db, key, nowUtc, ct,
+            query => query.Where(f => f.IngenioId == ingenioId && f.NormalizedCode == normalizedCode),
+            () =>
+            {
+                var finca = new Finca(ingenioId, code, name, locationReference);
+                db.Fincas.Add(finca);
+                return Task.FromResult<Finca?>(finca);
+            });
+    }
+
+    private static async Task SeedAsociacionAsync(
+        AgroFlowDbContext db, string key, Guid ingenioId, Transportista? transportista, Camion? camion, DateTime nowUtc,
+        CancellationToken ct)
+    {
+        if (transportista is null || camion is null)
+        {
+            return;
+        }
+
+        await SeedEntityAsync<TransportistaCamion>(db, key, nowUtc, ct,
+            // Idempotente pero no correctivo: una asociación del par que
+            // alguien inactivó a propósito se adopta tal como está.
+            query => query.Where(a => a.TransportistaId == transportista.Id && a.CamionId == camion.Id),
+            async () =>
+            {
+                // Un camión tiene a lo sumo un transportista activo: si ya
+                // tiene otro, el seed no lo reasigna.
+                var truckTaken = await db.Asociaciones.AnyAsync(a => a.CamionId == camion.Id && a.IsActive, ct);
+                if (truckTaken)
+                {
+                    return null;
+                }
+
+                var asociacion = new TransportistaCamion(ingenioId, transportista.Id, camion.Id);
+                db.Asociaciones.Add(asociacion);
+                return asociacion;
+            });
     }
 
     private static async Task SeedWindowsForLocalDayAsync(

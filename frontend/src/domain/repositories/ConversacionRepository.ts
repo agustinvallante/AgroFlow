@@ -1,5 +1,6 @@
 import type {
   Conversacion,
+  MensajeChat,
   MetricasChatbot,
   PasoFlujoBot,
   PlantillaMensaje,
@@ -7,6 +8,8 @@ import type {
 
 export interface ConversacionRepository {
   obtenerConversaciones(): Promise<Conversacion[]>;
+  /** Mensajes en el orden en que se persistieron. */
+  obtenerMensajes(conversacionId: string): Promise<MensajeChat[]>;
   obtenerMetricasChatbot(): Promise<MetricasChatbot>;
   obtenerFlujoDeAutomatizacion(): Promise<PasoFlujoBot[]>;
   obtenerPlantillas(): Promise<PlantillaMensaje[]>;

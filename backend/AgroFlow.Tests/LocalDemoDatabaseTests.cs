@@ -192,7 +192,8 @@ public sealed class LocalDemoDatabaseTests : IDisposable
             await db.GetService<IMigrator>().MigrateAsync("20260928031441_AddVentanaStartAtUtc");
             await db.Database.ExecuteSqlRawAsync(journalMode == "WAL"
                 ? "PRAGMA journal_mode=WAL;" : "PRAGMA journal_mode=DELETE;");
-            await AppointmentsSeeder.SeedAsync(db, clock);
+            // Filas del seed anterior a SeedRecords: el arranque actual debe adoptarlas.
+            await SeedLegacyDemoAsync(db, clock);
             await db.Ventanas.ExecuteUpdateAsync(setters => setters.SetProperty(v => v.Capacity, 1));
             var window = (await db.Ventanas.ToListAsync()).OrderBy(v => v.StartAt).First();
             windowId = window.Id;
@@ -257,11 +258,53 @@ public sealed class LocalDemoDatabaseTests : IDisposable
         Assert.Equal(originalCarriers.Order(), (await verify.Transportistas.Select(t => t.Id).ToArrayAsync()).Order());
         var migrations = (await verify.Database.GetAppliedMigrationsAsync()).ToArray();
         Assert.Equal(originalMigrations, migrations.Take(originalMigrations.Length));
-        Assert.Equal(4, migrations.Length);
+        // Las migraciones del canal se aplican sobre la base existente sin
+        // perder turnos, transportistas ni ventanas.
+        Assert.Equal(7, migrations.Length);
+        Assert.EndsWith("_AddMasterDataFoundationTables", migrations[4], StringComparison.Ordinal);
+        Assert.EndsWith("_AddWhatsAppConversations", migrations[5], StringComparison.Ordinal);
+        Assert.EndsWith("_AddSeedRecords", migrations[6], StringComparison.Ordinal);
         var finalWindow = await verify.Ventanas.SingleAsync(v => v.Id == windowId);
         Assert.Equal(2, finalWindow.Capacity);
         Assert.Equal(1, finalWindow.Occupied);
         Assert.Equal(TurnoEstado.EnCamino, (await verify.Turnos.SingleAsync()).Status);
+    }
+
+    /// <summary>
+    /// Réplica de lo que creaba el seed antes de SeedRecords (claves naturales,
+    /// sin marcas): el esquema histórico no tiene esa tabla.
+    /// </summary>
+    private static async Task SeedLegacyDemoAsync(AgroFlowDbContext db, TimeProvider clock)
+    {
+        var ingenio = new Ingenio("Ingenio Demo");
+        var uno = new Transportista(ingenio.Id, "Transportista Demo Uno", "20111111111", "+5493815550101");
+        var dos = new Transportista(ingenio.Id, "Transportista Demo Dos", "20222222222", "+5493815550102");
+        var camionUno = new Camion(ingenio.Id, "AF123BC", Camion.FleetTypePropia);
+        var camionDos = new Camion(ingenio.Id, "AF456DE", Camion.FleetTypePropia);
+        db.Ingenios.Add(ingenio);
+        db.Transportistas.AddRange(uno, dos);
+        db.Camiones.AddRange(camionUno, camionDos);
+        db.Asociaciones.AddRange(
+            new TransportistaCamion(ingenio.Id, uno.Id, camionUno.Id),
+            new TransportistaCamion(ingenio.Id, dos.Id, camionDos.Id));
+        db.Fincas.AddRange(
+            new Finca(ingenio.Id, "FINCA-NORTE", "Finca Norte", "Ruta 9, km 12"),
+            new Finca(ingenio.Id, "FINCA-SUR", "Finca Sur", "Ruta 38, km 5"));
+
+        var timeZone = TimeZoneInfo.FindSystemTimeZoneById(ingenio.TimeZoneId);
+        var today = DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(clock.GetUtcNow(), timeZone).Date);
+        foreach (var day in new[] { today, today.AddDays(1) })
+        {
+            var midnight = day.ToDateTime(TimeOnly.MinValue, DateTimeKind.Unspecified);
+            for (var start = TimeSpan.FromHours(8); start < TimeSpan.FromHours(18); start += TimeSpan.FromMinutes(30))
+            {
+                var local = midnight.Add(start);
+                var startAt = new DateTimeOffset(local, timeZone.GetUtcOffset(local));
+                db.Ventanas.Add(new Ventana(ingenio.Id, startAt, startAt + TimeSpan.FromMinutes(30), 2));
+            }
+        }
+
+        await db.SaveChangesAsync();
     }
 
     public void Dispose()

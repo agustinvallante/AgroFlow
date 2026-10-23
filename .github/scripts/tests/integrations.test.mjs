@@ -427,3 +427,132 @@ test('example environment rejects real-looking credentials', () => {
 test('example environment rejects floating image tags', () => {
   assert.throws(() => validateExampleEnvironment(environment().replace('2.37.10', 'latest')), /pinned/);
 });
+
+// Persistence routes of the WhatsApp channel (persistir-conversaciones-whatsapp).
+const api = '={{ $env.AGROFLOW_API_URL }}/api/v1';
+const serviceKey = { httpHeaderAuth: { name: 'AgroFlow Service Key account' } };
+const channelRoutes = [
+  ['POST', `${api}/conversation-events`],
+  ['PATCH', `${api}/conversation-events/{{ $json.body.messageId }}/processing`],
+  ['POST', `${api}/conversation-reply-intents`],
+  ['PATCH', `${api}/conversation-reply-intents/{{ $json.body.replyId }}/send-status`],
+];
+
+function channelNode(method, url, overrides = {}) {
+  return { id: `channel-${method}-${url.length}`, name: 'Tool', type: 'n8n-nodes-base.httpRequest', typeVersion: 4.2,
+    parameters: { method, url, authentication: 'genericCredentialType', genericAuthType: 'httpHeaderAuth',
+      options: { timeout: 10000 }, ...overrides.parameters },
+    credentials: overrides.credentials ?? structuredClone(serviceKey) };
+}
+
+function withNode(node) {
+  const value = workflow(); value.nodes[1] = node;
+  return value;
+}
+
+test('channel routes pass only with their exact method and the service key credential', () => {
+  for (const [method, url] of channelRoutes) validateWorkflow(withNode(channelNode(method, url)));
+});
+
+test('channel routes reject other methods, appended paths and queries', () => {
+  for (const [method, url] of channelRoutes) {
+    for (const [badMethod, badUrl] of [
+      [method === 'POST' ? 'PATCH' : 'POST', url], ['GET', url], [method, url + '?redirect=https://attacker.invalid'],
+      [method, url + '/../appointments'], [method, url + '\n'],
+    ]) {
+      assert.throws(() => validateWorkflow(withNode(channelNode(badMethod, badUrl))),
+        /exact method and template|only allowed on channel requests/);
+    }
+  }
+});
+
+test('channel routes are never agent tools', () => {
+  for (const type of ['n8n-nodes-base.httpRequestTool', '@n8n/n8n-nodes-langchain.toolHttpRequest']) {
+    const node = channelNode('POST', `${api}/conversation-events`);
+    node.type = type;
+    assert.throws(() => validateWorkflow(withNode(node)), /service key credential is only allowed|exact method/);
+    delete node.credentials;
+    assert.throws(() => validateWorkflow(withNode(node)), /exact method and template/);
+  }
+});
+
+test('channel routes require the AgroFlow service key and nothing else', () => {
+  for (const credentials of [{}, { httpHeaderAuth: { name: 'Header Auth account' } },
+    { ...structuredClone(serviceKey), openAiApi: { name: 'OpenAI account' } }]) {
+    assert.throws(() => validateWorkflow(withNode(channelNode('POST', `${api}/conversation-events`, { credentials }))),
+      /service key credential/);
+  }
+  assert.throws(() => validateWorkflow(withNode(channelNode('POST', `${api}/conversation-events`,
+    { parameters: { authentication: 'none' } }))), /service key credential/);
+});
+
+test('the service key cannot travel to Evolution or to the appointment tools', () => {
+  const evolution = { id: 'e', name: 'Tool', type: 'n8n-nodes-base.httpRequest', typeVersion: 4.5,
+    parameters: { method: 'POST', url: evolutionUrl, options: {} }, credentials: structuredClone(serviceKey) };
+  assert.throws(() => validateWorkflow(withNode(evolution)), /only allowed on channel requests/);
+  const tool = workflow(); tool.nodes[1].credentials = structuredClone(serviceKey);
+  assert.throws(() => validateWorkflow(tool), /only allowed on channel requests/);
+});
+
+test('channel URLs reject a hardcoded resource UUID', () => {
+  const url = `${api}/conversation-reply-intents/{{ '00000000-0000-0000-0000-000000000001' }}/send-status`;
+  assert.throws(() => validateWorkflow(withNode(channelNode('PATCH', url))), /UUID/);
+});
+
+function conversational(edges) {
+  const settings = { saveDataSuccessExecution: 'none', saveManualExecutions: false, saveExecutionProgress: false };
+  const nodes = [
+    { id: 'w', name: 'Webhook', type: 'n8n-nodes-base.webhook', typeVersion: 2.1, parameters: {} },
+    { ...channelNode('POST', `${api}/conversation-events`), id: 'i', name: 'Ingest' },
+    { id: 'a', name: 'Agent', type: '@n8n/n8n-nodes-langchain.agent', typeVersion: 3.1, parameters: {} },
+    { ...channelNode('POST', `${api}/conversation-reply-intents`), id: 'r', name: 'Intent' },
+    { id: 's', name: 'Send', type: 'n8n-nodes-base.httpRequest', typeVersion: 4.5,
+      parameters: { method: 'POST', url: evolutionUrl, options: {} }, credentials: { httpHeaderAuth: { name: 'Header Auth account' } } },
+  ];
+  const connections = {};
+  for (const [from, to] of edges) {
+    connections[from] ??= { main: [[]] };
+    connections[from].main[0].push({ node: to, type: 'main', index: 0 });
+  }
+  return { active: false, pinData: {}, settings, nodes, connections };
+}
+
+test('a conversational workflow persists before the agent and registers the intent before sending', () => {
+  validateWorkflow(conversational([['Webhook', 'Ingest'], ['Ingest', 'Agent'], ['Agent', 'Intent'], ['Intent', 'Send']]));
+});
+
+test('the agent or the send cannot be reachable before persistence', () => {
+  assert.throws(() => validateWorkflow(conversational([['Webhook', 'Agent'], ['Agent', 'Ingest'], ['Ingest', 'Intent'],
+    ['Intent', 'Send']])), /Agent must only run after the inbound message is persisted/);
+  assert.throws(() => validateWorkflow(conversational([['Webhook', 'Ingest'], ['Webhook', 'Send'], ['Ingest', 'Agent'],
+    ['Agent', 'Intent']])), /Send must only run after the inbound message is persisted/);
+});
+
+test('a conversational workflow must not retain successful, manual or in-progress execution data', () => {
+  const edges = [['Webhook', 'Ingest'], ['Ingest', 'Agent'], ['Agent', 'Intent'], ['Intent', 'Send']];
+  for (const override of [{ saveDataSuccessExecution: 'all' }, { saveManualExecutions: true },
+    { saveExecutionProgress: true }, { saveDataSuccessExecution: undefined }]) {
+    const value = conversational(edges);
+    value.settings = { ...value.settings, ...override };
+    assert.throws(() => validateWorkflow(value), /must not retain/);
+  }
+  const value = conversational(edges); delete value.settings;
+  assert.throws(() => validateWorkflow(value), /must not retain/);
+});
+
+test('the send cannot bypass the reply intent', () => {
+  assert.throws(() => validateWorkflow(conversational([['Webhook', 'Ingest'], ['Ingest', 'Agent'], ['Agent', 'Send'],
+    ['Agent', 'Intent']])), /Send must only run after the reply intent is registered/);
+});
+
+test('the integrated chatbot persists, acknowledges and replies in the required order', () => {
+  const exported = JSON.parse(readFileSync(new URL('../../../chatbot/workflows/Chatbot.json', import.meta.url), 'utf8'));
+  const next = name => (exported.connections[name]?.main ?? []).map(group => group.map(edge => edge.node));
+  assert.deepEqual(next('Webhook'), [['Is Supported Text Message']]);
+  assert.deepEqual(next('Register Inbound Message'), [['Is New Message To Process'], ['Reject Unpersisted Event']]);
+  // The success acknowledgement is only on the "new message" branch, before the agent.
+  assert.deepEqual(next('Is New Message To Process'), [['Respond to Webhook'], ['Is Duplicate Message']]);
+  assert.deepEqual(next('Is Duplicate Message'), [['Acknowledge Duplicate'], ['Reject Unpersisted Event']]);
+  assert.deepEqual(next('Acknowledge Duplicate'), []);
+  assert.ok(!exported.nodes.some(node => node.parameters?.jsonBody?.includes?.('pushName')), 'pushName is never sent');
+});
