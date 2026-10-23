@@ -27,12 +27,14 @@ jobs:
 
             const body = context.payload.issue.body ?? "";
             const areaMatch = body.match(/###\s+Área (?:responsable|observada)\s*\r?\n+\s*([^\r\n]+)/i);
-            if (!areaMatch) {
+            const titleMatch = context.payload.issue.title.match(/^\[(Backend|Frontend|Integraci[oó]n|Compartida|Documentaci[oó]n)\]/i);
+            const areaSource = areaMatch?.[1] ?? titleMatch?.[1];
+            if (!areaSource) {
               core.notice("El issue no contiene un área reconocible de las plantillas vigentes.");
               return;
             }
 
-            const area = areaMatch[1]
+            const area = areaSource
               .trim()
               .toLocaleLowerCase("es")
               .normalize("NFD")
@@ -47,7 +49,7 @@ jobs:
             };
             const desiredLabel = labelByArea[area];
             if (!desiredLabel) {
-              core.warning(`Área no contemplada: ${areaMatch[1]}`);
+              core.warning(`Área no contemplada: ${areaSource}`);
               return;
             }
 
