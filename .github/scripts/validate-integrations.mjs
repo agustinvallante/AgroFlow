@@ -14,6 +14,47 @@ const secretValue = /sk-[a-zA-Z0-9_-]{20,}|gh[pousr]_[a-zA-Z0-9]{20,}|-----BEGIN
 const uuid = /[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}/i;
 // Deliberately accept the exported n8n template format, not arbitrary JavaScript.
 const businessUrl = /^=\{\{\s*\$env\.AGROFLOW_API_URL\s*\}\}\/api\/v1\/appointments(?:\/(?:[a-zA-Z0-9-]+|\{\{(?:(?!\{\{|\}\})[\s\S])+\}\})(?:\/transitions)?)?$/;
+const evolutionUrl = /^=\{\{\s*\$env\.EVOLUTION_INTERNAL_URL\s*\}\}\/message\/sendText\/\{\{\s*\$env\.EVOLUTION_INSTANCE\s*\}\}$/;
+const httpNodeTypes = new Set([
+  'n8n-nodes-base.httpRequest', 'n8n-nodes-base.httpRequestTool',
+  '@n8n/n8n-nodes-langchain.toolHttpRequest',
+]);
+
+function matchesTemplate(pattern, value) {
+  const match = typeof value === 'string' ? pattern.exec(value) : null;
+  return Boolean(match && match[0] === value);
+}
+
+function checkHttpDestination(node) {
+  if (!httpNodeTypes.has(node.type)) {
+    // A different package/alias must get an explicit policy, not a silent skip.
+    assert.ok(!/(?:^|\.)(?:httpRequest(?:Tool)?|toolHttpRequest)$/i.test(node.type), 'Unsupported HTTP node type');
+    return;
+  }
+  const parameters = node.parameters ?? {};
+  const options = Object.hasOwn(parameters, 'options') ? parameters.options : {};
+  assert.ok(options && typeof options === 'object' && !Array.isArray(options),
+    'HTTP options must be a static object, not an expression');
+  for (const proxy of [parameters.proxy, options.proxy]) {
+    assert.ok(proxy === undefined || proxy === '', 'HTTP proxy overrides are forbidden; value redacted');
+  }
+  // Pagination may issue requests to a secondary URL. None is needed by this export.
+  assert.ok(!Object.hasOwn(options, 'pagination'), 'HTTP pagination requires an explicit destination policy');
+
+  const url = parameters.url;
+  const business = matchesTemplate(businessUrl, url);
+  const evolution = node.type === 'n8n-nodes-base.httpRequest' && parameters.method === 'POST'
+    && matchesTemplate(evolutionUrl, url);
+  assert.ok(business || evolution,
+    `HTTP node ${node.name} must use configured AgroFlow API appointment routes or the permitted Evolution sendText template`);
+  if (!business) return;
+  assert.ok(!uuid.test(url), 'Hardcoded appointment UUID forbidden');
+  // The legacy tool uses parametersBody/parametersQuery instead of bodyParameters/queryParameters.
+  for (const field of ['bodyParameters', 'queryParameters', 'parametersBody', 'parametersQuery',
+    'jsonBody', 'jsonQuery', 'body', 'query']) {
+    checkRequestIdentifiers(parameters[field]);
+  }
+}
 
 function appointmentField(name, parent = '', namedParameter = false) {
   const normalized = name.replace(/[_-]/g, '').toLowerCase();
@@ -154,15 +195,7 @@ export function validateWorkflow(workflow) {
   }
   for (const node of workflow.nodes) {
     checkNodeReferences(node.parameters ?? {}, names);
-    if (node.type !== 'n8n-nodes-base.httpRequestTool') continue;
-    const url = node.parameters?.url ?? '';
-    const match = typeof url === 'string' ? businessUrl.exec(url) : null;
-    assert.ok(match && match[0] === url,
-      `Business tool ${node.name} must use configured AgroFlow API as the URL base in the supported template format`);
-    assert.ok(!uuid.test(url), 'Hardcoded appointment UUID forbidden');
-    for (const field of ['bodyParameters', 'queryParameters', 'jsonBody', 'jsonQuery', 'body', 'query']) {
-      checkRequestIdentifiers(node.parameters?.[field]);
-    }
+    checkHttpDestination(node);
   }
   checkSecrets(workflow);
 }

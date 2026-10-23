@@ -61,16 +61,25 @@ El bot de la PR #79 ya está integrado en `main`. El job comprueba sus archivos 
 La evidencia del candidato posterior a #79 debe mostrar tanto la validación del export y entorno existentes como la ejecución de Compose con el ejemplo de entorno. Que pasen solamente los tests del validador no acredita esos dos pasos; tampoco corresponde presentar el mensaje de componente todavía ausente como una validación del bot integrado.
 
 - Export inactivo, sin `pinData`, metadatos de instancia ni IDs/valores de credenciales; referencias de credenciales genéricas por nombre.
-- Nombres/IDs de nodo únicos, conexiones y referencias de expresión válidas; herramientas de negocio contra la API configurada, sin UUID de turno fijo.
+- Nombres/IDs de nodo únicos, conexiones y referencias de expresión válidas; destinos HTTP explícitamente permitidos y sin proxies declarados; peticiones de negocio contra la API configurada, sin UUID de turno fijo.
 - Ejemplo de entorno con placeholders y versiones fijadas; Compose se verifica con `config --quiet`, nunca con el `.env` privado.
 - Los archivos privados `.env`/`.env.*` no pueden estar versionados; sólo se admiten los ejemplos. La protección se ejecuta también antes de incorporar el bot.
 - El validador detecta algunos patrones de claves/cabeceras y no imprime sus valores. Es un control heurístico, no una certificación de ausencia de secretos/datos personales; sigue siendo necesaria revisión humana.
 
 ### Límites verificables del validador
 
-Las URLs de las herramientas HTTP de negocio admiten el formato exportado `={{ $env.AGROFLOW_API_URL }}/api/v1/appointments`, con el ID dinámico opcional y el sufijo `/transitions` cuando corresponda. La base debe ocupar el inicio de la plantilla: no basta mencionar esa variable o la ruta en otra URL. No se evalúa JavaScript; concatenaciones, transformaciones de la base y otros formatos requieren adaptar expresamente el control y sus regresiones. Los filtros se pasan por `queryParameters`, no como una URL arbitraria.
+Se revisan `n8n-nodes-base.httpRequest`, `n8n-nodes-base.httpRequestTool` y el tipo anterior `@n8n/n8n-nodes-langchain.toolHttpRequest`, incluso si están desconectados o deshabilitados. Una variante de esos nombres en otro paquete falla hasta incorporar una política y pruebas explícitas; no se admite como excepción por su nombre visible en el editor.
 
-La búsqueda de UUID de turno fijos cubre URL y campos de body/query: parámetros por nombre, objetos, JSON y plantillas JSON de n8n. Se reconocen `appointmentId`, `appointment_id`, `turnoId`, `id_turno` y variantes de guion/capitalización; `id` se considera turno en la raíz de la petición, como parámetro por nombre o dentro de `appointment`/`turno`. Los UUID de otras entidades (`carrierId`, `truckId`, `farmId`, o `truck.id`) no se prohíben globalmente. Es análisis estático de las formas soportadas, no ejecución de expresiones ni una garantía de identidad o seguridad runtime.
+Los destinos declarados permitidos son:
+
+- **API de AgroFlow:** los tres tipos admiten `={{ $env.AGROFLOW_API_URL }}/api/v1/appointments`, con el ID dinámico opcional y el sufijo `/transitions` cuando corresponda.
+- **Respuesta de WhatsApp:** sólo el nodo ordinario `httpRequest`, con método `POST`, admite `={{ $env.EVOLUTION_INTERNAL_URL }}/message/sendText/{{ $env.EVOLUTION_INSTANCE }}`. Compose configura esa base como `http://evolution:8080`; no se autorizan otras operaciones de Evolution ni herramientas del agente contra ese servicio.
+
+La base debe ocupar el inicio de la plantilla: no basta mencionar esa variable o la ruta en otra URL. No se evalúa JavaScript; concatenaciones, transformaciones de la base y otros formatos requieren adaptar expresamente el control y sus regresiones. Los filtros se pasan por `queryParameters` (o `parametersQuery` en el tipo anterior), no como una URL arbitraria.
+
+Las opciones HTTP deben ser un objeto estático. `options.proxy` y `parameters.proxy` sólo pueden estar ausentes o ser la cadena vacía literal: valores externos, expresiones y objetos fallan sin imprimir el valor. No se admite `options.pagination`, que podría introducir un segundo destino; agregar paginación requiere definir y probar su política. Se conservan las opciones de respuesta del export actual y el timeout. Estas comprobaciones no certifican destinos efectivos en runtime: no inspeccionan valores privados de entorno, proxies globales, DNS, redirecciones de servidores ni código arbitrario de otros tipos de nodo. La configuración desplegada y sus credenciales siguen requiriendo revisión.
+
+La búsqueda de UUID de turno fijos cubre URL y campos de body/query de los tres tipos HTTP, incluidos `parametersBody` y `parametersQuery` del tipo anterior: parámetros por nombre, objetos, JSON y plantillas JSON de n8n. Se reconocen `appointmentId`, `appointment_id`, `turnoId`, `id_turno` y variantes de guion/capitalización; `id` se considera turno en la raíz de la petición, como parámetro por nombre o dentro de `appointment`/`turno`. Los UUID de otras entidades (`carrierId`, `truckId`, `farmId`, o `truck.id`) no se prohíben globalmente. Es análisis estático de las formas soportadas, no ejecución de expresiones ni una garantía de identidad o seguridad runtime.
 
 La detección de eliminación completa compara contra el SHA base del pull request o `before` del push. `workflow_dispatch` no proporciona ninguno: en una ejecución manual sin base se emite un aviso `Historical integration removal check NOT RUN`; no debe presentarse como comparación histórica superada. El resto de controles sí se ejecuta. Una base inválida o no disponible falla en lugar de omitirse silenciosamente. También puede comprobarse localmente una base explícita, usando un **SHA completo de commit disponible en el clon**:
 
@@ -93,6 +102,8 @@ CI no inicia n8n/Evolution, no vincula WhatsApp, no utiliza credenciales reales 
 - **Imágenes de n8n/Evolution/PostgreSQL/Redis:** conservar las versiones de `infra/env.example`, la clave de cifrado y los volúmenes. No se habilitan bumps automáticos de imágenes por variables ni actualizaciones a `latest`; antes de cambiar, comprobar importación, credenciales, almacenamiento y rollback. No se afirma que Dependabot resuelva esas variables: su mantenimiento sigue siendo explícito y coordinado con B07.
 
 Una PR sobre rutas `Dsw2025Tpi.*` retiradas se rehace sobre los proyectos actuales; CI verde de una base anterior no habilita su merge. Cerrar una propuesta obsoleta no significa que su parche sea incompatible ni que Identity deje de usarse. Los parches EF se revisan agrupados y no se silencian errores NU1605/CS1705 para aceptar combinaciones incoherentes.
+
+La corrección de seguridad de la review de #80 (2026-10-22) eleva los mínimos a Vite 8.2.4 y Vitest 5.0.3, actualizando también el lockfile y las dependencias transitivas afectadas. Son parches dentro de las generaciones existentes, no migraciones de plataforma. La evidencia anterior de una auditoría sin alertas no es permanente: se vuelve a ejecutar la auditoría y el conjunto de verificaciones sobre cada candidato. Referencias: [Vite/launch-editor](https://github.com/vitejs/launch-editor/security/advisories/GHSA-587h-7wmj-h5pm), [Vitest/mocker](https://github.com/vitest-dev/vitest/security/advisories/GHSA-qxg6-89mg-rqv8).
 
 Comprobaciones locales de automatización, sin secretos ni servicios:
 

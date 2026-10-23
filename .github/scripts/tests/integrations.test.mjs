@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync, rmdirSync, unlinkSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, rmdirSync, unlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -185,6 +185,119 @@ test('business URL validation rejects unsupported expressions, sibling routes an
 test('hardcoded appointment UUID fails', () => {
   const value = workflow(); value.nodes[1].parameters.url += '/00000000-0000-0000-0000-000000000001/transitions';
   assert.throws(() => validateWorkflow(value), /UUID/);
+});
+
+const httpNodeTypes = [
+  'n8n-nodes-base.httpRequest', 'n8n-nodes-base.httpRequestTool',
+  '@n8n/n8n-nodes-langchain.toolHttpRequest',
+];
+const evolutionUrl = '={{ $env.EVOLUTION_INTERNAL_URL }}/message/sendText/{{ $env.EVOLUTION_INSTANCE }}';
+
+function httpWorkflow(type) {
+  const value = workflow();
+  value.nodes[1].type = type;
+  value.nodes[1].typeVersion = type.startsWith('@n8n/') ? 1.1 : 4.2;
+  return value;
+}
+
+for (const type of httpNodeTypes) {
+  test(`${type} accepts the configured business destination`, () => {
+    const value = httpWorkflow(type);
+    value.nodes[1].parameters.parametersBody = { values: [
+      { name: 'truckId', value: '00000000-0000-0000-0000-000000000002' },
+      { name: 'appointmentId', value: '={{ $json.appointmentId }}' },
+    ] };
+    validateWorkflow(value);
+    value.nodes[1].parameters.url += '/{{ $json.appointmentId }}/transitions';
+    validateWorkflow(value);
+  });
+
+  test(`${type} rejects unapproved destinations without echoing their values`, () => {
+    for (const url of [
+      'https://attacker.invalid/private', '//attacker.invalid',
+      '={{ "https://attacker.invalid/?target=" + $env.AGROFLOW_API_URL + "&path=/api/v1/appointments" }}',
+      '={{ $json.url }}', null, {}, '',
+    ]) {
+      const value = httpWorkflow(type);
+      value.nodes[1].parameters.url = url;
+      assert.throws(() => validateWorkflow(value), error =>
+        /configured AgroFlow API/.test(error.message) && !error.message.includes('attacker.invalid'));
+      value.nodes[1].disabled = true;
+      value.connections = {};
+      assert.throws(() => validateWorkflow(value), /configured AgroFlow API/);
+    }
+  });
+
+  test(`${type} rejects proxy overrides even with a valid API URL`, () => {
+    for (const proxy of ['http://attacker.invalid:8080', '={{ $json.proxy }}', {}, true, null]) {
+      const value = httpWorkflow(type);
+      value.nodes[1].parameters.options = { proxy };
+      assert.throws(() => validateWorkflow(value), error =>
+        /proxy/.test(error.message) && !error.message.includes('attacker.invalid'));
+    }
+    const value = httpWorkflow(type);
+    value.nodes[1].parameters.proxy = 'http://attacker.invalid:8080';
+    assert.throws(() => validateWorkflow(value), /proxy/);
+    value.nodes[1].parameters.proxy = '';
+    value.nodes[1].parameters.options = { proxy: '', timeout: 5000,
+      response: { response: { neverError: true, responseFormat: 'json' } } };
+    validateWorkflow(value);
+  });
+
+  test(`${type} rejects opaque options and secondary pagination destinations`, () => {
+    for (const options of [
+      '={{ $json.options }}', [], null,
+      { pagination: { pagination: { paginationMode: 'responseContainsNextURL', nextURL: '={{ $response.body.next }}' } } },
+    ]) {
+      const value = httpWorkflow(type);
+      value.nodes[1].parameters.options = options;
+      assert.throws(() => validateWorkflow(value), /HTTP options|pagination/);
+    }
+  });
+
+  test(`${type} preserves the fixed appointment ID guard in body/query`, () => {
+    for (const field of ['bodyParameters', 'queryParameters', 'parametersBody', 'parametersQuery', 'jsonBody', 'jsonQuery']) {
+      const value = httpWorkflow(type);
+      value.nodes[1].parameters[field] = { values: [{ name: 'appointmentId', value: '00000000-0000-0000-0000-000000000001' }] };
+      assert.throws(() => validateWorkflow(value), /Hardcoded appointment UUID/);
+    }
+  });
+}
+
+test('the ordinary HTTP node may POST to the configured Evolution sendText endpoint', () => {
+  const value = workflow(); value.nodes[1].type = 'n8n-nodes-base.httpRequest';
+  value.nodes[1].parameters = { method: 'POST', url: evolutionUrl, options: {} };
+  validateWorkflow(value);
+  value.nodes[1].parameters.options.proxy = 'http://attacker.invalid:8080';
+  assert.throws(() => validateWorkflow(value), /proxy/);
+});
+
+test('Evolution is not an arbitrary HTTP or agent-tool destination', () => {
+  for (const url of [
+    'http://evolution:8080/message/sendText/agroflow-demo',
+    '={{ $env.EVOLUTION_INTERNAL_URL }}/instance/logout/{{ $env.EVOLUTION_INSTANCE }}',
+    evolutionUrl + '?redirect=https://attacker.invalid', evolutionUrl + '\n',
+    '={{ $env.EVOLUTION_INTERNAL_URL }}/message/sendText/{{ $json.instance }}',
+  ]) {
+    const value = workflow(); value.nodes[1].type = 'n8n-nodes-base.httpRequest';
+    value.nodes[1].parameters = { method: 'POST', url };
+    assert.throws(() => validateWorkflow(value), /configured AgroFlow API/);
+  }
+  for (const type of httpNodeTypes) {
+    const value = httpWorkflow(type);
+    value.nodes[1].parameters = { method: type.endsWith('.httpRequest') ? 'GET' : 'POST', url: evolutionUrl };
+    assert.throws(() => validateWorkflow(value), /configured AgroFlow API/);
+  }
+});
+
+test('unrecognized HTTP node variants fail rather than silently bypassing the policy', () => {
+  const value = workflow(); value.nodes[1].type = 'unreviewed-package.httpRequest';
+  assert.throws(() => validateWorkflow(value), /Unsupported HTTP node type/);
+});
+
+test('the integrated chatbot export still passes the destination and identifier guards', () => {
+  const path = new URL('../../../chatbot/workflows/Chatbot.json', import.meta.url);
+  validateWorkflow(JSON.parse(readFileSync(path, 'utf8')));
 });
 
 for (const field of ['bodyParameters', 'queryParameters']) {
