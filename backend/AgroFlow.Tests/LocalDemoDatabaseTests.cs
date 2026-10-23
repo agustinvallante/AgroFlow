@@ -226,6 +226,8 @@ public sealed class LocalDemoDatabaseTests : IDisposable
                 builder.UseContentRoot(ApiDirectory);
                 builder.UseEnvironment("Development");
                 builder.UseSetting("LocalDemo:Enabled", "true");
+                // Nunca la precarga privada real del equipo en una prueba.
+                builder.UseSetting("LocalDemo:TeamFile", TestTeamFile.Absent);
                 builder.UseSetting("ConnectionStrings:AgroFlowDb", selectedConnection);
                 builder.ConfigureServices(services =>
                 {
@@ -251,19 +253,23 @@ public sealed class LocalDemoDatabaseTests : IDisposable
         await using var verify = new AgroFlowDbContext(options);
         Assert.Equal(1, await verify.Turnos.CountAsync());
         Assert.Equal(1, await verify.Ingenios.CountAsync());
-        Assert.Equal(2, await verify.Camiones.CountAsync());
+        Assert.Equal(5, await verify.Camiones.CountAsync());
         Assert.Equal(2, await verify.Fincas.CountAsync());
-        Assert.Equal(2, await verify.Asociaciones.CountAsync());
+        Assert.Equal(5, await verify.Asociaciones.CountAsync());
         Assert.Equal(originalWindows.Order(), (await verify.Ventanas.Select(v => v.Id).ToArrayAsync()).Order());
-        Assert.Equal(originalCarriers.Order(), (await verify.Transportistas.Select(t => t.Id).ToArrayAsync()).Order());
+        // Los transportistas originales se conservan; el seed agrega las tres posiciones nuevas.
+        var carriers = await verify.Transportistas.Select(t => t.Id).ToArrayAsync();
+        Assert.Equal(5, carriers.Length);
+        Assert.All(originalCarriers, original => Assert.Contains(original, carriers));
         var migrations = (await verify.Database.GetAppliedMigrationsAsync()).ToArray();
         Assert.Equal(originalMigrations, migrations.Take(originalMigrations.Length));
         // Las migraciones del canal se aplican sobre la base existente sin
         // perder turnos, transportistas ni ventanas.
-        Assert.Equal(7, migrations.Length);
+        Assert.Equal(8, migrations.Length);
         Assert.EndsWith("_AddMasterDataFoundationTables", migrations[4], StringComparison.Ordinal);
         Assert.EndsWith("_AddWhatsAppConversations", migrations[5], StringComparison.Ordinal);
         Assert.EndsWith("_AddSeedRecords", migrations[6], StringComparison.Ordinal);
+        Assert.EndsWith("_AddLocalDemoTeamAssignments", migrations[7], StringComparison.Ordinal);
         var finalWindow = await verify.Ventanas.SingleAsync(v => v.Id == windowId);
         Assert.Equal(2, finalWindow.Capacity);
         Assert.Equal(1, finalWindow.Occupied);

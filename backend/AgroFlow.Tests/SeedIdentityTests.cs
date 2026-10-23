@@ -32,11 +32,11 @@ public sealed class SeedIdentityTests : IDisposable
         await StartAsync();
 
         await using var verify = CreateContext();
-        Assert.Equal(2, await verify.Transportistas.CountAsync());
+        Assert.Equal(5, await verify.Transportistas.CountAsync());
         var edited = await verify.Transportistas.SingleAsync(t => t.NormalizedDni == "20111111111");
         Assert.Equal("+5493815550111", edited.WhatsApp);
         Assert.False(await verify.Transportistas.AnyAsync(t => t.NormalizedWhatsApp == "5493815550101"));
-        Assert.Equal(2, await verify.Asociaciones.CountAsync());
+        Assert.Equal(5, await verify.Asociaciones.CountAsync());
         Assert.True(await verify.Asociaciones.AnyAsync(a => a.TransportistaId == edited.Id && a.IsActive));
     }
 
@@ -57,8 +57,8 @@ public sealed class SeedIdentityTests : IDisposable
         await StartAsync();
 
         await using var verify = CreateContext();
-        Assert.Equal(2, await verify.Transportistas.CountAsync());
-        Assert.Equal(2, await verify.Camiones.CountAsync());
+        Assert.Equal(5, await verify.Transportistas.CountAsync());
+        Assert.Equal(5, await verify.Camiones.CountAsync());
         var dosAfter = await verify.Transportistas.SingleAsync(t => t.NormalizedDni == "20999999992");
         Assert.Equal("Nombre Editado", dosAfter.Name);
         Assert.False(dosAfter.IsActive);
@@ -82,9 +82,9 @@ public sealed class SeedIdentityTests : IDisposable
         await StartAsync();
 
         await using var verify = CreateContext();
-        Assert.Equal(2, await verify.Transportistas.CountAsync());
-        Assert.Equal(2, await verify.Asociaciones.CountAsync());
-        Assert.Equal(8, await verify.SeedRecords.CountAsync());
+        Assert.Equal(5, await verify.Transportistas.CountAsync());
+        Assert.Equal(5, await verify.Asociaciones.CountAsync());
+        Assert.Equal(17, await verify.SeedRecords.CountAsync());
         var record = await verify.SeedRecords.SingleAsync(r => r.Key == "transportista:demo-uno");
         Assert.Equal("+5493815550111", (await verify.Transportistas.SingleAsync(t => t.Id == record.EntityId)).WhatsApp);
     }
@@ -152,11 +152,11 @@ public sealed class SeedIdentityTests : IDisposable
 
         await using var verify = CreateContext();
         Assert.Equal(1, await verify.Ingenios.CountAsync());
-        Assert.Equal(2, await verify.Transportistas.CountAsync());
-        Assert.Equal(2, await verify.Camiones.CountAsync());
+        Assert.Equal(5, await verify.Transportistas.CountAsync());
+        Assert.Equal(5, await verify.Camiones.CountAsync());
         Assert.Equal(2, await verify.Fincas.CountAsync());
-        Assert.Equal(2, await verify.Asociaciones.CountAsync());
-        Assert.Equal(8, await verify.SeedRecords.CountAsync());
+        Assert.Equal(5, await verify.Asociaciones.CountAsync());
+        Assert.Equal(17, await verify.SeedRecords.CountAsync());
     }
 
     private async Task StartAsync()

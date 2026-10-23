@@ -315,6 +315,8 @@ public sealed class ConversationsHttpTests : IDisposable
         {
             builder.UseEnvironment("Development");
             builder.UseSetting("LocalDemo:Enabled", "true");
+            // Nunca la precarga privada real del equipo en una prueba.
+            builder.UseSetting("LocalDemo:TeamFile", TestTeamFile.Absent);
             builder.UseSetting("LocalDemo:WhatsAppInstance", Instance);
             builder.UseSetting("ConnectionStrings:AgroFlowDb", $"Data Source={_dbPath};Default Timeout=5");
             builder.UseSetting(ApiKeySchemes.ChannelKeySetting, channelKey ?? string.Empty);

@@ -30,14 +30,16 @@ public sealed class EfModelAndMigrationVerificationTests
         AssertTable(model, typeof(ConversationMessage), "ConversationMessages");
         AssertTable(model, typeof(MessageProcessing), "MessageProcessings");
         AssertTable(model, typeof(SeedRecord), "SeedRecords");
+        AssertTable(model, typeof(LocalDemoTeamAssignment), "LocalDemoTeamAssignments");
 
         Assert.False(context.Database.HasPendingModelChanges());
 
         var migrations = context.Database.GetMigrations().ToArray();
         Assert.Contains(migrations, migration => migration.Contains("InitialAppointments", StringComparison.Ordinal));
-        Assert.EndsWith("_AddMasterDataFoundationTables", migrations[^3], StringComparison.Ordinal);
-        Assert.EndsWith("_AddWhatsAppConversations", migrations[^2], StringComparison.Ordinal);
-        Assert.EndsWith("_AddSeedRecords", migrations[^1], StringComparison.Ordinal);
+        Assert.EndsWith("_AddMasterDataFoundationTables", migrations[^4], StringComparison.Ordinal);
+        Assert.EndsWith("_AddWhatsAppConversations", migrations[^3], StringComparison.Ordinal);
+        Assert.EndsWith("_AddSeedRecords", migrations[^2], StringComparison.Ordinal);
+        Assert.EndsWith("_AddLocalDemoTeamAssignments", migrations[^1], StringComparison.Ordinal);
     }
 
     [Fact]

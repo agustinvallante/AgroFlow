@@ -57,10 +57,17 @@ dotnet run --launch-profile http --urls http://localhost:5000
   | Dato | Valor |
   |---|---|
   | Ingenio | zona `America/Argentina/Tucuman` |
-  | Transportista 1 | `+5493815550101` → camión `AF123BC` |
-  | Transportista 2 | `+5493815550102` → camión `AF456DE` |
+  | Transportista 1 (`demo-uno`) | `+5493815550101` → camión `AF123BC` |
+  | Transportista 2 (`demo-dos`) | `+5493815550102` → camión `AF456DE` |
+  | Transportista 3 (`demo-tres`) | `+5493815550121` → camión `AH301AB` |
+  | Transportista 4 (`demo-cuatro`) | `+5493815550122` → camión `AH302AB` |
+  | Transportista 5 (`demo-cinco`) | `+5493815550123` → camión `AH303AB` |
   | Fincas | `FINCA-NORTE`, `FINCA-SUR` |
   | Ventanas | 30 minutos, cupo **2** camiones, de 08:00 a 18:00 hora local, para hoy y mañana |
+
+  Las cinco asociaciones están activas: los cinco transportistas pueden solicitar turnos. Una base existente con dos transportistas incorpora las tres posiciones nuevas al arrancar, sin perder datos.
+
+- **Precarga privada del equipo**: si existe `config/local-demo/transportistas.private.json` (ignorado por Git), al arrancar asigna a cada posición el nombre y el WhatsApp autorizado de un integrante. Conserva el DNI, el camión y la asociación de cada posición. Ver la [guía de la precarga](../../config/local-demo/README.md).
 
 ### Canal de WhatsApp, conversaciones y transportistas
 

@@ -17,6 +17,31 @@ namespace AgroFlow.Data.Migrations.Appointments
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.7");
 
+            modelBuilder.Entity("AgroFlow.Data.Appointments.LocalDemoTeamAssignment", b =>
+                {
+                    b.Property<string>("SeedId")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("AppliedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Fingerprint")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("TransportistaId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("SeedId");
+
+                    b.HasIndex("TransportistaId")
+                        .IsUnique();
+
+                    b.ToTable("LocalDemoTeamAssignments", (string)null);
+                });
+
             modelBuilder.Entity("AgroFlow.Data.Appointments.SeedRecord", b =>
                 {
                     b.Property<string>("Key")

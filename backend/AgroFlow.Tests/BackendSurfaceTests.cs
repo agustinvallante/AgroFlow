@@ -27,6 +27,8 @@ public sealed class BackendSurfaceTests : IDisposable
             {
                 builder.UseEnvironment("Development");
                 builder.UseSetting("LocalDemo:Enabled", "true");
+                // Nunca la precarga privada real del equipo en una prueba.
+                builder.UseSetting("LocalDemo:TeamFile", TestTeamFile.Absent);
                 builder.UseSetting("ConnectionStrings:AgroFlowDb", $"Data Source={_dbPath}");
             });
         using var client = factory.CreateClient(new WebApplicationFactoryClientOptions

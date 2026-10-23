@@ -12,6 +12,31 @@ namespace AgroFlow.Data.Appointments;
 /// </summary>
 public static class AppointmentsSeeder
 {
+    /// <summary>
+    /// Posición estable de la demo: un transportista ficticio con su camión y
+    /// una asociación activa. <see cref="SeedId"/> es el identificador público
+    /// que usa la precarga privada del equipo (<see cref="LocalDemoTeamPreload"/>).
+    /// </summary>
+    public sealed record DemoPosition(string SeedId, string Name, string Dni, string WhatsApp, string Plate, string FleetType)
+    {
+        public string TransportistaKey => $"transportista:{SeedId}";
+        public string CamionKey => $"camion:{SeedId}";
+        public string AsociacionKey => $"asociacion:{SeedId}";
+    }
+
+    /// <summary>
+    /// Cinco posiciones ficticias (rango telefónico 555 y DNI inventados). Las
+    /// dos primeras son las originales de la demo; sus claves no cambian.
+    /// </summary>
+    public static readonly IReadOnlyList<DemoPosition> DemoPositions =
+    [
+        new("demo-uno", "Transportista Demo Uno", "20111111111", "+5493815550101", "AF123BC", Camion.FleetTypePropia),
+        new("demo-dos", "Transportista Demo Dos", "20222222222", "+5493815550102", "AF456DE", Camion.FleetTypePropia),
+        new("demo-tres", "Transportista Demo Tres", "20313131313", "+5493815550121", "AH301AB", Camion.FleetTypePropia),
+        new("demo-cuatro", "Transportista Demo Cuatro", "20414141414", "+5493815550122", "AH302AB", Camion.FleetTypeTerceros),
+        new("demo-cinco", "Transportista Demo Cinco", "20515151515", "+5493815550123", "AH303AB", Camion.FleetTypeTerceros),
+    ];
+
     private const string DefaultTimeZoneId = "America/Argentina/Tucuman";
     private static readonly TimeSpan WindowDuration = TimeSpan.FromMinutes(30);
     private const int WindowCapacity = 2;
@@ -43,18 +68,14 @@ public static class AppointmentsSeeder
         }
 
         var now = timeProvider.GetUtcNow().UtcDateTime;
-        var transportistaUno = await SeedTransportistaAsync(
-            db, "transportista:demo-uno", ingenio.Id, "Transportista Demo Uno", "20111111111", "+5493815550101", now, cancellationToken);
-        var transportistaDos = await SeedTransportistaAsync(
-            db, "transportista:demo-dos", ingenio.Id, "Transportista Demo Dos", "20222222222", "+5493815550102", now, cancellationToken);
-
-        var camionUno = await SeedCamionAsync(
-            db, "camion:demo-uno", ingenio.Id, "AF123BC", Camion.FleetTypePropia, now, cancellationToken);
-        var camionDos = await SeedCamionAsync(
-            db, "camion:demo-dos", ingenio.Id, "AF456DE", Camion.FleetTypePropia, now, cancellationToken);
-
-        await SeedAsociacionAsync(db, "asociacion:demo-uno", ingenio.Id, transportistaUno, camionUno, now, cancellationToken);
-        await SeedAsociacionAsync(db, "asociacion:demo-dos", ingenio.Id, transportistaDos, camionDos, now, cancellationToken);
+        foreach (var position in DemoPositions)
+        {
+            var transportista = await SeedTransportistaAsync(
+                db, position.TransportistaKey, ingenio.Id, position.Name, position.Dni, position.WhatsApp, now, cancellationToken);
+            var camion = await SeedCamionAsync(
+                db, position.CamionKey, ingenio.Id, position.Plate, position.FleetType, now, cancellationToken);
+            await SeedAsociacionAsync(db, position.AsociacionKey, ingenio.Id, transportista, camion, now, cancellationToken);
+        }
 
         await SeedFincaAsync(db, "finca:norte", ingenio.Id, "FINCA-NORTE", "Finca Norte", "Ruta 9, km 12", now, cancellationToken);
         await SeedFincaAsync(db, "finca:sur", ingenio.Id, "FINCA-SUR", "Finca Sur", "Ruta 38, km 5", now, cancellationToken);

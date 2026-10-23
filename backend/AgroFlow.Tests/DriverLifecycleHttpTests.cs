@@ -49,7 +49,7 @@ public sealed class DriverLifecycleHttpTests : IDisposable
             Assert.Equal(HttpStatusCode.OK, health.StatusCode);
 
             var drivers = await Drivers(client);
-            Assert.Equal(2, drivers.Count);
+            Assert.Equal(5, drivers.Count);
             var edited = drivers.Single(d => d.GetProperty("id").GetGuid() == driverId);
             Assert.Equal("+5493815550111", edited.GetProperty("whatsApp").GetString());
             Assert.Equal(["AF123BC"], edited.GetProperty("activeTruckPlates").EnumerateArray().Select(p => p.GetString()));
@@ -150,6 +150,8 @@ public sealed class DriverLifecycleHttpTests : IDisposable
     {
         builder.UseEnvironment("Development");
         builder.UseSetting("LocalDemo:Enabled", "true");
+        // Nunca la precarga privada real del equipo en una prueba.
+        builder.UseSetting("LocalDemo:TeamFile", TestTeamFile.Absent);
         builder.UseSetting("LocalDemo:WhatsAppInstance", "fixture-instance-A");
         builder.UseSetting("ConnectionStrings:AgroFlowDb", $"Data Source={_dbPath};Default Timeout=5");
         builder.UseSetting(ApiKeySchemes.ChannelKeySetting, ChannelKey);

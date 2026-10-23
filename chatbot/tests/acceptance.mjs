@@ -79,6 +79,8 @@ function startApi() {
       ASPNETCORE_ENVIRONMENT: 'Development',
       ASPNETCORE_URLS: API,
       LocalDemo__Enabled: 'true',
+      // Nunca la precarga privada real del equipo en esta prueba.
+      LocalDemo__TeamFile: join(workdir, 'sin-precarga.json'),
       LocalDemo__WhatsAppInstance: INSTANCE,
       ConnectionStrings__AgroFlowDb: `Data Source=${dbPath};Default Timeout=5`,
       ChannelIntegration__ServiceKey: SERVICE_KEY,
@@ -216,7 +218,7 @@ async function main() {
   api = startApi();
   await waitFor(`${API}/health`, api, 'La API reiniciada');
   const driversAfter = await (await dashboard('/api/v1/drivers')).json();
-  assert.equal(driversAfter.length, 3, 'sin transportistas duplicados');
+  assert.equal(driversAfter.length, 6, 'cinco posiciones de la demo y el alta sintética, sin duplicados');
   const editedAfter = driversAfter.find(d => d.id === seeded.id);
   assert.equal(editedAfter.whatsApp, '+5493815550111');
   assert.equal(editedAfter.canRequestAppointments, true);

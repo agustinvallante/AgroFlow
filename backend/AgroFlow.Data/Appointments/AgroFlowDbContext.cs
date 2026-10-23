@@ -30,6 +30,7 @@ public sealed class AgroFlowDbContext : DbContext
     public DbSet<ConversationMessage> ConversationMessages => Set<ConversationMessage>();
     public DbSet<MessageProcessing> MessageProcessings => Set<MessageProcessing>();
     public DbSet<SeedRecord> SeedRecords => Set<SeedRecord>();
+    public DbSet<LocalDemoTeamAssignment> LocalDemoTeamAssignments => Set<LocalDemoTeamAssignment>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -234,6 +235,16 @@ public sealed class AgroFlowDbContext : DbContext
             eb.HasKey(r => r.Key);
             eb.Property(r => r.Key).HasMaxLength(SeedRecord.MaxKeyLength);
             eb.Property(r => r.CreatedAtUtc).HasConversion(UtcConverter);
+        });
+
+        modelBuilder.Entity<LocalDemoTeamAssignment>(eb =>
+        {
+            eb.ToTable("LocalDemoTeamAssignments");
+            eb.HasKey(a => a.SeedId);
+            eb.Property(a => a.SeedId).HasMaxLength(SeedRecord.MaxKeyLength);
+            eb.Property(a => a.Fingerprint).HasMaxLength(LocalDemoTeamAssignment.FingerprintLength).IsRequired();
+            eb.Property(a => a.AppliedAtUtc).HasConversion(UtcConverter);
+            eb.HasIndex(a => a.TransportistaId).IsUnique();
         });
     }
 

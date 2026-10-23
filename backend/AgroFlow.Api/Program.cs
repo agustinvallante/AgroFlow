@@ -162,6 +162,12 @@ public class Program
                 appointmentsScope.ServiceProvider.GetRequiredService<AgroFlowDbContext>(),
                 appointmentsScope.ServiceProvider.GetRequiredService<TimeProvider>(),
                 app.Configuration["LocalDemo:WhatsAppInstance"]);
+            await LocalDemoTeamFile.ApplyIfPresentAsync(
+                appointmentsScope.ServiceProvider.GetRequiredService<AgroFlowDbContext>(),
+                appointmentsScope.ServiceProvider.GetRequiredService<TimeProvider>(),
+                app.Configuration,
+                app.Environment,
+                app.Logger);
 
             foreach (var setting in new[] { ApiKeySchemes.ChannelKeySetting, ApiKeySchemes.DashboardKeySetting })
             {
