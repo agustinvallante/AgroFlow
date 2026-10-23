@@ -71,3 +71,23 @@ export function datetimeLocalARfc3339(valor: string): string {
   const desplazamiento = `${signo}${String(Math.floor(abs / 60)).padStart(2, "0")}:${String(abs % 60).padStart(2, "0")}`;
   return `${conSegundos}${desplazamiento}`;
 }
+
+/** Zona del ingenio sembrado en la demo local. */
+export const ZONA_INGENIO = "America/Argentina/Tucuman";
+
+const FORMATO_HORA_INGENIO = new Intl.DateTimeFormat("es-AR", {
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+  timeZone: ZONA_INGENIO,
+});
+
+/**
+ * Las fechas del canal de WhatsApp llegan en UTC ("…Z"); se muestran en la
+ * hora del ingenio, no en la del navegador: "2026-01-01T15:00:00Z" → "12:00".
+ */
+export function horaEnZonaIngenio(valorUtc: string | undefined | null): string {
+  if (!valorUtc) return "—";
+  const fecha = new Date(valorUtc);
+  return Number.isNaN(fecha.getTime()) ? "—" : FORMATO_HORA_INGENIO.format(fecha);
+}

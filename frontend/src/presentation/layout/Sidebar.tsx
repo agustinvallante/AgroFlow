@@ -40,7 +40,7 @@ export function Sidebar({ vistaActiva, onCambiarVista }: SidebarProps) {
         <br />
         {container.fuenteDatos === "http" ? (
           <>
-            Turnos: AgroFlow API · {container.apiUrl}
+            Turnos, transportistas y conversaciones: AgroFlow API · {container.apiUrl}
             <br />
             Resto de las vistas: datos de demostración
           </>

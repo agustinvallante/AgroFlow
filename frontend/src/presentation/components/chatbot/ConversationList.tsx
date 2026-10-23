@@ -4,6 +4,7 @@ const TAG_LABEL: Record<Conversacion["estado"], string> = {
   resuelto: "Resuelto",
   bot: "Con el bot",
   escalado: "Escalado",
+  revision: "Requiere revisión",
 };
 
 interface ConversationListProps {
@@ -27,6 +28,7 @@ export function ConversationList({ conversaciones, activaId, onSeleccionar }: Co
           </div>
           <div className="conv-prev">{c.preview}</div>
           <span className={`conv-tag ${c.estado}`}>{TAG_LABEL[c.estado]}</span>
+          {c.remitenteReconocido === false && <span className="conv-tag no-registrado">No registrado</span>}
         </div>
       ))}
     </div>

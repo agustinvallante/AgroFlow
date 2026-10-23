@@ -3,19 +3,27 @@ import { useChatbot } from "../hooks/useChatbot";
 import { MetricCard } from "../components/common/MetricCard";
 import { ConversationList } from "../components/chatbot/ConversationList";
 import { ChatTranscript } from "../components/chatbot/ChatTranscript";
-import { ErrorState, LoadingState } from "../components/common/StatusStates";
+import { EmptyState, ErrorState, LoadingState } from "../components/common/StatusStates";
+import { container } from "../../composition/container";
+
+const esApi = container.fuenteDatos === "http";
+const etiquetaDemo = esApi && <span className="fuente-demo">datos de demostración</span>;
 
 export function ChatbotView() {
   const {
     conversaciones,
     conversacionActiva,
     seleccionarConversacion,
+    cargandoMensajes,
+    errorMensajes,
+    recargar,
     metricas,
     plantillas,
     setPlantillas,
     guardarPlantillas,
     cargando,
     error,
+    errorRefresco,
   } = useChatbot();
 
   const [guardado, setGuardado] = useState(false);
@@ -46,10 +54,11 @@ export function ChatbotView() {
         </div>
         <div className="conn-status">
           <i />
-          Conectado a WhatsApp Business API
+          {esApi ? "Historial persistido en AgroFlow API" : "Conectado a WhatsApp Business API"}
         </div>
       </div>
 
+      {metricas && etiquetaDemo && <div style={{ marginBottom: 8 }}>Indicadores {etiquetaDemo}</div>}
       {metricas && (
         <div className="metrics" style={{ marginBottom: 22 }}>
           <MetricCard label="Mensajes hoy" value={metricas.mensajesHoy} />
@@ -73,21 +82,32 @@ export function ChatbotView() {
       <section>
         <div className="section-head">
           <h2>Conversaciones recientes</h2>
-          <div className="meta">Últimas 24 horas</div>
+          {esApi ? (
+            <button className="btn-mini" onClick={recargar}>
+              Actualizar
+            </button>
+          ) : (
+            <div className="meta">Últimas 24 horas</div>
+          )}
         </div>
-        <div className="chat-layout">
-          <ConversationList
-            conversaciones={conversaciones}
-            activaId={conversacionActiva?.id ?? null}
-            onSeleccionar={seleccionarConversacion}
-          />
-          <ChatTranscript conversacion={conversacionActiva} />
-        </div>
+        {errorRefresco && <ErrorState message={errorRefresco} />}
+        {conversaciones.length === 0 ? (
+          <EmptyState message="Todavía no hay conversaciones registradas." />
+        ) : (
+          <div className="chat-layout">
+            <ConversationList
+              conversaciones={conversaciones}
+              activaId={conversacionActiva?.id ?? null}
+              onSeleccionar={seleccionarConversacion}
+            />
+            <ChatTranscript conversacion={conversacionActiva} cargando={cargandoMensajes} error={errorMensajes} />
+          </div>
+        )}
       </section>
 
       <section>
         <div className="section-head">
-          <h2>Plantillas de mensajes</h2>
+          <h2>Plantillas de mensajes{etiquetaDemo}</h2>
           <div className="meta">Usadas por el bot en cada paso del flujo</div>
         </div>
         <div className="template-grid">

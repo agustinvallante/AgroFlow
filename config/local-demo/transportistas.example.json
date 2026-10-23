@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "transportistas": [
+    { "seedId": "demo-uno", "nombre": "Integrante 1 (completar)", "whatsApp": "+5493815550131" },
+    { "seedId": "demo-dos", "nombre": "Integrante 2 (completar)", "whatsApp": "+5493815550132" },
+    { "seedId": "demo-tres", "nombre": "Integrante 3 (completar)", "whatsApp": "+5493815550133" },
+    { "seedId": "demo-cuatro", "nombre": "Integrante 4 (completar)", "whatsApp": "+5493815550134" },
+    { "seedId": "demo-cinco", "nombre": "Integrante 5 (completar)", "whatsApp": "+5493815550135" }
+  ]
+}

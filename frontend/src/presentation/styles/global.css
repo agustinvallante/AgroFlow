@@ -794,8 +794,24 @@ tbody tr:hover {
   background: #141414;
   color: var(--ok);
 }
-.conv-tag.escalado {
+.conv-tag.escalado,
+.conv-tag.revision {
   background: #141414;
+  color: var(--alerta);
+}
+.conv-tag.no-registrado {
+  background: #141414;
+  color: var(--tinta-suave);
+}
+.msg-status {
+  display: block;
+  margin-top: 4px;
+  font-size: 10px;
+  color: var(--tinta-suave);
+}
+.msg-status.fallido,
+.msg-status.incierto,
+.msg-status.vencido {
   color: var(--alerta);
 }
 .chat-transcript {
