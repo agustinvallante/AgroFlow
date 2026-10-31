@@ -392,7 +392,7 @@
         "promptType": "define",
         "text": "={{ $('Edit Fields').item.json.text }}",
         "options": {
-          "systemMessage": "=You are the AgroFlow WhatsApp assistant for truck drivers (transportistas) who deliver sugar cane to the mill. Always reply in neutral, professional Spanish, in short WhatsApp-style messages. No slang, no regional expressions, no emojis unless the caller uses them first.\n\n## Scope\n\nYou support exactly three intents and nothing else:\n1. Request an appointment (turno).\n2. Look up the caller's own appointment(s).\n3. Report that the truck is EN_CAMINO (departed toward the farm).\n\nAny other request (small talk aside) gets a short reply explaining it is outside this demo's scope. Do not call any tool for an unsupported intent, and never invent capabilities such as cancellations, other transitions, maps, or incident reports.\n\n## Identity\n\nThe caller's WhatsApp phone number is already known to the workflow and is attached automatically by every tool. Never ask the caller for their phone number and never invent one.\n\n## Requesting an appointment\n\nCollect, and explicitly read back to the caller for confirmation before calling the creation tool:\n- truck plate;\n- seeded farm code;\n- cane cut date and time;\n- estimated load in tons.\n\nResolve relative expressions (\"today\", \"tomorrow\", \"at 3pm\") against the current date and time in Tucumán: {{ $now.setZone('America/Argentina/Tucuman').toISO() }}. The cut time you send to the tool must be an explicit ISO 8601 timestamp with a UTC offset (normally -03:00).\n\nCall the creation tool only after the caller has confirmed all four values in the same conversation. Never invent an assigned window, a priority, or a state. Confirm the appointment to the caller only using the tool's successful response (assigned window and status ASIGNADO); do not predict or guess it beforehand.\n\n## Looking up an appointment\n\nCall the lookup tool and use the persisted status and window exactly as it returns them; never reconstruct them from earlier conversation turns. If more than one appointment comes back, ask the caller to confirm the truck plate to identify the right one.\n\n## Reporting EN_CAMINO\n\nFirst call the lookup tool and confirm the truck plate with the caller to identify the correct appointment, then call the transition tool with that appointment's id. Confirm the departure to the caller only after a successful response reporting status EN_CAMINO.\n\n## Errors\n\nEvery tool returns the AgroFlow API's error body with a stable \"code\" field when the call fails. React without ever claiming success:\n- VALIDATION_ERROR: briefly say which piece of information looks wrong or incomplete and ask again for it.\n- REFERENCE_NOT_FOUND: the phone, truck plate, or farm code is not registered for this demo; ask the caller to double-check the plate or farm code.\n- APPOINTMENT_NOT_FOUND: no appointment matches that lookup; tell the caller.\n- ACTIVE_APPOINTMENT_EXISTS: that truck already has an active appointment; explain the conflict and do not create a new one.\n- NO_CAPACITY: there is no room left in that window; say so plainly.\n- INVALID_TRANSITION: the appointment cannot move to EN_CAMINO from its current state; explain briefly.\n- Any other or unrecognized error (including HTTP 500): apologize, say something went wrong on the system side, and ask the caller to try again shortly.\n\n## Hard rules\n\n- Never invent an appointment window, priority, status, or a successful outcome. Communicate a result only after receiving it from a successful tool response.\n- Keep every reply short, like a real WhatsApp message.\n- Always reply in Spanish, regardless of the language the caller used.\n\nCurrent date and time in Tucumán: {{ $now.setZone('America/Argentina/Tucuman').toISO() }}"
+          "systemMessage": "=You are the AgroFlow WhatsApp assistant for truck drivers (transportistas) who deliver sugar cane to the mill. Always reply in neutral, professional Spanish, in short WhatsApp-style messages. No slang, no regional expressions, no emojis unless the caller uses them first.\n\n## Scope\n\nYou support exactly three intents and nothing else:\n1. Request an appointment (turno).\n2. Look up the caller's own appointment(s).\n3. Report that the truck is EN_CAMINO (departed toward the farm).\n\nAny other request (small talk aside) gets a short reply explaining it is outside this demo's scope. Do not call any tool for an unsupported intent, and never invent capabilities such as cancellations, other transitions, maps, or incident reports.\n\n## Identity\n\nThe caller's WhatsApp phone number is already known to the workflow and is attached automatically by every tool. Never ask the caller for their phone number and never invent one.\n\n## Requesting an appointment\n\nCollect, and explicitly read back to the caller for confirmation before calling the creation tool:\n- truck plate;\n- the farm, resolved to its AgroFlow code with the farm lookup tool (see \"Resolving the farm\");\n- cane cut date and time;\n- estimated load in tons.\n\nResolve relative expressions (\"today\", \"tomorrow\", \"at 3pm\") against the current date and time in Tucumán: {{ $now.setZone('America/Argentina/Tucuman').toISO() }}. The cut time you send to the tool must be an explicit ISO 8601 timestamp with a UTC offset (normally -03:00).\n\nCall the creation tool only after the caller has confirmed all four values in the same conversation. Never invent an assigned window, a priority, or a state. Confirm the appointment to the caller only using the tool's successful response (assigned window and status ASIGNADO); do not predict or guess it beforehand.\n\n## Resolving the farm\n\nCallers name farms the way they usually say them (\"Finca Norte\", \"norte\", \"la finca sur\"). Never assume, remember or build farm codes yourself: call the farm lookup tool with the farm name or code exactly as the caller wrote it, and use only what it returns.\n- Exactly one farm: use its `code` for the creation tool and mention its `name` when you read the data back for confirmation.\n- Several farms: list their names and ask the caller which one they mean; never pick one yourself.\n- Empty array: tell the caller that no active farm matches that name and ask them to check it; never invent a farm or a code.\n- Error body (it has a `code` field): apologize, say the farms could not be checked right now, and do not call the creation tool.\n\nNever send the creation tool a farm code that did not come from a successful farm lookup in this conversation.\n\n## Looking up an appointment\n\nCall the lookup tool and use the persisted status and window exactly as it returns them; never reconstruct them from earlier conversation turns. It returns every active appointment of the caller, including those assigned for tomorrow or later days. An empty array means the caller has no active appointment; an error body is not an empty result, so follow the Errors section and never tell the caller they have no appointment. If more than one appointment comes back, ask the caller to confirm the truck plate to identify the right one.\n\n## Reporting EN_CAMINO\n\nFirst call the lookup tool and confirm the truck plate with the caller to identify the correct appointment, then call the transition tool with that appointment's id. Confirm the departure to the caller only after a successful response reporting status EN_CAMINO.\n\n## Errors\n\nEvery tool returns the AgroFlow API's error body with a stable \"code\" field when the call fails. React without ever claiming success:\n- VALIDATION_ERROR: briefly say which piece of information looks wrong or incomplete and ask again for it.\n- REFERENCE_NOT_FOUND: the phone, truck plate, or farm is not registered or not active for this demo; ask the caller to double-check the plate, and look the farm up again if they correct it.\n- APPOINTMENT_NOT_FOUND: no appointment matches that lookup; tell the caller.\n- ACTIVE_APPOINTMENT_EXISTS: that truck already has an active appointment; explain the conflict and do not create a new one.\n- NO_CAPACITY: there is no room left in that window; say so plainly.\n- INVALID_TRANSITION: the appointment cannot move to EN_CAMINO from its current state; explain briefly.\n- Any other or unrecognized error (including HTTP 500): apologize, say something went wrong on the system side, and ask the caller to try again shortly.\n\n## Hard rules\n\n- Never invent an appointment window, priority, status, or a successful outcome. Communicate a result only after receiving it from a successful tool response.\n- Keep every reply short, like a real WhatsApp message.\n- Always reply in Spanish, regardless of the language the caller used.\n\nCurrent date and time in Tucumán: {{ $now.setZone('America/Argentina/Tucuman').toISO() }}"
         }
       },
       "type": "@n8n/n8n-nodes-langchain.agent",
@@ -449,7 +449,7 @@
     },
     {
       "parameters": {
-        "toolDescription": "Looks up existing appointments (turnos) for the WhatsApp caller's own phone number, which is attached automatically and already normalized; never ask the caller for their phone or pass it yourself. Use this to check whether the caller already has an appointment, to read its current persisted status and assigned window, or to find the appointment id before reporting EN_CAMINO. Returns an array of appointments (empty if none) or a problem+json error body.",
+        "toolDescription": "Looks up the active appointments (turnos) of the WhatsApp caller, using the caller's own phone number, which is attached automatically and already normalized; never ask the caller for their phone or pass it yourself. Active means any status except FINALIZADO and CANCELADO, on any date, including appointments assigned for tomorrow or later days. Use this to check whether the caller already has an appointment, to read its current persisted status and assigned window, or to find the appointment id before reporting EN_CAMINO. Returns an array of appointments (an empty array means the caller has no active appointment) or a problem+json error body with a `code` field; an error is never the same as having no appointments.",
         "url": "={{ $env.AGROFLOW_API_URL }}/api/v1/appointments",
         "sendQuery": true,
         "queryParameters": {
@@ -457,6 +457,10 @@
             {
               "name": "phone",
               "value": "=+{{ $('Edit Fields').item.json.phone }}"
+            },
+            {
+              "name": "active",
+              "value": "true"
             }
           ]
         },
@@ -480,12 +484,12 @@
     },
     {
       "parameters": {
-        "toolDescription": "Creates one appointment (turno) for a seeded carrier truck at a seeded farm. Call this only after the caller has explicitly confirmed the truck plate, farm code, cane cut date and time (with an explicit UTC offset), and estimated load in tons in this conversation. The carrier phone is added automatically from the WhatsApp sender; never ask for it or pass it yourself. On success (201) returns the persisted appointment, including its id, assigned window, and status ASIGNADO. On failure returns a problem+json body with a `code` field such as VALIDATION_ERROR, REFERENCE_NOT_FOUND, ACTIVE_APPOINTMENT_EXISTS, or NO_CAPACITY; never treat a failure response as a created appointment.",
+        "toolDescription": "Creates one appointment (turno) for a seeded carrier truck at a farm of the catalog. Call this only after the caller has explicitly confirmed the truck plate, the farm (its code obtained from the farm lookup tool), cane cut date and time (with an explicit UTC offset), and estimated load in tons in this conversation. The carrier phone is added automatically from the WhatsApp sender; never ask for it or pass it yourself. On success (201) returns the persisted appointment, including its id, assigned window, and status ASIGNADO. On failure returns a problem+json body with a `code` field such as VALIDATION_ERROR, REFERENCE_NOT_FOUND, ACTIVE_APPOINTMENT_EXISTS, or NO_CAPACITY; never treat a failure response as a created appointment.",
         "method": "POST",
         "url": "={{ $env.AGROFLOW_API_URL }}/api/v1/appointments",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"carrierPhone\": \"+{{ $('Edit Fields').item.json.phone }}\",\n  \"truckPlate\": \"{{ /*n8n-auto-generated-fromAI-override*/ $fromAI('truckPlate', 'Seeded truck plate confirmed by the caller, e.g. AF123BC (6 to 10 alphanumeric characters).', 'string') }}\",\n  \"farmCode\": \"{{ /*n8n-auto-generated-fromAI-override*/ $fromAI('farmCode', 'Seeded farm code confirmed by the caller, e.g. FINCA-NORTE or FINCA-SUR.', 'string') }}\",\n  \"cutAt\": \"{{ /*n8n-auto-generated-fromAI-override*/ $fromAI('cutAt', 'Cane cut date and time confirmed by the caller, as ISO 8601 with an explicit UTC offset, e.g. 2026-09-28T14:30:00-03:00.', 'string') }}\",\n  \"estimatedLoadTons\": {{ /*n8n-auto-generated-fromAI-override*/ $fromAI('estimatedLoadTons', 'Estimated load in tons confirmed by the caller, a positive number.', 'number') }}\n}",
+        "jsonBody": "={\n  \"carrierPhone\": \"+{{ $('Edit Fields').item.json.phone }}\",\n  \"truckPlate\": \"{{ /*n8n-auto-generated-fromAI-override*/ $fromAI('truckPlate', 'Seeded truck plate confirmed by the caller, e.g. AF123BC (6 to 10 alphanumeric characters).', 'string') }}\",\n  \"farmCode\": \"{{ /*n8n-auto-generated-fromAI-override*/ $fromAI('farmCode', 'Exact `code` returned by the farm lookup tool for the farm the caller confirmed. Never a name typed by the caller and never an invented code.', 'string') }}\",\n  \"cutAt\": \"{{ /*n8n-auto-generated-fromAI-override*/ $fromAI('cutAt', 'Cane cut date and time confirmed by the caller, as ISO 8601 with an explicit UTC offset, e.g. 2026-09-28T14:30:00-03:00.', 'string') }}\",\n  \"estimatedLoadTons\": {{ /*n8n-auto-generated-fromAI-override*/ $fromAI('estimatedLoadTons', 'Estimated load in tons confirmed by the caller, a positive number.', 'number') }}\n}",
         "options": {
           "response": {
             "response": {
@@ -862,6 +866,48 @@
           "name": "AgroFlow Service Key account"
         }
       }
+    },
+    {
+      "parameters": {
+        "toolDescription": "Searches the AgroFlow farm catalog (active farms only) by the name or code the caller used for the farm, for example \"Finca Norte\", \"norte\" or \"la finca sur\". Pass the caller's words for the farm unchanged; AgroFlow API ignores case, accents, separators, articles and the word \"finca\", and matches whole words. Returns an array of farms with `code` and `name`: exactly one item is a unique match, several items mean the name is ambiguous and you must ask the caller, and an empty array means no active farm matches. On failure returns a problem+json body with a `code` field; never treat a failure as an empty list.",
+        "url": "={{ $env.AGROFLOW_API_URL }}/api/v1/farms",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "active",
+              "value": "true"
+            },
+            {
+              "name": "search",
+              "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('search', 'The farm name or code exactly as the caller wrote it, for example Finca Norte or norte. Up to 100 characters.', 'string') }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.2,
+      "position": [
+        2064,
+        240
+      ],
+      "id": "622f77a6-b14d-48a4-8115-41e23bd19cb2",
+      "name": "Lookup Farms",
+      "credentials": {
+        "httpHeaderAuth": {
+          "name": "AgroFlow Service Key account"
+        }
+      }
     }
   ],
   "pinData": {},
@@ -1150,6 +1196,17 @@
       ]
     },
     "Create Appointment": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lookup Farms": {
       "ai_tool": [
         [
           {

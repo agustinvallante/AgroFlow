@@ -37,6 +37,13 @@ public sealed class MasterDataService(IMasterDataUnitOfWork unitOfWork, ITenantC
         (await unitOfWork.ListCamiones(tenant.IngenioId, active, ct)).Select(TruckItem).ToArray();
     public async Task<IReadOnlyList<MasterDataItem>> Farms(bool? active, CancellationToken ct) =>
         (await unitOfWork.ListFincas(tenant.IngenioId, active, ct)).Select(FarmItem).ToArray();
+    /// <summary>Listado de fincas del ingenio filtrado por <see cref="FarmSearch"/>.</summary>
+    public async Task<IReadOnlyList<MasterDataItem>> SearchFarms(string? search, bool? active, CancellationToken ct)
+    {
+        if (search is not null && (string.IsNullOrWhiteSpace(search) || search.Length > FarmSearch.MaxLength))
+            throw new ArgumentException($"Search must contain between 1 and {FarmSearch.MaxLength} characters.", nameof(search));
+        return FarmSearch.Filter(await Farms(active, ct), search);
+    }
     public async Task<IReadOnlyList<AssociationItem>> Associations(bool? active, CancellationToken ct) =>
         (await unitOfWork.ListAssociations(tenant.IngenioId, active, ct)).Select(AssociationItemOf).ToArray();
     public async Task<AssociationItem> GetAssociation(Guid id, CancellationToken ct) =>

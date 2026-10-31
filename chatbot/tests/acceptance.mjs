@@ -95,26 +95,34 @@ const dashboard = (path, init = {}) => fetch(`${API}${path}`, {
   headers: { 'Content-Type': 'application/json', 'X-AgroFlow-Dashboard-Key': DASHBOARD_KEY, ...init.headers },
 });
 
-/** Ejecuta el workflow exportado contra la API real; Evolution y el agente son dobles. */
-function runWorkflow(calls) {
+/**
+ * Ejecuta el workflow exportado contra la API real; Evolution y el agente son
+ * dobles. `useTools` recibe `callTool` para invocar las herramientas HTTP del
+ * agente con los argumentos que elegiría el modelo.
+ */
+function runWorkflow(calls, { jid = JID, id = 'FIXTURE-ACCEPTANCE-0001', useTools } = {}) {
   return simulate(workflow, {
-    body: { ...fixture, data: { ...fixture.data, key: { ...fixture.data.key, remoteJid: JID, id: 'FIXTURE-ACCEPTANCE-0001' } } },
+    body: { ...fixture, data: { ...fixture.data, key: { ...fixture.data.key, remoteJid: jid, id } } },
     env: { AGROFLOW_API_URL: API, EVOLUTION_INTERNAL_URL: 'http://evolution.test', EVOLUTION_INSTANCE: INSTANCE },
     http: async request => {
       if (!request.url.startsWith(API)) {
         calls.evolution.push(request.body);
         return { statusCode: 201, body: { key: { id: 'FIXTURE-PROVIDER-ACCEPTANCE-1' } } };
       }
-      assert.equal(request.credential, 'AgroFlow Service Key account');
+      // Sólo las herramientas de turnos van sin clave (API anónima en LocalDemo).
+      const withKey = request.credential === 'AgroFlow Service Key account';
+      assert.ok(withKey || new URL(request.url).pathname.startsWith('/api/v1/appointments'),
+        `${request.node} debe usar la clave del servicio`);
       const response = await fetch(request.url, {
         method: request.method,
-        headers: { 'Content-Type': 'application/json', 'X-AgroFlow-Service-Key': SERVICE_KEY },
+        headers: { 'Content-Type': 'application/json', ...(withKey ? { 'X-AgroFlow-Service-Key': SERVICE_KEY } : {}) },
         body: request.body === undefined ? undefined : JSON.stringify(request.body),
       });
       return { statusCode: response.status, body: await response.json() };
     },
-    agent: async ({ text }) => {
+    agent: async ({ text, callTool }) => {
       calls.agent.push(text);
+      if (useTools) await useTools(callTool);
       return '[SINTÉTICO] Tu consulta quedó registrada.';
     },
   });
@@ -230,6 +238,7 @@ async function main() {
       cutAt: new Date(Date.now() - 3_600_000).toISOString(), estimatedLoadTons: 25 }),
   });
   assert.equal(appointment.status, 201, 'turno del transportista sembrado con asociación activa');
+  const createdAppointment = await appointment.json();
   step('10a', 'la API arrancó tras editar el WhatsApp sembrado; sin duplicados y con turno creado por su camión');
   const afterRestart = await (await dashboard(`/api/v1/conversations/${conversation.id}/messages`)).json();
   assert.deepEqual(afterRestart.items.map(m => m.id), messages.items.map(m => m.id));
@@ -237,6 +246,31 @@ async function main() {
   assert.equal(replay.outputs.get('Register Inbound Message').body.disposition, 'duplicate_stop');
   assert.equal(calls.agent.length, 1);
   step(10, 'tras reiniciar la API los mensajes siguen almacenados y la repetición sigue detenida');
+
+  // Hallazgos de la PR #97: turnos de otro día y fincas nombradas como las dice el transportista.
+  const toolCalls = { agent: [], evolution: [] };
+  const seen = {};
+  await runWorkflow(toolCalls, {
+    jid: '5493815550111@s.whatsapp.net', id: 'FIXTURE-ACCEPTANCE-TOOLS-0001',
+    useTools: async callTool => {
+      seen.appointments = await callTool('Lookup Appointments By Phone');
+      for (const search of ['FINCA-NORTE', 'Finca Norte', 'norte', 'finca sur', 'Finca Oeste']) {
+        seen[search] = await callTool('Lookup Farms', { search });
+      }
+    },
+  });
+  assert.equal(toolCalls.agent.length, 1, 'el agente corrió para el transportista sembrado');
+  assert.ok(Array.isArray(seen.appointments), 'la consulta de turnos devolvió una lista');
+  assert.deepEqual(seen.appointments.map(a => a.id), [createdAppointment.id]);
+  const windowDay = createdAppointment.window.startAt.slice(0, 10);
+  for (const [search, code] of [['FINCA-NORTE', 'FINCA-NORTE'], ['Finca Norte', 'FINCA-NORTE'], ['norte', 'FINCA-NORTE'],
+    ['finca sur', 'FINCA-SUR']]) {
+    assert.deepEqual(seen[search].map(f => f.code), [code], `"${search}" se resuelve a ${code}`);
+  }
+  assert.deepEqual(seen['Finca Oeste'], [], 'una finca inexistente no se inventa');
+  const anonymousFarms = await fetch(`${API}/api/v1/farms`);
+  assert.equal(anonymousFarms.status, 401, 'el catálogo de fincas no es anónimo');
+  step(11, `el bot encuentra el turno activo (ventana del ${windowDay}) sin depender de la fecha y resuelve fincas por nombre`);
 
   await stop(api);
   console.log('\nAceptación local completa. Evolution, WhatsApp y el agente fueron simulados.');

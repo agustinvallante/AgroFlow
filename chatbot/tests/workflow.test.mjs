@@ -24,8 +24,23 @@ class FakeAgroFlowApi {
     this.failures = [];
   }
 
+  // Agent tools. Turnos are anonymous in LocalDemo; the farm catalog needs the
+  // service key. Tests replace these to shape the API answer.
+  lookupAppointments() { return { statusCode: 200, body: [] }; }
+  lookupFarms() { return { statusCode: 200, body: [] }; }
+  createAppointment(body) { return { statusCode: 201, body: { id: 'appointment-1', status: 'ASIGNADO', ...body } }; }
+
   handle(request) {
     const path = request.url.replace(env.AGROFLOW_API_URL, '');
+    const { pathname, searchParams } = new URL(request.url);
+    if (pathname === '/api/v1/appointments') {
+      assert.equal(request.credential, null, `${request.node} uses the anonymous LocalDemo appointment API`);
+      return request.method === 'GET' ? this.lookupAppointments(searchParams) : this.createAppointment(request.body);
+    }
+    if (request.method === 'GET' && pathname === '/api/v1/farms') {
+      assert.equal(request.credential, 'AgroFlow Service Key account', `${request.node} must use the service key`);
+      return this.lookupFarms(searchParams);
+    }
     assert.equal(request.credential, 'AgroFlow Service Key account', `${request.node} must use the service key`);
     if (request.method === 'POST' && path === '/api/v1/conversation-events') return this.ingest(request.body);
     if (request.method === 'POST' && path === '/api/v1/conversation-reply-intents') return this.intent(request.body);
@@ -122,7 +137,8 @@ test('a registered sender is persisted, acknowledged, answered by the agent and 
   assert.ok(result.response.atStep < result.trace.indexOf('AI Agent1'));
   assert.equal(calls.agent.length, 1);
   assert.equal(calls.agent[0].text, '[SINTÉTICO] Hola, quiero consultar mi turno');
-  assert.deepEqual(calls.agent[0].tools.sort(), ['Create Appointment', 'Lookup Appointments By Phone', 'Report En Camino']);
+  assert.deepEqual(calls.agent[0].tools.sort(),
+    ['Create Appointment', 'Lookup Appointments By Phone', 'Lookup Farms', 'Report En Camino']);
   assert.deepEqual(calls.evolution, [{ number: '5493815550101@s.whatsapp.net', text: '[SINTÉTICO] Respuesta del agente' }]);
   assert.deepEqual(api.sendStatuses, [{ replyId: 'reply-1', status: 'accepted', providerMessageId: 'FIXTURE-OUT-PROVIDER-1' }]);
   const ingest = result.requests.find(request => request.node === 'Register Inbound Message').body;
@@ -307,6 +323,123 @@ test('every path answers the webhook exactly once', async () => {
     const result = await run(fixture(name));
     assert.ok(result.response, `${name} must be acknowledged`);
   }
+});
+
+/** Runs the registered-sender fixture with an agent that only calls `name` once with `args`. */
+async function callToolOnce(api, name, args = {}) {
+  const results = [];
+  const { run } = harness({ api, agent: async ({ callTool }) => {
+    results.push(await callTool(name, args));
+    return '[SINTÉTICO] Respuesta del agente';
+  } });
+  const run1 = await run(fixture('evolution-text-registered'));
+  const requests = run1.requests.filter(request => request.node === name);
+  assert.equal(requests.length, 1);
+  return { request: requests[0], query: new URL(requests[0].url).searchParams, result: results[0] };
+}
+
+const tomorrowAppointment = { id: 'appointment-tomorrow', truck: { id: 'truck-1', plate: 'AF123BC' },
+  window: { startAt: '2026-01-02T08:00:00-03:00', endAt: '2026-01-02T08:30:00-03:00' }, status: 'ASIGNADO' };
+
+test('the appointment lookup asks for the sender\'s active appointments on any date, so tomorrow\'s turno is found', async () => {
+  const api = new FakeAgroFlowApi();
+  // Like the API: without `active` the default is today, which is how the turno was lost.
+  api.lookupAppointments = query => ({ statusCode: 200,
+    body: query.get('active') === 'true' && !query.has('date') ? [tomorrowAppointment] : [] });
+
+  const { request, query, result } = await callToolOnce(api, 'Lookup Appointments By Phone');
+
+  assert.equal(request.method, 'GET');
+  assert.deepEqual([...query.keys()].sort(), ['active', 'phone']);
+  assert.equal(query.get('phone'), '+5493815550101');
+  assert.ok(request.url.includes('phone=%2B5493815550101'), 'the + of E.164 travels encoded');
+  assert.equal(query.get('active'), 'true');
+  assert.deepEqual(result, [tomorrowAppointment]);
+});
+
+test('no appointments, an API error and an unreachable API reach the agent as different results', async () => {
+  const empty = new FakeAgroFlowApi();
+  const failing = new FakeAgroFlowApi();
+  failing.lookupAppointments = () => ({ statusCode: 500, body: { status: 500, code: 'INTERNAL_ERROR' } });
+  const unreachable = new FakeAgroFlowApi();
+  unreachable.lookupAppointments = () => { throw new Error('connect ECONNREFUSED'); };
+
+  assert.deepEqual((await callToolOnce(empty, 'Lookup Appointments By Phone')).result, []);
+  assert.equal((await callToolOnce(failing, 'Lookup Appointments By Phone')).result.code, 'INTERNAL_ERROR');
+  assert.match((await callToolOnce(unreachable, 'Lookup Appointments By Phone')).result.error, /ECONNREFUSED/);
+});
+
+const norte = { id: 'farm-1', code: 'FINCA-NORTE', name: 'Finca Norte', isActive: true };
+const sur = { id: 'farm-2', code: 'FINCA-SUR', name: 'Finca Sur', isActive: true };
+
+test('the farm lookup sends the caller\'s words unchanged, with the service key and only active farms', async () => {
+  // n8n does not normalize names: the API decides which farm (if any) matches.
+  for (const [search, farm] of [['FINCA-NORTE', norte], ['Finca Norte', norte], ['norte', norte], ['finca sur', sur]]) {
+    const api = new FakeAgroFlowApi();
+    api.lookupFarms = query => ({ statusCode: 200, body: query.get('search') === search ? [farm] : [] });
+
+    const { request, query, result } = await callToolOnce(api, 'Lookup Farms', { search });
+
+    assert.equal(request.method, 'GET');
+    assert.equal(request.credential, 'AgroFlow Service Key account');
+    assert.deepEqual([...query.keys()].sort(), ['active', 'search']);
+    assert.equal(query.get('active'), 'true');
+    assert.equal(query.get('search'), search);
+    assert.equal(request.body, undefined);
+    assert.deepEqual(result, [farm]);
+  }
+});
+
+test('unknown, ambiguous and failed farm lookups reach the agent as distinct results', async () => {
+  const answers = {
+    'Finca Oeste': { statusCode: 200, body: [] },
+    san: { statusCode: 200, body: [{ ...norte, code: 'F-SJ', name: 'Finca San José' }, { ...sur, code: 'F-SP', name: 'Finca San Pedro' }] },
+    rechazada: { statusCode: 401, body: { status: 401, code: 'UNAUTHENTICATED' } },
+    rota: { statusCode: 500, body: { status: 500, code: 'INTERNAL_ERROR' } },
+  };
+  const results = {};
+  for (const search of [...Object.keys(answers), 'caida']) {
+    const api = new FakeAgroFlowApi();
+    api.lookupFarms = query => {
+      if (query.get('search') === 'caida') throw new Error('connect ECONNREFUSED');
+      return answers[query.get('search')];
+    };
+    results[search] = (await callToolOnce(api, 'Lookup Farms', { search })).result;
+  }
+
+  assert.deepEqual(results['Finca Oeste'], []);
+  assert.equal(results.san.length, 2);
+  assert.equal(results.rechazada.code, 'UNAUTHENTICATED');
+  assert.equal(results.rota.code, 'INTERNAL_ERROR');
+  assert.match(results.caida.error, /ECONNREFUSED/);
+});
+
+test('the workflow keeps no farm codes: creation sends the code the agent obtained from the lookup', async () => {
+  assert.ok(!/FINCA-|F-\d/.test(JSON.stringify(workflow)), 'no farm code is hardcoded in the export');
+  const api = new FakeAgroFlowApi();
+
+  const { request, result } = await callToolOnce(api, 'Create Appointment', {
+    truckPlate: 'AF123BC', farmCode: 'FINCA-NORTE', cutAt: '2026-01-01T09:00:00-03:00', estimatedLoadTons: 25,
+  });
+
+  assert.equal(request.method, 'POST');
+  assert.deepEqual(request.body, { carrierPhone: '+5493815550101', truckPlate: 'AF123BC', farmCode: 'FINCA-NORTE',
+    cutAt: '2026-01-01T09:00:00-03:00', estimatedLoadTons: 25 });
+  assert.equal(result.status, 'ASIGNADO');
+});
+
+test('the agent is told to resolve farms through the API and to ask when the name is ambiguous', () => {
+  const prompt = workflow.nodes.find(node => node.name === 'AI Agent1').parameters.options.systemMessage;
+  const create = workflow.nodes.find(node => node.name === 'Create Appointment').parameters.jsonBody;
+  const lookup = workflow.nodes.find(node => node.name === 'Lookup Appointments By Phone').parameters.toolDescription;
+
+  assert.match(prompt, /## Resolving the farm/);
+  assert.match(prompt, /Several farms: list their names and ask the caller which one they mean/);
+  assert.match(prompt, /never invent a farm or a code/);
+  assert.match(prompt, /Never send the creation tool a farm code that did not come from a successful farm lookup/);
+  assert.match(prompt, /an error body is not an empty result/);
+  assert.match(create, /returned by the farm lookup tool/);
+  assert.match(lookup, /including appointments assigned for tomorrow or later days/);
 });
 
 test('the export is importable: valid JSON shape, positions, unique names and resolvable connections', () => {

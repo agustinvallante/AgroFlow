@@ -21,6 +21,13 @@ public static class ApiKeySchemes
     public const string Channel = "ChannelServiceKey";
     public const string Dashboard = "DashboardKey";
 
+    /// <summary>
+    /// Reenvía a <see cref="Channel"/> si llega su encabezado y si no a
+    /// <see cref="Dashboard"/>: una sola autenticación y un solo challenge por
+    /// solicitud, en vez de un 401 escrito por cada esquema.
+    /// </summary>
+    public const string ChannelOrDashboard = "ChannelOrDashboardKey";
+
     public const string ChannelHeader = "X-AgroFlow-Service-Key";
     public const string DashboardHeader = "X-AgroFlow-Dashboard-Key";
 
@@ -38,8 +45,18 @@ public static class ApiKeyPolicies
     public const string ChannelIngest = "ChannelIngest";
     public const string DashboardAccess = "DashboardAccess";
 
+    /// <summary>
+    /// Lectura del catálogo de fincas: la usan el dashboard y la herramienta del
+    /// agente en n8n para resolver el nombre que da el transportista. Sólo
+    /// lectura; ninguna mutación de datos maestros acepta la clave del canal.
+    /// </summary>
+    public const string FarmCatalogRead = "FarmCatalogRead";
+
     public static void Configure(AuthorizationOptions options)
     {
+        options.AddPolicy(FarmCatalogRead, policy => policy
+            .AddAuthenticationSchemes(ApiKeySchemes.ChannelOrDashboard)
+            .RequireRole(ApiKeySchemes.ChannelRole, ApiKeySchemes.DashboardRole));
         options.AddPolicy(ChannelIngest, policy => policy
             .AddAuthenticationSchemes(ApiKeySchemes.Channel)
             .RequireRole(ApiKeySchemes.ChannelRole));
@@ -138,6 +155,11 @@ public static class ApiKeyAuthenticationSetup
             options.Key = dashboardKey;
             options.Role = ApiKeySchemes.DashboardRole;
         });
+        builder.AddPolicyScheme(ApiKeySchemes.ChannelOrDashboard, displayName: null, options =>
+            options.ForwardDefaultSelector = context =>
+                context.Request.Headers.ContainsKey(ApiKeySchemes.ChannelHeader)
+                    ? ApiKeySchemes.Channel
+                    : ApiKeySchemes.Dashboard);
         return builder;
     }
 

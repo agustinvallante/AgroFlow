@@ -52,4 +52,4 @@ El repositorio no incluye hoy una imagen de la API: la demo la ejecuta en el hos
 
 ## Turnos
 
-Cada posición tiene un camión con asociación activa, así que su transportista puede solicitar turnos con su WhatsApp, la patente de la tabla y una finca sembrada (`FINCA-NORTE` o `FINCA-SUR`). Un sexto transportista registrado desde la API es reconocido por el canal, pero no puede solicitar turnos hasta tener una asociación: la gestión de asociaciones sigue pendiente (OD-002, OD-013) y no tiene ruta publicada.
+Cada posición tiene un camión con asociación activa, así que su transportista puede solicitar turnos con su WhatsApp, la patente de la tabla y una finca sembrada (`FINCA-NORTE` o `FINCA-SUR`); por WhatsApp alcanza con nombrarla ("Finca Norte", "norte", "finca sur"), porque el bot la resuelve con `GET /api/v1/farms`. Un sexto transportista registrado desde la API es reconocido por el canal, pero no puede solicitar turnos hasta tener una asociación: la gestión de asociaciones sigue pendiente (OD-002, OD-013) y no tiene ruta publicada.

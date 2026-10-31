@@ -277,7 +277,7 @@ public sealed class ConversationsHttpTests : IDisposable
     }
 
     [Fact]
-    public async Task OpenAPI_document_lists_channel_conversation_and_driver_routes()
+    public async Task OpenAPI_document_lists_channel_conversation_driver_and_farm_routes()
     {
         using var client = CreateClient();
 
@@ -290,7 +290,8 @@ public sealed class ConversationsHttpTests : IDisposable
         Assert.Contains("/api/v1/conversations", paths);
         Assert.Contains("/api/v1/drivers", paths);
         Assert.DoesNotContain(paths, path => path.Contains("/trucks", StringComparison.Ordinal));
-        Assert.DoesNotContain(paths, path => path.Contains("/farms", StringComparison.Ordinal));
+        // De fincas sólo se publica la consulta del catálogo.
+        Assert.Equal(["/api/v1/farms"], paths.Where(path => path.Contains("/farms", StringComparison.Ordinal)));
     }
 
     private static object EventBody(

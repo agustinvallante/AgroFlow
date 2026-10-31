@@ -494,6 +494,48 @@ test('the service key cannot travel to Evolution or to the appointment tools', (
   assert.throws(() => validateWorkflow(tool), /only allowed on channel requests/);
 });
 
+// Read-only farm catalog (ajustar-consultas-chatbot-whatsapp).
+function farmNode(overrides = {}) {
+  return { id: 'farms', name: 'Tool', type: 'n8n-nodes-base.httpRequestTool', typeVersion: 4.2,
+    parameters: { url: `${api}/farms`, authentication: 'genericCredentialType', genericAuthType: 'httpHeaderAuth',
+      sendQuery: true, queryParameters: { parameters: [{ name: 'active', value: 'true' },
+        { name: 'search', value: "={{ $fromAI('search', 'Farm name', 'string') }}" }] },
+      options: { response: { response: { neverError: true, responseFormat: 'json' } } }, ...overrides.parameters },
+    credentials: overrides.credentials ?? structuredClone(serviceKey) };
+}
+
+test('the farm catalog read passes as an agent tool or an ordinary node with the service key', () => {
+  validateWorkflow(withNode(farmNode()));
+  validateWorkflow(withNode({ ...farmNode(), type: 'n8n-nodes-base.httpRequest' }));
+  validateWorkflow(withNode(farmNode({ parameters: { method: 'GET' } })));
+});
+
+test('the farm catalog read rejects other methods, sibling routes, appended paths and queries', () => {
+  for (const parameters of [{ method: 'POST' }, { url: `${api}/farms/{{ $fromAI('id') }}` },
+    { url: `${api}/farms/{{ $fromAI('id') }}/inactivation`, method: 'POST' }, { url: `${api}/farms?search=norte` },
+    { url: `${api}/farmsx` }, { url: `${api}/farms\n` }]) {
+    assert.throws(() => validateWorkflow(withNode(farmNode({ parameters }))),
+      /exact farm catalog template|only allowed on channel requests and the farm catalog|appointment routes/);
+  }
+});
+
+test('the farm catalog read cannot carry a body, custom headers or undocumented query parameters', () => {
+  for (const parameters of [{ sendBody: true, jsonBody: '={}' }, { sendHeaders: true },
+    { queryParameters: { parameters: [{ name: 'redirect', value: 'https://attacker.invalid' }] } },
+    { jsonQuery: '={ "search": "norte" }' }]) {
+    assert.throws(() => validateWorkflow(withNode(farmNode({ parameters }))), /body or custom headers|documented query/);
+  }
+});
+
+test('the farm catalog read requires the AgroFlow service key and nothing else', () => {
+  for (const credentials of [{}, { httpHeaderAuth: { name: 'Header Auth account' } },
+    { ...structuredClone(serviceKey), openAiApi: { name: 'OpenAI account' } }]) {
+    assert.throws(() => validateWorkflow(withNode(farmNode({ credentials }))), /service key credential/);
+  }
+  assert.throws(() => validateWorkflow(withNode(farmNode({ parameters: { authentication: 'none' } }))),
+    /service key credential/);
+});
+
 test('channel URLs reject a hardcoded resource UUID', () => {
   const url = `${api}/conversation-reply-intents/{{ '00000000-0000-0000-0000-000000000001' }}/send-status`;
   assert.throws(() => validateWorkflow(withNode(channelNode('PATCH', url))), /UUID/);

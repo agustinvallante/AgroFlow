@@ -26,6 +26,13 @@ const channelRoutes = [
   { method: 'PATCH', pattern: new RegExp(`${apiBase}conversation-reply-intents\/${dynamicSegment}\/send-status$`) },
 ];
 const channelPrefix = /\/api\/v1\/conversation-(?:events|reply-intents)(?![a-z])/;
+// Read-only farm catalog (ajustar-consultas-chatbot-whatsapp): the one route an
+// agent tool may call with the service key. Exact template, GET only, no body,
+// no custom headers and only the documented query parameters, so the model can
+// choose the search text but never the destination, the method or the payload.
+const farmCatalogRoute = new RegExp(`${apiBase}farms$`);
+const farmCatalogPrefix = /\/api\/v1\/farms(?![a-z])/;
+const farmCatalogQueryNames = new Set(['active', 'search']);
 const serviceCredential = 'AgroFlow Service Key account';
 const allowedCredentialNames = ['OpenAI account', 'Header Auth account', serviceCredential];
 const agentNodeType = '@n8n/n8n-nodes-langchain.agent';
@@ -59,10 +66,36 @@ function checkChannelRequest(node) {
     `Channel request ${node.name} must authenticate with the AgroFlow service key credential`);
 }
 
+function isFarmCatalogRead(node) {
+  const parameters = node.parameters ?? {};
+  return ['n8n-nodes-base.httpRequest', 'n8n-nodes-base.httpRequestTool'].includes(node.type)
+    && (parameters.method ?? 'GET') === 'GET' && matchesTemplate(farmCatalogRoute, parameters.url);
+}
+
+function checkFarmCatalogRead(node) {
+  const parameters = node.parameters ?? {};
+  assert.ok(!uuid.test(parameters.url), 'Hardcoded farm UUID forbidden');
+  assert.ok(!parameters.sendBody && !parameters.sendHeaders && parameters.jsonBody === undefined,
+    `Farm catalog read ${node.name} must not send a body or custom headers`);
+  for (const field of ['jsonQuery', 'parametersQuery', 'query']) {
+    assert.ok(parameters[field] === undefined, `Farm catalog read ${node.name} must use documented query parameters only`);
+  }
+  const query = parameters.queryParameters?.parameters ?? [];
+  assert.ok(Array.isArray(query) && query.every(item => farmCatalogQueryNames.has(item?.name)),
+    `Farm catalog read ${node.name} must use documented query parameters only`);
+  assert.ok(parameters.authentication === 'genericCredentialType' && parameters.genericAuthType === 'httpHeaderAuth',
+    `Farm catalog read ${node.name} must authenticate with the AgroFlow service key credential`);
+  const credentials = Object.entries(node.credentials ?? {});
+  assert.ok(credentials.length === 1 && credentials[0][0] === 'httpHeaderAuth' && credentials[0][1]?.name === serviceCredential,
+    `Farm catalog read ${node.name} must authenticate with the AgroFlow service key credential`);
+}
+
 function checkHttpDestination(node) {
   if (usesServiceCredential(node)) {
-    // The service key may only travel to the channel persistence routes.
-    assert.ok(isChannelRequest(node), `The AgroFlow service key credential is only allowed on channel requests (${node.name})`);
+    // The service key may only travel to the channel persistence routes and
+    // to the read-only farm catalog.
+    assert.ok(isChannelRequest(node) || isFarmCatalogRead(node),
+      `The AgroFlow service key credential is only allowed on channel requests and the farm catalog read (${node.name})`);
   }
   if (!httpNodeTypes.has(node.type)) {
     // A different package/alias must get an explicit policy, not a silent skip.
@@ -86,6 +119,12 @@ function checkHttpDestination(node) {
     assert.ok(isChannelRequest(node),
       `Channel route in ${node.name} must use the ordinary HTTP node with its exact method and template`);
     checkChannelRequest(node);
+    return;
+  }
+  if (typeof url === 'string' && farmCatalogPrefix.test(url)) {
+    assert.ok(isFarmCatalogRead(node),
+      `Farm route in ${node.name} must be a GET of the exact farm catalog template`);
+    checkFarmCatalogRead(node);
     return;
   }
   const business = matchesTemplate(businessUrl, url);

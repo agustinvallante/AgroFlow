@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: AgroFlow API
-  version: 0.4.0
+  version: 0.5.0
   description: >-
     Contrato HTTP canónico para la demo local de turnos básicos aprobada en la
     issue #49. El perfil local opera con un único ingenio sembrado; no
@@ -16,7 +16,10 @@ info:
     transportistas del cambio `persistir-conversaciones-whatsapp`. Esas rutas
     existen sólo en el perfil LocalDemo y nunca son anónimas: el canal exige
     `ServiceKey` y el dashboard `DashboardKey`. Sus fechas y horas se emiten en
-    UTC. Camiones, fincas y asociaciones siguen sin ruta publicada.
+    UTC. El cambio `ajustar-consultas-chatbot-whatsapp` agrega el filtro
+    `active` del listado de turnos y la consulta de fincas (`ServiceKey` o
+    `DashboardKey`, sólo lectura). Camiones, asociaciones y las mutaciones de
+    fincas siguen sin ruta publicada.
 servers:
   - url: http://localhost:5000
     description: API ejecutada en el host local
@@ -24,7 +27,7 @@ servers:
     description: API del host vista desde n8n en Docker Desktop
 
 # Turnos y salud no incluyen autenticación en la demo local. Canal,
-# conversaciones y transportistas usan claves estáticas del perfil LocalDemo
+# conversaciones, transportistas y fincas usan claves estáticas del perfil LocalDemo
 # hasta que B03 emita identidades por ingenio. La seguridad de operaciones MVP
 # sigue definida por sus capacidades y se especificará en contratos aprobados.
 
@@ -41,6 +44,8 @@ tags:
     description: Consulta paginada de conversaciones y mensajes del ingenio.
   - name: Transportistas
     description: Alta, edición, inhabilitación y consulta de transportistas del ingenio.
+  - name: Fincas
+    description: Consulta de sólo lectura del catálogo de fincas del ingenio.
 
 paths:
   /health:
@@ -117,12 +122,14 @@ paths:
       summary: Listar y filtrar turnos
       description: >-
         Devuelve los turnos del ingenio sembrado cuya ventana comienza en la
-        fecha local indicada por `date`. Si `date` no se informa, se usa siempre
-        la fecha local actual del ingenio sembrado, también cuando se informan
-        `status`, `truckPlate` o `phone`. Todos los filtros se combinan con AND
-        y el resultado se ordena por inicio de ventana ascendente. El filtro
+        fecha local indicada por `date`. Si `date` no se informa, se usa la
+        fecha local actual del ingenio sembrado, también cuando se informan
+        `status`, `truckPlate` o `phone`, salvo con `active=true`: entonces no
+        hay fecha por defecto y se devuelven los turnos no terminales de
+        cualquier día, incluidos los futuros. Todos los filtros se combinan con
+        AND y el resultado se ordena por inicio de ventana ascendente. El filtro
         `phone` permite la consulta de CU-003 desde el teléfono del mensaje
-        entrante. Cada parámetro admite un único valor no vacío; un parámetro no
+        entrante; el chatbot lo combina con `active=true`. Cada parámetro admite un único valor no vacío; un parámetro no
         documentado, repetido o vacío responde `400 VALIDATION_ERROR`, por lo
         que los consumidores no deben agregar parámetros adicionales (por
         ejemplo, para evitar cachés).
@@ -132,10 +139,22 @@ paths:
           description: >-
             Fecha local (`YYYY-MM-DD`) del inicio de la ventana en la zona
             horaria del ingenio sembrado. Si se omite, se usa la fecha local
-            actual del ingenio, aunque se informen otros filtros.
+            actual del ingenio, aunque se informen otros filtros, salvo que se
+            informe `active=true`.
           schema:
             type: string
             format: date
+        - name: active
+          in: query
+          description: >-
+            Con `true`, sólo turnos activos (cualquier estado salvo `FINALIZADO`
+            y `CANCELADO`) y sin fecha por defecto: un turno asignado para mañana
+            o días posteriores, o uno vencido que sigue activo, también se
+            devuelve. Combinado con `date`, restringe a esa fecha. No admite
+            `false`.
+          schema:
+            type: string
+            enum: ['true']
         - name: status
           in: query
           description: Estado vigente del turno.
@@ -651,6 +670,59 @@ paths:
           $ref: '#/components/responses/DriverNotFound'
         '409':
           $ref: '#/components/responses/DriverConflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/v1/farms:
+    get:
+      tags: [Fincas]
+      operationId: listarFincas
+      security:
+        - ServiceKey: []
+        - DashboardKey: []
+      summary: Listar o buscar fincas del ingenio
+      description: >-
+        Sólo lectura. Permite que el agente de n8n traduzca el nombre con que
+        el transportista nombra una finca al `code` que exige el alta de turnos,
+        con el backend como fuente de verdad. `search` compara palabras
+        completas del código y del nombre sin distinguir mayúsculas, tildes ni
+        separadores, y descarta la palabra "finca" y los artículos: `Finca
+        Norte`, `norte` y `FINCA-NORTE` resuelven la misma finca. Cada palabra
+        buscada debe coincidir; no hay coincidencias parciales ni por
+        similitud. Varias coincidencias se devuelven todas para que el
+        consumidor pida aclaración; ninguna devuelve un arreglo vacío. Una
+        búsqueda sin palabras distintivas devuelve todas las fincas. Acepta
+        `ServiceKey` (herramienta del agente) o `DashboardKey`.
+      parameters:
+        - name: active
+          in: query
+          required: false
+          description: Filtra por fincas habilitadas o inhabilitadas. El chatbot usa `true`.
+          schema:
+            type: string
+            enum: ['true', 'false']
+        - name: search
+          in: query
+          required: false
+          description: Nombre o código de la finca tal como lo escribió la persona.
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 100
+            examples: ['Finca Norte', 'norte']
+      responses:
+        '200':
+          description: Fincas que coinciden, ordenadas por código. Sin coincidencias, un arreglo vacío.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Farm'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
         '500':
           $ref: '#/components/responses/InternalError'
 components:
@@ -1252,6 +1324,24 @@ components:
             Lo decide el backend: un turno exige transportista activo y una
             asociación activa con un camión activo. Un transportista recién
             registrado no puede solicitar turnos hasta tener esa asociación.
+
+    Farm:
+      type: object
+      additionalProperties: false
+      required: [id, code, name, isActive]
+      properties:
+        id:
+          type: string
+          format: uuid
+        code:
+          type: string
+          description: Código canónico que recibe `farmCode` en el alta de turnos.
+          examples: [FINCA-NORTE]
+        name:
+          type: string
+          examples: [Finca Norte]
+        isActive:
+          type: boolean
 
     MutationReceipt:
       type: object

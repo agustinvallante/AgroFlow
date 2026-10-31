@@ -97,6 +97,37 @@ public sealed class AppointmentsHttpTests
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Null(service.LastQuery?.Date);
         Assert.Equal("+5493815550101", service.LastQuery?.Phone);
+        Assert.False(service.LastQuery?.ActiveOnly);
+    }
+
+    [Fact]
+    public async Task Get_list_with_active_true_requests_active_turnos_without_a_date()
+    {
+        var service = new FakeAppointmentService();
+        using var app = await TestApp.StartAsync(service);
+
+        using var response = await app.Client.GetAsync(
+            "/api/v1/appointments?phone=%2B5493815550101&active=true");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Null(service.LastQuery?.Date);
+        Assert.True(service.LastQuery?.ActiveOnly);
+        Assert.Equal("+5493815550101", service.LastQuery?.Phone);
+    }
+
+    [Fact]
+    public async Task Get_list_distinguishes_an_empty_result_from_an_error()
+    {
+        var service = new FakeAppointmentService { ListResult = [] };
+        using var app = await TestApp.StartAsync(service);
+
+        using var empty = await app.Client.GetAsync("/api/v1/appointments?phone=%2B5493815550102&active=true");
+        service.ListError = new InvalidOperationException("store unavailable");
+        using var failed = await app.Client.GetAsync("/api/v1/appointments?phone=%2B5493815550102&active=true");
+
+        Assert.Equal(HttpStatusCode.OK, empty.StatusCode);
+        Assert.Equal("[]", await empty.Content.ReadAsStringAsync());
+        await AssertProblemAsync(failed, HttpStatusCode.InternalServerError, "INTERNAL_ERROR");
     }
 
     [Fact]
@@ -138,6 +169,10 @@ public sealed class AppointmentsHttpTests
     [InlineData("/api/v1/appointments?status=")]
     [InlineData("/api/v1/appointments?phone=%2B5493815550101&phone=%2B5493815550101")]
     [InlineData("/api/v1/appointments?cacheBust=123")]
+    [InlineData("/api/v1/appointments?active=false")]
+    [InlineData("/api/v1/appointments?active=TRUE")]
+    [InlineData("/api/v1/appointments?active=")]
+    [InlineData("/api/v1/appointments?active=true&active=true")]
     [InlineData("/api/v1/appointments/not-a-uuid")]
     public async Task Invalid_query_or_route_uses_canonical_validation_problem(string url)
     {
@@ -412,6 +447,8 @@ public sealed class AppointmentsHttpTests
         public Guid? LastGetId { get; private set; }
         public (Guid Id, AppointmentStatus Status)? LastTransition { get; private set; }
         public Exception? CreateError { get; set; }
+        public IReadOnlyList<AppointmentSummary>? ListResult { get; set; }
+        public Exception? ListError { get; set; }
         public AppointmentServiceException? GetError { get; set; }
         public AppointmentServiceException? TransitionError { get; set; }
 
@@ -425,7 +462,8 @@ public sealed class AppointmentsHttpTests
         public Task<IReadOnlyList<AppointmentSummary>> ListAsync(AppointmentQuery query, CancellationToken cancellationToken = default)
         {
             LastQuery = query;
-            IReadOnlyList<AppointmentSummary> appointments =
+            if (ListError is not null) throw ListError;
+            IReadOnlyList<AppointmentSummary> appointments = ListResult ??
                 [new AppointmentSummary(Appointment.Id, Appointment.Truck, Appointment.Window, Appointment.Status)];
             return Task.FromResult(appointments);
         }

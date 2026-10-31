@@ -2,7 +2,10 @@
 // versioned JSON (connections, IF conditions, Set assignments and n8n
 // expressions) with injected doubles for HTTP, the AI agent and the webhook
 // response, so the routing can be verified without n8n, Evolution, OpenAI or
-// WhatsApp. It supports only the node types and options that Chatbot.json uses
+// WhatsApp. The agent double receives `callTool(name, args)` to run one of its
+// HTTP tools with the arguments a model would choose; the model itself, its
+// reasoning and its replies are not simulated.
+// It supports only the node types and options that Chatbot.json uses
 // and fails loudly on anything else. Expressions are evaluated as JavaScript:
 // use it only with the repository's own workflow and synthetic fixtures.
 
@@ -39,12 +42,15 @@ export function simulate(workflow, { body, env, http, agent }) {
     },
   });
 
-  const evaluate = (value, current) => {
+  // Outside a tool call $fromAI has no model behind it and must not be reached.
+  const noModel = key => { throw new SimulationError(`$fromAI('${key}') outside an agent tool call`); };
+
+  const evaluate = (value, current, fromAI = noModel) => {
     if (typeof value !== 'string' || !value.startsWith('=')) return value;
     const template = value.slice(1);
     const run = expression => {
       const scope = context(current);
-      return new Function('$json', '$env', '$', `return (${expression});`)(scope.$json, scope.$env, scope.$);
+      return new Function('$json', '$env', '$', '$fromAI', `return (${expression});`)(scope.$json, scope.$env, scope.$, fromAI);
     };
     const whole = /^\{\{([\s\S]*)\}\}$/.exec(template.trim());
     if (whole && !whole[1].includes('{{')) return run(whole[1]);
@@ -124,14 +130,56 @@ export function simulate(workflow, { body, env, http, agent }) {
       const tools = Object.entries(workflow.connections)
         .filter(([, ports]) => ports.ai_tool?.some(group => group.some(edge => edge.node === node.name)))
         .map(([name]) => name);
+      const callTool = (name, args = {}) => {
+        if (!tools.includes(name)) throw new SimulationError(`${name} is not a tool of ${node.name}`);
+        return runTool(nodes.get(name), current, args);
+      };
       try {
-        const output = await agent({ text: evaluate(node.parameters.text, current), tools });
+        const output = await agent({ text: evaluate(node.parameters.text, current), tools, callTool });
         return [[{ output }], []];
       } catch (error) {
         if (node.onError === 'continueErrorOutput') return [[], [{ error: error.message }]];
         throw error;
       }
     },
+  };
+
+  /**
+   * One call of an HTTP tool by the model: `args` stands in for the values the
+   * model would give to $fromAI. Like n8n with neverError, any HTTP status comes
+   * back to the model as the response body; a transport error comes back as
+   * `{ error }`. Neither reaches the main path.
+   */
+  const runTool = async (node, current, args) => {
+    if (node.type !== 'n8n-nodes-base.httpRequestTool') throw new SimulationError(`Unsupported tool type ${node.type}`);
+    const parameters = node.parameters;
+    const fromAI = key => {
+      if (!Object.hasOwn(args, key)) throw new SimulationError(`${node.name} needs $fromAI('${key}')`);
+      return args[key];
+    };
+    const url = new URL(evaluate(parameters.url, current, fromAI));
+    if (parameters.sendQuery) {
+      for (const { name, value } of parameters.queryParameters.parameters) {
+        url.searchParams.append(name, String(evaluate(value, current, fromAI)));
+      }
+    }
+    const request = {
+      node: node.name,
+      method: parameters.method ?? 'GET',
+      url: url.toString(),
+      credential: Object.values(node.credentials ?? {})[0]?.name ?? null,
+      body: parameters.sendBody ? JSON.parse(evaluate(parameters.jsonBody, current, fromAI)) : undefined,
+    };
+    requests.push(request);
+    try {
+      const result = await http(request);
+      if (result.statusCode >= 400 && !parameters.options?.response?.response?.neverError) {
+        return { error: `HTTP ${result.statusCode}` };
+      }
+      return result.body ?? {};
+    } catch (error) {
+      return { error: error.message };
+    }
   };
 
   const run = async () => {

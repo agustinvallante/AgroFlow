@@ -8,7 +8,7 @@ Seguir la [guía central de demo local](../docs/development/local-demo.md) desde
 
 - `OpenAI Chat Model`: credencial OpenAI (`OpenAI account`).
 - `Send WhatsApp reply`: Header Auth (`Header Auth account`), encabezado `apikey` con la clave local de Evolution.
-- Nodos del canal (`Register Inbound Message`, `Register Reply Intent`, `Update Send Status`, `Report Agent Failure`, `Report Reply Failure`): Header Auth (`AgroFlow Service Key account`), encabezado `X-AgroFlow-Service-Key` con el valor de `ChannelIntegration__ServiceKey` de la API. Nunca reutilizar la credencial de Evolution.
+- Nodos del canal (`Register Inbound Message`, `Register Reply Intent`, `Update Send Status`, `Report Agent Failure`, `Report Reply Failure`) y herramienta `Lookup Farms`: Header Auth (`AgroFlow Service Key account`), encabezado `X-AgroFlow-Service-Key` con el valor de `ChannelIntegration__ServiceKey` de la API. Nunca reutilizar la credencial de Evolution.
 
 El archivo conserva referencias por nombre, sin IDs ni valores de credenciales; los nombres no garantizan la vinculación automática. Reasignar ambos nodos, guardar y publicar el workflow. Se importa inactivo, sin datos fijados ni historial de ejecuciones.
 
@@ -38,10 +38,12 @@ Webhook → Is Supported Text Message ──no──→ Acknowledge Ignored Even
 - **Mensajes admitidos**: texto simple (`conversation`) y texto extendido (`extendedTextMessage`: respuestas citadas o con vista previa de enlace), sólo de chats 1:1 `<dígitos>@s.whatsapp.net` o `<dígitos>@lid`. Se ignoran grupos, difusiones, estados, mensajes propios y multimedia.
 - **LID**: un remitente `@lid` se registra sin teléfono y como no identificado, aunque Evolution adjunte un número alternativo (`remoteJidAlt`, `senderPn`): ese dato no viaja a la API ni vincula al transportista. Recibe la plantilla, que no afirma que el número no esté registrado.
 - **Turnos**: el agente sólo corre para transportistas reconocidos, pero la API crea turnos sólo si además tienen una asociación activa con un camión; un transportista recién registrado sin asociación recibe `REFERENCE_NOT_FOUND`.
+- **Consulta de turnos**: `Lookup Appointments By Phone` envía `phone` y `active=true`, sin fecha: la API devuelve los turnos no terminales de cualquier día, incluido uno asignado para mañana. Una lista vacía significa "sin turnos activos"; un cuerpo de error no.
+- **Fincas**: `Lookup Farms` (`GET /api/v1/farms?active=true&search=…`, con la clave de servicio) recibe las palabras del transportista sin normalizar; la API decide la coincidencia. Una finca → su `code` va al alta tras confirmarla; varias → el agente pregunta; ninguna o error → no hay alta. El workflow no contiene códigos de finca, y CI sólo admite la clave de servicio en esa lectura exacta.
 
 ## Pruebas sin servicios en vivo
 
-- `node --test chatbot/tests/workflow.test.mjs` (CI): ejecuta el JSON exportado con un [simulador](tests/n8n-simulator.mjs) y [fixtures sintéticos](tests/fixtures/) de Evolution, con API, Evolution y agente en memoria.
+- `node --test chatbot/tests/workflow.test.mjs` (CI): ejecuta el JSON exportado con un [simulador](tests/n8n-simulator.mjs) y [fixtures sintéticos](tests/fixtures/) de Evolution, con API, Evolution y agente en memoria. El doble del agente puede invocar las herramientas HTTP con los argumentos que elegiría el modelo; el modelo en sí no se simula.
 - `node chatbot/tests/acceptance.mjs`: aceptación local contra la API real con SQLite temporal y el proxy del frontend (requiere `dotnet build` y `npm ci`; no corre en CI).
 - `node chatbot/tests/simulate-message.mjs --from +549… --text "…"`: simula un mensaje contra una API levantada para la demo.
 

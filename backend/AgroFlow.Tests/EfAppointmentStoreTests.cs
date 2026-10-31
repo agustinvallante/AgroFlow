@@ -341,6 +341,90 @@ public sealed class EfAppointmentStoreTests : IDisposable
     }
 
     [Fact]
+    public async Task List_active_only_returns_today_tomorrow_and_later_non_terminal_turnos_without_a_default_date()
+    {
+        // Ventanas de hoy y mañana (Now) y de los dos días siguientes (Now + 2).
+        await SeedAsync(Now);
+        await SeedAsync(Now.AddDays(2));
+        await using var db = CreateContext();
+        var store = new EfAppointmentStore(db, new FixedClock(Now));
+        const string phone = "+5493815550101";
+        foreach (var plate in new[] { "ZZ101AA", "ZZ102AA", "ZZ103AA" })
+            await AddTruckToDriverAsync(db, phone, plate);
+        var today = DateOnly.FromDateTime(Now.Date);
+
+        var cancelled = await CreateOnLocalDayAsync(store, db, phone, "AF123BC", today);
+        await store.TryTransitionAsync(cancelled, AppointmentStatus.Asignado, AppointmentStatus.Cancelado, releaseCapacity: true);
+        var finished = await CreateOnLocalDayAsync(store, db, phone, "AF123BC", today.AddDays(1));
+        await store.TryTransitionAsync(finished, AppointmentStatus.Asignado, AppointmentStatus.Finalizado, releaseCapacity: false);
+        var todayActive = await CreateOnLocalDayAsync(store, db, phone, "ZZ101AA", today);
+        var tomorrow = await CreateOnLocalDayAsync(store, db, phone, "ZZ102AA", today.AddDays(1));
+        var later = await CreateOnLocalDayAsync(store, db, phone, "ZZ103AA", today.AddDays(3));
+
+        var active = await store.ListAsync(new AppointmentQuery(null, null, null, phone, ActiveOnly: true));
+        var defaultToday = await store.ListAsync(new AppointmentQuery(null, null, null, phone));
+        var activeTomorrow = await store.ListAsync(new AppointmentQuery(today.AddDays(1), null, null, phone, ActiveOnly: true));
+        var explicitLater = await store.ListAsync(new AppointmentQuery(today.AddDays(3), null, null, phone));
+
+        Assert.Equal([todayActive, tomorrow, later], active.Select(a => a.Id));
+        Assert.All(active, a => Assert.Equal(AppointmentStatus.Asignado, a.Status));
+        // Sin `active` se conserva el día local actual por defecto, terminales incluidos.
+        Assert.Equal(new HashSet<Guid> { cancelled, todayActive }, defaultToday.Select(a => a.Id).ToHashSet());
+        Assert.Equal([tomorrow], activeTomorrow.Select(a => a.Id));
+        Assert.Equal([later], explicitLater.Select(a => a.Id));
+    }
+
+    [Fact]
+    public async Task List_active_only_keeps_an_overdue_non_terminal_turno_and_is_empty_for_drivers_without_turnos()
+    {
+        var yesterday = Now.AddDays(-1);
+        await SeedAsync(yesterday);
+        await SeedAsync(Now);
+        Guid overdue;
+        await using (var db = CreateContext())
+        {
+            var past = new EfAppointmentStore(db, new FixedClock(yesterday));
+            var context = await past.GetCreationContextAsync(ValidCreate);
+            var window = context!.Windows.OrderBy(w => w.StartAt).First();
+            overdue = (await past.TryCreateAssignedAsync(ValidCreate, window.Id)).Appointment!.Id;
+        }
+
+        await using var verifyDb = CreateContext();
+        var store = new EfAppointmentStore(verifyDb, new FixedClock(Now));
+        var active = await store.ListAsync(new AppointmentQuery(null, null, null, "+5493815550101", ActiveOnly: true));
+        var withoutTurnos = await store.ListAsync(new AppointmentQuery(null, null, null, "+5493815550102", ActiveOnly: true));
+        var unknownPhone = await store.ListAsync(new AppointmentQuery(null, null, null, "+5493815559999", ActiveOnly: true));
+
+        // Sigue activo (y bloquea un alta nueva para ese camión) aunque su ventana ya pasó.
+        Assert.Equal(overdue, Assert.Single(active).Id);
+        Assert.Empty(withoutTurnos);
+        Assert.Empty(unknownPhone);
+    }
+
+    private static async Task AddTruckToDriverAsync(AgroFlowDbContext db, string phone, string plate)
+    {
+        var transportista = await db.Transportistas.SingleAsync(t => t.WhatsApp == phone);
+        var camion = new Camion(transportista.IngenioId, plate, Camion.FleetTypePropia);
+        db.Camiones.Add(camion);
+        db.Asociaciones.Add(new TransportistaCamion(transportista.IngenioId, transportista.Id, camion.Id));
+        await db.SaveChangesAsync();
+    }
+
+    private static async Task<Guid> CreateOnLocalDayAsync(
+        EfAppointmentStore store, AgroFlowDbContext db, string phone, string plate, DateOnly localDay)
+    {
+        var window = (await db.Ventanas.AsNoTracking().ToListAsync())
+            .Where(v => DateOnly.FromDateTime(v.StartAt.ToOffset(Now.Offset).Date) == localDay
+                && v.StartAt > Now && v.Occupied < v.Capacity)
+            .OrderBy(v => v.StartAt)
+            .First();
+        var result = await store.TryCreateAssignedAsync(
+            new CreateAppointmentCommand(phone, plate, "FINCA-NORTE", Now.AddHours(-1), 20.0), window.Id);
+        Assert.Equal(AppointmentCreateOutcome.Success, result.Outcome);
+        return result.Appointment!.Id;
+    }
+
+    [Fact]
     public async Task List_orders_by_window_start_ascending()
     {
         await SeedAsync(Now);
