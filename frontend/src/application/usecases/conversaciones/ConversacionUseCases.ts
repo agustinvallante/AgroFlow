@@ -12,6 +12,17 @@ export class ObtenerConversaciones {
   }
 }
 
+export class ObtenerMensajesConversacion {
+  private readonly repo: ConversacionRepository;
+
+  constructor(repo: ConversacionRepository) {
+    this.repo = repo;
+  }
+  execute(conversacionId: string) {
+    return this.repo.obtenerMensajes(conversacionId);
+  }
+}
+
 export class ObtenerMetricasChatbot {
   private readonly repo: ConversacionRepository;
 
