@@ -10,7 +10,7 @@ import type {
   ProcessingStatusDto,
   SendStatusDto,
 } from "../dto/ConversationDto";
-import { horaEnZonaIngenio } from "../../../shared/utils/date";
+import { fechaHoraEnZonaIngenio } from "../../../shared/utils/date";
 
 const ENVIO: Record<SendStatusDto, EstadoEnvio> = {
   PENDING_SEND: "pendiente",
@@ -35,7 +35,7 @@ export function mapConversationSummary(dto: ConversationSummaryDto): Conversacio
   return {
     id: dto.id,
     nombre: reconocido ? dto.sender.name! : `Remitente no registrado · ${dto.remoteAddressMasked}`,
-    hora: horaEnZonaIngenio(dto.lastMessageAt),
+    hora: fechaHoraEnZonaIngenio(dto.lastMessageAt),
     preview: dto.lastMessagePreview ?? "",
     // "escalado" del mock no se emula: la API sólo informa si requiere revisión.
     estado: dto.needsAttention ? "revision" : "bot",
@@ -50,7 +50,7 @@ export function mapConversationMessage(dto: ConversationMessageDto): MensajeChat
     id: dto.id,
     autor: dto.direction === "INBOUND" ? "transportista" : "bot",
     texto: dto.text,
-    hora: horaEnZonaIngenio(dto.persistedAt),
+    hora: fechaHoraEnZonaIngenio(dto.persistedAt),
     estadoEnvio: dto.sendStatus ? ENVIO[dto.sendStatus] : undefined,
     procesamiento: dto.processingStatus ? PROCESAMIENTO[dto.processingStatus] : undefined,
   };

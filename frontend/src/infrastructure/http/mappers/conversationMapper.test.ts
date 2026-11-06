@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { mapConversationMessage, mapConversationSummary } from "./conversationMapper";
 import { mapDriver, toDriverInput } from "./driverMapper";
 import type { ConversationMessageDto, ConversationSummaryDto } from "../dto/ConversationDto";
@@ -26,6 +26,19 @@ const mensaje: ConversationMessageDto = {
 };
 
 describe("conversationMapper", () => {
+  // "Hoy" fijo: el mismo día que las fechas de prueba, en la zona del ingenio.
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-01-01T18:00:00Z"));
+  });
+  afterEach(() => vi.useRealTimers());
+
+  it("agrega el día cuando la conversación no es de hoy", () => {
+    vi.setSystemTime(new Date("2026-01-03T18:00:00Z"));
+
+    expect(mapConversationSummary(resumen).hora).toBe("01/01 12:00");
+  });
+
   it("muestra el nombre del transportista reconocido y la hora del ingenio", () => {
     const conversacion = mapConversationSummary(resumen);
 

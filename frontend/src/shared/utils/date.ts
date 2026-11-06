@@ -91,3 +91,27 @@ export function horaEnZonaIngenio(valorUtc: string | undefined | null): string {
   const fecha = new Date(valorUtc);
   return Number.isNaN(fecha.getTime()) ? "—" : FORMATO_HORA_INGENIO.format(fecha);
 }
+
+const FORMATO_DIA_INGENIO = new Intl.DateTimeFormat("es-AR", {
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+  timeZone: ZONA_INGENIO,
+});
+
+/**
+ * Hora del ingenio, con el día cuando no es hoy (en la zona del ingenio) para
+ * que un mensaje de otro día no parezca de hoy: hoy → "12:00", otro día →
+ * "30/10 12:00".
+ */
+export function fechaHoraEnZonaIngenio(
+  valorUtc: string | undefined | null,
+  ahora: Date = new Date(),
+): string {
+  const hora = horaEnZonaIngenio(valorUtc);
+  if (hora === "—") return hora;
+  const fecha = new Date(valorUtc as string);
+  const dia = FORMATO_DIA_INGENIO.format(fecha);
+  if (dia === FORMATO_DIA_INGENIO.format(ahora)) return hora;
+  return `${dia.slice(0, 5)} ${hora}`;
+}
