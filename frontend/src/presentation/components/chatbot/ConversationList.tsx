@@ -16,6 +16,7 @@ interface ConversationListProps {
 export function ConversationList({ conversaciones, activaId, onSeleccionar }: ConversationListProps) {
   return (
     <div className="conv-list">
+      {conversaciones.length === 0 && <div className="empty-state">Todavía no hay conversaciones registradas.</div>}
       {conversaciones.map((c) => (
         <div
           key={c.id}

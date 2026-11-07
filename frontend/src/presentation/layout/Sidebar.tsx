@@ -15,8 +15,8 @@ export function Sidebar({ vistaActiva, onCambiarVista }: SidebarProps) {
           <img src={logo} alt="AgroFlow" width={200} height={38} />
         </div>
         <div className="brand-sub">Control de Playa</div>
-        <select className="ingenio-select" defaultValue="san-ramon">
-          <option value="san-ramon">Ingenio San Ramón — Tucumán</option>
+        <select className="ingenio-select" disabled>
+          <option>Ingenio: sin datos</option>
         </select>
       </div>
 
@@ -34,19 +34,9 @@ export function Sidebar({ vistaActiva, onCambiarVista }: SidebarProps) {
       </nav>
 
       <div className="sidebar-foot">
-        Sesión: María Costas
+        Sesión: sin datos
         <br />
-        Jefa de Báscula · Turno mañana
-        <br />
-        {container.fuenteDatos === "http" ? (
-          <>
-            Turnos, transportistas y conversaciones: AgroFlow API · {container.apiUrl}
-            <br />
-            Resto de las vistas: datos de demostración
-          </>
-        ) : (
-          "v0.4 prototipo · datos mock"
-        )}
+        AgroFlow API · {container.apiUrl}
       </div>
     </aside>
   );
