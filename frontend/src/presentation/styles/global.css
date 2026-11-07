@@ -1149,3 +1149,13 @@ tbody tr:hover {
 table.datos-desactualizados tbody {
   opacity: 0.6;
 }
+
+/* Sección sin API: el interruptor no afirma encendido ni apagado. */
+.toggle.sin-dato {
+  background: var(--linea);
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.toggle.sin-dato::after {
+  display: none;
+}

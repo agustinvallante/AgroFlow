@@ -9,16 +9,20 @@ Next.js y sus librerías asociadas no son decisiones vigentes; véanse los
 
 ## Estado y alcance actual
 
-La cola de turnos puede consumir la API de la demo local (`VITE_DATA_SOURCE=http`)
-o repositorios en memoria (`VITE_DATA_SOURCE=mock`). En modo HTTP, alta, listado,
-filtros, detalle, transiciones y cancelación usan las rutas de appointments
-publicadas en [`docs/contracts/openapi.yaml`](../docs/contracts/openapi.yaml).
-Esto acredita únicamente esa integración de demo, no todos los recorridos del MVP.
+El dashboard muestra **únicamente datos de la API**; no hay repositorios mock ni
+datos de ejemplo. Alta, listado, filtros, detalle, transiciones y cancelación de
+turnos usan las rutas de appointments publicadas en
+[`docs/contracts/openapi.yaml`](../docs/contracts/openapi.yaml). Esto acredita
+únicamente esa integración de demo, no todos los recorridos del MVP.
 
-Panel general, chatbot, transportistas, reportes y configuración todavía usan
-mocks y deben identificarse como datos de demostración. No hay requisito de
-conectar todas las pantallas ahora. El mock no es estado operativo ni evidencia
-de aceptación MVP. El backend sigue siendo autoridad sobre reglas y estado.
+| Sección | Fuente |
+|---|---|
+| Cola de turnos | Turnos de la API. |
+| Panel general | Camiones en curso de la API. Indicadores, franjas, chatbot, molienda y avisos no tienen endpoint: conservan su lugar, sin datos ni acciones. |
+| Chatbot, transportistas, reportes y configuración | Conservan su diseño, sin datos y con las acciones deshabilitadas: el contrato no tiene operaciones para ellas. |
+
+No hay requisito de conectar todas las pantallas ahora. El backend sigue siendo
+autoridad sobre reglas y estado.
 
 Antes de ampliar un flujo, consultar las
 [especificaciones vigentes](../openspec/specs/), los
@@ -40,17 +44,16 @@ npm run typecheck # verificación de tipos
 npm run lint      # oxlint
 ```
 
-Copiar `.env.example` como `.env`, elegir `VITE_DATA_SOURCE=http` o `mock` y
-configurar `VITE_API_URL`; reiniciar Vite después de cambiarlo. Vite reenvía
+Copiar `.env.example` como `.env` y configurar `VITE_API_URL`; reiniciar Vite
+después de cambiarlo. El dashboard necesita la API en ejecución. Vite reenvía
 `/api/...` a la URL configurada durante `dev` y `preview`; servir `dist/` desde
 otro servidor requiere su propio proxy.
 
 ## Organización actual
 
 El código existente está organizado en `domain/`, `application/`,
-`infrastructure/`, `composition/`, `presentation/` y `shared/`. En HTTP, el
-`HttpTurnoRepository` y sus DTOs/mappers consumen appointments; los demás
-repositorios de dashboard y catálogo siguen siendo mocks. Esta estructura
+`infrastructure/`, `composition/`, `presentation/` y `shared/`.
+`HttpTurnoRepository` y sus DTOs/mappers consumen appointments. Esta estructura
 vigente se describe aquí como inventario, no como una regla para rehacerla ni
 como autorización para sumar dependencias.
 
@@ -60,7 +63,11 @@ La frontera de dependencias actual es:
 presentation → application → domain ← infrastructure
 ```
 
-`composition/container.ts` selecciona implementaciones HTTP o mock. Ninguna
-capa frontend debe decidir prioridad, capacidad, autorizaciones o transiciones.
-El detalle de la integración de la demo está en
-[`frontend/docs/LOCAL_DEMO_INTEGRATION.md`](docs/LOCAL_DEMO_INTEGRATION.md).
+`composition/container.ts` conecta las implementaciones concretas. Ninguna capa
+frontend debe decidir prioridad, capacidad, autorizaciones o transiciones. Cuando
+el contrato incorpore otra capacidad, se agrega su repositorio HTTP y se conecta
+la vista que hoy se muestra vacía.
+
+El registro de la integración de la demo está en
+[`frontend/docs/LOCAL_DEMO_INTEGRATION.md`](docs/LOCAL_DEMO_INTEGRATION.md); lo
+que describe sobre el modo mock quedó sin efecto.

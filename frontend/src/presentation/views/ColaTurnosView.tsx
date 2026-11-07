@@ -2,7 +2,7 @@ import { useState } from "react";
 import { container } from "../../composition/container";
 import { useColaTurnos } from "../hooks/useColaTurnos";
 import { MetricCard } from "../components/common/MetricCard";
-import { CanalBadge, EstadoBadge, FlotaBadge, PrioridadBadge } from "../components/common/Badges";
+import { EstadoBadge } from "../components/common/Badges";
 import { EmptyState, ErrorState, LoadingState } from "../components/common/StatusStates";
 import { CambioEstadoSelect } from "../components/common/CambioEstadoSelect";
 import { ESTADOS_SELECCIONABLES } from "../components/common/estadosSeleccionables";
@@ -13,8 +13,6 @@ const ESTADO_OPCIONES: { value: string; label: string }[] = [
   { value: "todos", label: "Todos los estados" },
   ...ESTADOS_SELECCIONABLES,
 ];
-
-const esApi = container.fuenteDatos === "http";
 
 const FORM_VACIO = { telefono: "", patente: "", codigoFinca: "", corteEn: "", cargaTon: "" };
 
@@ -36,9 +34,7 @@ export function ColaTurnosView() {
     enCurso,
     filtros,
     setBusqueda,
-    setFiltroFlota,
     setFiltroEstado,
-    setOrden,
     setFecha,
     setPatente,
     setTelefono,
@@ -49,7 +45,6 @@ export function ColaTurnosView() {
     crearTurno,
     cambiarEstado,
     cancelar,
-    reasignar,
   } = useColaTurnos();
 
   const [mostrarForm, setMostrarForm] = useState(false);
@@ -82,11 +77,6 @@ export function ColaTurnosView() {
     }
   };
 
-  const handleReasignar = (id: string, horaActual: string) => {
-    const nuevaHora = window.prompt("Nueva hora de turno (formato HH:MM):", horaActual);
-    if (nuevaHora) reasignar(id, nuevaHora);
-  };
-
   const handleCancelar = (t: Turno) => {
     if (window.confirm(`¿Cancelar el turno de ${t.patente}?`)) cancelar(t.id);
   };
@@ -101,11 +91,6 @@ export function ColaTurnosView() {
       <button className="btn-mini" disabled={enCurso === t.id} onClick={() => handleCancelar(t)}>
         Cancelar
       </button>
-      {!esApi && (
-        <button className="btn-mini" disabled={enCurso === t.id} onClick={() => handleReasignar(t.id, t.hora)}>
-          Reasignar
-        </button>
-      )}
     </div>
   );
 
@@ -115,7 +100,7 @@ export function ColaTurnosView() {
         <div>
           <h1>Cola de turnos</h1>
           <div className="zafra">
-            Turnos programados · {esApi ? `AgroFlow API (${container.apiUrl})` : "datos mock"}
+            Turnos programados · AgroFlow API ({container.apiUrl})
           </div>
         </div>
         <button className="btn-primary" onClick={() => setMostrarForm((v) => !v)}>
@@ -218,26 +203,9 @@ export function ColaTurnosView() {
             <option key={o.value} value={o.value}>{o.label}</option>
           ))}
         </select>
-        {esApi ? (
-          <>
-            <input type="date" value={filtros.fecha} onChange={(e) => setFecha(e.target.value)} title="Fecha de la ventana (vacío = hoy)" />
-            <input type="text" placeholder="Patente exacta" value={filtros.patente} onChange={(e) => setPatente(e.target.value)} />
-            <input type="text" placeholder="Teléfono +549..." value={filtros.telefono} onChange={(e) => setTelefono(e.target.value)} />
-          </>
-        ) : (
-          <>
-            <select value={filtros.filtroFlota} onChange={(e) => setFiltroFlota(e.target.value as typeof filtros.filtroFlota)}>
-              <option value="todas">Toda la flota</option>
-              <option value="propia">Propia</option>
-              <option value="tercero">Tercerizada</option>
-            </select>
-            <select value={filtros.orden} onChange={(e) => setOrden(e.target.value as typeof filtros.orden)}>
-              <option value="turno">Ordenar por turno</option>
-              <option value="prioridad">Ordenar por prioridad de corte</option>
-              <option value="espera">Ordenar por espera</option>
-            </select>
-          </>
-        )}
+        <input type="date" value={filtros.fecha} onChange={(e) => setFecha(e.target.value)} title="Fecha de la ventana (vacío = hoy)" />
+        <input type="text" placeholder="Patente exacta" value={filtros.patente} onChange={(e) => setPatente(e.target.value)} />
+        <input type="text" placeholder="Teléfono +549..." value={filtros.telefono} onChange={(e) => setTelefono(e.target.value)} />
       </div>
 
       {filtrosIncompletos.length > 0 ? (
@@ -273,11 +241,9 @@ export function ColaTurnosView() {
                 <th>Patente</th>
                 <th>Transportista</th>
                 <th>Finca / Origen</th>
-                {esApi ? <th>Carga</th> : <th>Flota</th>}
+                <th>Carga</th>
                 <th>Corte</th>
-                {!esApi && <th>Prioridad</th>}
                 <th>Estado</th>
-                {!esApi && <th>Canal</th>}
                 <th></th>
               </tr>
             </thead>
@@ -292,15 +258,9 @@ export function ColaTurnosView() {
                   <td style={{ fontFamily: "'IBM Plex Mono',monospace" }}>{t.patente}</td>
                   <td>{t.chofer}</td>
                   <td>{t.finca}</td>
-                  {esApi ? (
-                    <td style={{ fontSize: 12.5 }}>{t.cargaTon !== undefined ? `${t.cargaTon} tn` : "—"}</td>
-                  ) : (
-                    <td><FlotaBadge flota={t.flota} /></td>
-                  )}
+                  <td style={{ fontSize: 12.5 }}>{t.cargaTon !== undefined ? `${t.cargaTon} tn` : "—"}</td>
                   <td style={{ fontSize: 12.5 }}>{t.horasDesdeCorte} h</td>
-                  {!esApi && <td><PrioridadBadge prioridad={t.prioridad} /></td>}
                   <td><EstadoBadge estado={t.estado} /></td>
-                  {!esApi && <td><CanalBadge canal={t.canal} /></td>}
                   <td onClick={(e) => e.stopPropagation()}>{acciones(t)}</td>
                 </tr>
               ))}
