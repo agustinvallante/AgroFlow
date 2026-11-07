@@ -79,7 +79,7 @@ describe("conversationMapper", () => {
 });
 
 describe("driverMapper", () => {
-  it("no inventa patente, finca ni flota que la API no publica", () => {
+  it("no inventa finca ni flota que la API no publica", () => {
     expect(
       mapDriver({
         id: "d1", name: "T", dni: "20555555555", whatsApp: "+5493815550155", isActive: true,
@@ -91,9 +91,6 @@ describe("driverMapper", () => {
       dni: "20555555555",
       telefono: "+5493815550155",
       patente: null,
-      finca: null,
-      flota: null,
-      turnosEsteMes: null,
       activo: true,
       puedeSolicitarTurnos: false,
     });
@@ -110,7 +107,7 @@ describe("driverMapper", () => {
 
   it("envía sólo los campos del contrato", () => {
     expect(
-      toDriverInput({ nombre: " T ", dni: " 20555555555 ", telefono: "+5493815550155", patente: "", finca: "", flota: "propia" }),
+      toDriverInput({ nombre: " T ", dni: " 20555555555 ", telefono: "+5493815550155" }),
     ).toEqual({ name: "T", dni: "20555555555", whatsApp: "+5493815550155" });
   });
 });

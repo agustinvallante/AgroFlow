@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { container } from "../../composition/container";
 import type { NuevoTransportista, Transportista } from "../../domain/entities/Transportista";
 
-export type FiltroFlotaTp = "todas" | "propia" | "tercero";
 export type FiltroEstadoTp = "todos" | "activo" | "inactivo";
 
 export function useTransportistas() {
@@ -11,7 +10,6 @@ export function useTransportistas() {
   const [error, setError] = useState<string | null>(null);
 
   const [busqueda, setBusqueda] = useState("");
-  const [filtroFlota, setFiltroFlota] = useState<FiltroFlotaTp>("todas");
   const [filtroEstado, setFiltroEstado] = useState<FiltroEstadoTp>("todos");
 
   const cargar = useCallback(async () => {
@@ -36,19 +34,16 @@ export function useTransportistas() {
     return transportistas.filter((t) => {
       const coincideTexto =
         !texto ||
-        [t.nombre, t.patente, t.finca, t.dni, t.telefono].some((campo) => campo?.toLowerCase().includes(texto));
-      const coincideFlota = filtroFlota === "todas" || t.flota === filtroFlota;
+        [t.nombre, t.patente, t.dni, t.telefono].some((campo) => campo?.toLowerCase().includes(texto));
       const coincideEstado =
         filtroEstado === "todos" || (filtroEstado === "activo") === t.activo;
-      return coincideTexto && coincideFlota && coincideEstado;
+      return coincideTexto && coincideEstado;
     });
-  }, [transportistas, busqueda, filtroFlota, filtroEstado]);
+  }, [transportistas, busqueda, filtroEstado]);
 
   const resumen = useMemo(
     () => ({
       total: transportistas.length,
-      propia: transportistas.filter((t) => t.flota === "propia").length,
-      tercero: transportistas.filter((t) => t.flota === "tercero").length,
       activos: transportistas.filter((t) => t.activo).length,
       inactivos: transportistas.filter((t) => !t.activo).length,
     }),
@@ -70,9 +65,8 @@ export function useTransportistas() {
     resumen,
     cargando,
     error,
-    filtros: { busqueda, filtroFlota, filtroEstado },
+    filtros: { busqueda, filtroEstado },
     setBusqueda,
-    setFiltroFlota,
     setFiltroEstado,
     crear,
     cambiarEstado,

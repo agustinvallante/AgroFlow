@@ -1,30 +1,18 @@
-import type { FlotaTipo } from "./Turno";
-
-/**
- * La API de la demo publica nombre, DNI, WhatsApp y estado. Patente, finca,
- * flota y turnos del mes no forman parte de ese contrato: con fuente http
- * llegan como null y la vista los omite.
- */
+/** Lo que publica el contrato de transportistas de AgroFlow API. */
 export interface Transportista {
   id: string;
   nombre: string;
-  dni?: string | null;
+  dni: string;
+  /** Patentes de los camiones asociados; null si no tiene ninguno. */
   patente: string | null;
   telefono: string;
-  finca: string | null;
-  flota: FlotaTipo | null;
-  turnosEsteMes: number | null;
   activo: boolean;
-  /** Informado por la API; undefined en la fuente mock. */
-  puedeSolicitarTurnos?: boolean;
+  puedeSolicitarTurnos: boolean;
 }
 
 export interface NuevoTransportista {
   nombre: string;
-  dni?: string;
-  patente: string;
+  dni: string;
   /** WhatsApp en formato internacional (+549…): reconoce al remitente del canal. */
   telefono: string;
-  finca: string;
-  flota: FlotaTipo;
 }

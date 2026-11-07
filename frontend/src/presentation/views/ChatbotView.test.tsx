@@ -9,17 +9,10 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("../../composition/container", () => ({
   container: {
-    fuenteDatos: "http",
     apiUrl: "http://localhost:5000",
     conversaciones: {
       obtenerConversaciones: { execute: mocks.obtenerConversaciones },
       obtenerMensajesConversacion: { execute: mocks.obtenerMensajes },
-      obtenerMetricasChatbot: {
-        execute: async () => ({ mensajesHoy: 1, turnosAsignadosPorBot: 0, tiempoPromedioRespuestaSeg: 1, conversacionesEscaladas: 0 }),
-      },
-      obtenerFlujoDeAutomatizacion: { execute: async () => [] },
-      obtenerPlantillas: { execute: async () => [] },
-      guardarPlantillas: { execute: vi.fn() },
     },
   },
 }));
@@ -100,6 +93,15 @@ describe("ChatbotView con AgroFlow API", () => {
     render(<ChatbotView />);
 
     expect(await screen.findByText("Todavía no hay conversaciones registradas.")).toBeTruthy();
+  });
+
+  it("conserva métricas y plantillas sin datos ni acciones, porque la API no las expone", async () => {
+    render(<ChatbotView />);
+    await screen.findByText("[SINTÉTICO] Quiero mi turno");
+
+    expect(screen.getByText("Mensajes hoy").parentElement?.textContent).toContain("—");
+    expect(screen.getByText("Sin plantillas.")).toBeTruthy();
+    expect((screen.getByRole("button", { name: "Guardar plantillas" }) as HTMLButtonElement).disabled).toBe(true);
   });
 
   it("muestra el error accionable si falta la clave del dashboard", async () => {

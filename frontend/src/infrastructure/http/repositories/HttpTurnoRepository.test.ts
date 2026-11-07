@@ -79,7 +79,7 @@ describe("HttpTurnoRepository.cambiarEstado", () => {
   });
 
   it("rechaza sin llamar a la API un estado que el contrato no tiene", async () => {
-    await expect(new HttpTurnoRepository("").cambiarEstado(turnoApi.id, "demorado")).rejects.toThrow();
+    await expect(new HttpTurnoRepository("").cambiarEstado(turnoApi.id, "demorado" as never)).rejects.toThrow();
     expect(fetchMock).not.toHaveBeenCalled();
   });
 });

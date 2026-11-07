@@ -18,7 +18,6 @@ const ESTADO_MAP: Record<AppointmentStatusDto, EstadoTurno> = {
   CANCELADO: "cancelado",
 };
 
-// "demorado" no existe en la API: no tiene equivalente.
 const ESTADO_INVERSO: Partial<Record<EstadoTurno, AppointmentStatusDto>> = Object.fromEntries(
   Object.entries(ESTADO_MAP).map(([api, dominio]) => [dominio, api])
 );
@@ -45,11 +44,6 @@ export function mapAppointment(dto: AppointmentDto): Turno {
     corteEn: dto.cutAt,
     cargaTon: dto.estimatedLoadTons,
     creadoEn: dto.createdAt,
-    // La API de la demo no informa estos datos y el dashboard no los calcula.
-    flota: null,
-    canal: null,
-    esperaMin: null,
-    prioridad: null,
   };
 }
 

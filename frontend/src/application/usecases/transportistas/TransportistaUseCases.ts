@@ -27,7 +27,7 @@ export class CrearTransportista {
     if (!datos.nombre.trim() || !telefono) {
       return Promise.reject(new Error("Completá al menos nombre y teléfono (WhatsApp)."));
     }
-    return this.repo.crear({ ...datos, telefono, patente: datos.patente.toUpperCase() });
+    return this.repo.crear({ ...datos, telefono });
   }
 }
 
