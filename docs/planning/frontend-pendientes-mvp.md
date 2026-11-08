@@ -6,13 +6,11 @@
 
 | Fuente | Referencia | Estado |
 |---|---|---|
-| `main` | `ff749f8` | Contrato `0.3.0`: salud y turnos. Lo demás usa mocks |
-| [PR #97](https://github.com/agustinvallante/AgroFlow/pull/97) | `418dbd3` | Abierto. Contrato `0.5.0`: agrega conversaciones, transportistas y lectura de fincas |
-| [PR #100](https://github.com/agustinvallante/AgroFlow/pull/100) | `2e1baae` | Borrador sobre el #97. Quita los mocks: el dashboard muestra solo datos de la API |
+| `main` | `48f7533` | Integra el #97 y el #100: contrato `0.5.0`, sin mocks y con auditoría `npm audit` en verde |
+| [PR #97](https://github.com/agustinvallante/AgroFlow/pull/97) | `d13528f` | Integrado en `main`. Contrato `0.5.0`: conversaciones, transportistas y lectura de fincas, con resoluciones parciales `LocalDemo` en [open-decisions.md](open-decisions.md) |
+| [PR #100](https://github.com/agustinvallante/AgroFlow/pull/100) | `48f7533` | Integrado en `main`. Retira el modo mock: el dashboard muestra únicamente datos de la API |
 
-Los requisitos salen de [OpenSpec](../../openspec/specs/) y de la [aceptación del MVP](../product/mvp-acceptance.md). Las issues F01–F09 se tomaron del [corte de backlog](mvp-backlog-sync-2026-10-15.md), no de una lectura individual.
-
-**Todo el estado de este documento supone que el #97 y el #100 ya están integrados.** Hoy ninguno lo está.
+Los requisitos salen de [OpenSpec](../../openspec/specs/) y de la [aceptación del MVP](../product/mvp-acceptance.md). Las issues F01–F09 (`#67`–`#75`) se contrastaron con sus títulos vigentes en GitHub y con el [corte de backlog](mvp-backlog-sync-2026-10-15.md).
 
 ## Cómo leer los estados
 
@@ -23,7 +21,7 @@ Los requisitos salen de [OpenSpec](../../openspec/specs/) y de la [aceptación d
 | ❌ Falta | No existe en el frontend, o no hay API que lo soporte |
 | ⛔ Fuera del MVP | Hace falta un cambio aprobado si se quiere incorporar |
 
-**Límites de "Funciona":** todo corre únicamente en el perfil `LocalDemo`, sin usuarios ni roles. La evidencia es de 77 pruebas del frontend y la aceptación local del #97, con WhatsApp y el agente simulados; el #100 aún no tiene un recorrido manual registrado en el navegador. Nada de esto acredita la [aceptación del MVP](../product/mvp-acceptance.md).
+**Límites de "Funciona":** todo corre únicamente en el perfil `LocalDemo`, sin usuarios ni roles. La evidencia reúne las 77 pruebas del frontend, la aceptación local automatizada (`chatbot/tests/acceptance.mjs`) y la prueba en `LocalDemo` con WhatsApp real registrada en el #97; el #100 aún tiene pendiente registrar un recorrido manual en el navegador. Nada de esto acredita por sí solo la [aceptación del MVP](../product/mvp-acceptance.md).
 
 ## Resumen
 
@@ -80,14 +78,14 @@ El frontend todavía no cubre el MVP. El mayor bloqueo es **acceso y sesión**.
 | Mostrar prioridad y flota | ❌ | La API no las informa. Decidir si se muestran; el front no las calcula |
 | Reasignar horario | ❌ | Sin operación ni requisito encontrado. Definir si se descarta |
 
-### 1.3 Transportistas (F02–F05 #68–#71, G03)
+### 1.3 Transportistas (F02 #68, F05 #71, G03)
 
 | Función | Estado | Para completarla |
 |---|---|---|
 | Listado | ✅ | — |
 | Búsqueda y filtro por estado | ✅ | Locales, sobre lo ya cargado |
-| Alta con nombre, DNI y WhatsApp | ✅ | — |
-| Dar de baja | ✅ | — |
+| Alta con nombre, DNI y WhatsApp | 🟡 | Funciona contra la API; falta validar `dni` vacío en cliente antes de enviar |
+| Dar de baja | 🟡 | Funciona contra la API, pero inhabilita sin pedir confirmación previa |
 | Ver camión asociado y si puede pedir turnos | ✅ | Solo lectura |
 | Editar | 🟡 | `PUT /api/v1/drivers/{id}` existe; falta formulario y método en el repositorio |
 | Reintentar tras un error | 🟡 | Hoy el error reemplaza toda la vista |
@@ -96,7 +94,7 @@ El frontend todavía no cubre el MVP. El mayor bloqueo es **acceso y sesión**.
 | Historial | ❌ | Sin ruta |
 | Finca habitual, flota, turnos del mes | ❌ | El contrato no los incluye. Decidir si hacen falta |
 
-### 1.4 Camiones (F02–F05, G03)
+### 1.4 Camiones (F03 #69, F05 #71, G03)
 
 | Función | Estado | Para completarla |
 |---|---|---|
@@ -104,7 +102,7 @@ El frontend todavía no cubre el MVP. El mayor bloqueo es **acceso y sesión**.
 | Patente y tipo de flota | ❌ | Depende de lo anterior |
 | Sección en el menú | ❌ | Definir si es propia o parte de otra |
 
-### 1.5 Fincas (F02–F05, G03)
+### 1.5 Fincas (F04 #70, G03)
 
 | Función | Estado | Para completarla |
 |---|---|---|
@@ -140,18 +138,19 @@ El frontend todavía no cubre el MVP. El mayor bloqueo es **acceso y sesión**.
 
 | Función | Estado | Para completarla |
 |---|---|---|
-| Ver conversaciones | 🟡 | Muestra solo las primeras 50: no usa el cursor de la API |
-| Ver mensajes de una conversación | ✅ | Recorre hasta 20 páginas |
-| Actualización automática y manual | ✅ | Cada 15 s |
+| Ver conversaciones | 🟡 | Muestra solo las primeras 50: no usa `nextCursor` de la API |
+| Ver mensajes de una conversación | 🟡 | Recorre hasta 20 páginas de 50 en orden ascendente: con más de 1000 mensajes se pierden los más nuevos sin aviso |
+| Cambiar de conversación | 🟡 | `useChatbot` no limpia `mensajes` ni `errorMensajes` mientras carga la conversación seleccionada |
+| Actualización automática y manual | ✅ | Cada 15 s (relee todas las páginas de la conversación abierta) |
 | Remitente reconocido o no registrado | ✅ | Dirección enmascarada por la API |
 | Estado de envío y de procesamiento | ✅ | Nunca afirma una entrega |
 | Marca de revisión requerida | ✅ | `needsAttention` |
-| Fecha en la conversación abierta | 🟡 | `ChatTranscript` antepone "Hoy" aunque sea de otro día; verificar con datos reales |
+| Fecha en la conversación abierta | 🟡 | `ChatTranscript` antepone "Hoy" aunque `fechaHoraEnZonaIngenio` ya incluya la fecha de otro día |
 | Reintentar tras un error de carga | 🟡 | El error inicial reemplaza toda la vista |
 | Métricas | ❌ | Sin endpoint ni propuesta. Decidir si se quitan o se proponen |
 | Plantillas | ❌ | Sin endpoint ni propuesta. Ídem |
 | Conversación resuelta o escalada | ❌ | La API solo informa `needsAttention` |
-| WhatsApp real de punta a punta | 🟡 | Tarea 9.1 del #97 abierta, con número de prueba consentido |
+| WhatsApp real de punta a punta | ✅ | Tarea 9.1 verificada en `LocalDemo` (PR #97); queda pendiente consolidar deltas en la tarea 9.2 |
 
 ### 1.9 Fuera del MVP, salvo cambio aprobado
 
@@ -169,7 +168,7 @@ El [corte de backlog](mvp-backlog-sync-2026-10-15.md) indica que reportes, mapa 
 |---|---|---|
 | Pruebas unitarias y de vistas | ✅ | 77 pruebas; ampliar con cada función nueva |
 | Proxy de desarrollo | ✅ | Vite, en `dev` y `preview` |
-| Auditoría de dependencias | 🟡 | `npm audit` falla por `undici`: al #97 le falta el #98 de `main` |
+| Auditoría de dependencias | ✅ | `npm audit --audit-level=high` sin vulnerabilidades en `main` |
 | Accesibilidad | 🟡 | Filas y opciones del menú clicables, sin navegación por teclado |
 | Pruebas de navegador de punta a punta | ❌ | No existen |
 | Publicar `dist/` | ❌ | Requiere otro proxy; la clave del dashboard no sirve fuera de la demo |
@@ -222,26 +221,28 @@ El proxy bloquea estas rutas para el navegador. El #97 también cambia `chatbot/
 | Quitar sesión e ingenio fijos | Menú | `Sidebar.tsx` | Dicen "sin datos" |
 | Pruebas | — | `PanelGeneralView.test.tsx`, `TransportistasView.test.tsx`, `SeccionesSinApi.test.tsx` | Cubren lo anterior |
 
-**Orden de integración:** primero el #97; después el #100, cambiando su base a `main`.
+**Estado de integración:** el #97 y el #100 ya fueron integrados en `main` en ese orden.
 
 ## 3. Qué hace falta para avanzar
 
-### 3.1 Antes de seguir
+### 3.1 Cierre inmediato sobre lo integrado
 
-1. **Integrar el #97.** Su [propuesta](https://github.com/agustinvallante/AgroFlow/blob/418dbd3a25aeffbae554522857e85b44d95c8b63/openspec/changes/persistir-conversaciones-whatsapp/proposal.md) sigue "en revisión" y la tarea 0.2, que aprueba las decisiones, está sin completar. Hay que aclarar si ya se aprobó.
-2. **Actualizar el #97 con `main`,** para resolver `npm audit`.
-3. **Acordar en el #100 si se retira el modo mock.** ADR-005 permite conservarlo.
-4. **Registrar el recorrido manual del #100** en el navegador.
+1. **Integración del #97 y el #100:** completada en `main`, con el alcance `LocalDemo` aprobado como resolución parcial en [open-decisions.md](open-decisions.md), [propuesta OpenSpec](../../openspec/changes/persistir-conversaciones-whatsapp/proposal.md) sincronizada, `npm audit` en verde y el retiro del modo mock acordado conforme a [ADR-005](../architecture/decisions/ADR-005-continuidad-react-vite-para-el-mvp.md).
+2. **Pendiente inmediato:** registrar el recorrido manual del #100 en el navegador.
 
 ### 3.2 Lo que solo depende del frontend
 
 | Tarea | Sección |
 |---|---|
+| Limpiar `mensajes` y `errorMensajes` al cambiar de conversación en `useChatbot` | 1.8 |
+| Evitar perder mensajes nuevos al superar las 20 páginas en `HttpConversacionRepository` | 1.8 |
+| Recorrer todas las conversaciones con `nextCursor` | 1.8 |
+| Corregir el prefijo "Hoy" en `ChatTranscript` para fechas de otros días | 1.8 |
+| Pedir confirmación antes de inhabilitar un transportista y validar `dni` vacío en cliente | 1.3 |
 | Formulario para editar transportistas | 1.3 |
 | Elegir la finca en el alta de turno | 1.2 |
-| Recorrer todas las conversaciones con el cursor | 1.8 |
 | Reintentar tras un error en Chatbot y Transportistas | 1.3, 1.8 |
-| Corregir "Hoy" en el chat | 1.8 |
+| Limpiar tipos de dominio exportados que quedaron sin uso tras retirar los mocks | 2.2 |
 | Navegación por teclado | 1.10 |
 
 ### 3.3 Decisiones que bloquean
@@ -251,10 +252,10 @@ El proxy bloquea estas rutas para el navegador. El #97 también cambia `chatbot/
 | Custodia de la sesión web | Acceso y sesión |
 | B00 (rutas, DTO, paginación) | Todo lo que necesita contrato nuevo |
 | OD-007 (roles y permisos) | Sesión, catálogos, interrupciones |
-| OD-002, OD-013 (asociaciones, campos, reactivación) | Transportistas, camiones, fincas |
+| OD-002, OD-013 (asociaciones, campos de camiones/fincas, reactivación) | Transportistas, camiones, fincas |
 | OD-012 (indicadores y cola) | Panel, intervalo de actualización |
-| OD-010 (notificaciones) | Interrupciones, avisos |
-| OD-009, OD-011 (conservación y operación) | Historial del chatbot |
+| OD-010 (notificaciones no conversacionales, fuera de lo resuelto parcialmente en `LocalDemo`) | Interrupciones, avisos proactivos |
+| OD-009, OD-011 (retención definitiva y operación fuera de `LocalDemo`) | Cierre productivo del historial del chatbot |
 
 ### 3.4 Orden sugerido
 
