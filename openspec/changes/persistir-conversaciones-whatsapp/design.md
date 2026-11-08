@@ -1,6 +1,6 @@
 # Diseño: persistencia de conversaciones de WhatsApp
 
-> **Estado: diseño propuesto, no aprobado.** Las secciones marcadas como *recomendación* dependen de decisiones abiertas. Ningún nombre de tabla, campo o ruta de este documento es contrato hasta que la etapa correspondiente se apruebe y se publique en [OpenAPI](../../../docs/contracts/openapi.yaml).
+> **Estado: diseño aprobado e implementado para el alcance `LocalDemo` (PR #97).** Las decisiones aplicadas en esta entrega quedaron registradas como resoluciones parciales en [open-decisions.md](../../../docs/planning/open-decisions.md) y publicadas en [OpenAPI](../../../docs/contracts/openapi.yaml). Los puntos fuera de este alcance continúan pendientes para iteraciones posteriores.
 
 ## 1. Punto de partida verificado
 
@@ -202,9 +202,9 @@ El cursor es opaco (base64url de `PersistedAtUtc` o `LastMessageAtUtc` más `Id`
 
 ## 6. Autenticación y aislamiento por ingenio
 
-### 6.1 n8n como servicio (recomendación pendiente de OD-008)
+### 6.1 n8n como servicio (resolución parcial de OD-008)
 
-- Esquema de autenticación `ServiceKey`: encabezado `X-AgroFlow-Service-Key`, comparación en tiempo constante y clave de al menos 32 bytes desde secretos o variables de entorno (`ChannelIntegration:ServiceKey`), nunca en `appsettings.json` versionado ni en logs.
+- Esquema de autenticación `ServiceKey`: encabezado `X-AgroFlow-Service-Key`, comparación en tiempo constante y clave de al menos 32 bytes desde secretos o variables de entorno (`ChannelIntegration:ServiceKey`), nunca en `appsettings.json` versionado ni en logs. Si la clave no está configurada, el arranque continúa para no romper la demo básica de turnos desde un clon limpio, pero las rutas del canal responden `401`; una clave débil o repetida con el dashboard aborta el arranque.
 - La política `ChannelIngest` exige la credencial de servicio en **ambos** perfiles. No se publica una ruta de ingesta anónima, ni siquiera en `LocalDemo`.
 - El ingenio sale de `ChannelInstance`, nunca del cuerpo. Cualquier `tenantId`/`ingenioId` recibido es una propiedad desconocida ⇒ `400`.
 - En n8n, la clave vive en una credencial Header Auth distinta de la de Evolution.
@@ -212,12 +212,12 @@ El cursor es opaco (base64url de `PersistedAtUtc` o `LastMessageAtUtc` más `Id`
 ### 6.2 Usuarios internos
 
 - **Fuera de `LocalDemo`**: JWT con rol `OPERADOR`/`SUPERVISOR` y claim `ingenioId` mediante `HttpTenantContext`. Depende de B03, porque hoy el login no emite `ingenioId`.
-- **En `LocalDemo`** (recomendación a aprobar): `LocalDemoTenantContext` resuelve el único ingenio sembrado y el actor `local-demo`, igual que hoy la API de turnos opera sin identidad en ese perfil. Lecturas de conversaciones y gestión de transportistas anónimas **solo** en ese perfil, documentadas en OpenAPI como en turnos.
+- **En `LocalDemo`**: `LocalDemoTenantContext` resuelve el único ingenio sembrado y el actor `local-demo`, y las rutas de conversaciones y transportistas exigen `DashboardKey` (`X-AgroFlow-Dashboard-Key`, al menos 32 bytes y distinta de `ServiceKey`), inyectada desde el proxy del servidor de Vite para que nunca sean anónimas ni viaje la clave al navegador.
 - Toda consulta filtra por `IngenioId` en la base. Un ID de otro ingenio devuelve `404`, nunca `403`, para no revelar existencia.
 
-## 7. Decisiones pendientes que bloquean la implementación
+## 7. Decisiones adoptadas para el alcance de PR #97
 
-Ninguna está aprobada. Las recomendaciones son técnicas y requieren aprobación del equipo antes de programar la etapa que bloquean.
+Las opciones siguientes quedaron aprobadas como resoluciones parciales en [open-decisions.md](../../../docs/planning/open-decisions.md) únicamente en lo implementado por PR #97; el resto de cada decisión permanece abierto para iteraciones posteriores.
 
 ### OD-006 — Concurrencia e idempotencia
 
@@ -267,24 +267,24 @@ Ninguna está aprobada. Las recomendaciones son técnicas y requieren aprobació
 - **Justificación**: coincidencia exacta y predecible con `remoteJid` (`549…`) y coherencia con el contrato de turnos.
 - **Impacto en el MVP**: bloquea la etapa 2.
 
-### Decisiones de diseño nuevas (no figuran en el registro)
+### Decisiones de diseño adoptadas en este cambio
 
-| ID provisorio | Pregunta | Recomendación |
+| ID | Pregunta | Resolución aplicada |
 |---|---|---|
-| DD-1 | ¿Gestión de transportistas y lectura de conversaciones anónimas en `LocalDemo`? | Sí, solo en ese perfil y con la misma advertencia que turnos. Fuera de él, JWT (B03). |
+| DD-1 | ¿Gestión de transportistas y lectura de conversaciones anónimas en `LocalDemo`? | No: en `LocalDemo` se exige `DashboardKey` (`X-AgroFlow-Dashboard-Key`) agregada por el proxy servidor del dashboard. Fuera de él, JWT (B03). |
 | DD-2 | ¿Tabla `ChannelInstance` o configuración? | Tabla sembrada desde configuración. |
 | DD-3 | ¿Respuesta automática a remitentes no reconocidos? | Texto fijo por plantilla de n8n, registrado como intención, sin invocar al agente ni herramientas. |
 | DD-4 | Vencimiento de la autorización de procesamiento | 5 minutos (configurable), solo informativo. |
 
-## 8. Cambios propuestos al contrato OpenAPI
+## 8. Cambios publicados en el contrato OpenAPI
 
-No se modifica [openapi.yaml](../../../docs/contracts/openapi.yaml) en la Fase 0. Cada etapa aprobada agregará en el mismo PR:
+Se publicaron en [openapi.yaml](../../../docs/contracts/openapi.yaml):
 
 - tags `Transportistas`, `Canal` y `Conversaciones`;
-- esquema de seguridad `ServiceKey` (`apiKey` en encabezado `X-AgroFlow-Service-Key`) aplicado a las rutas del canal; `security: []` en lecturas y transportistas solo con la descripción del perfil `LocalDemo`;
+- esquemas de seguridad `ServiceKey` (`X-AgroFlow-Service-Key`) para el canal y `DashboardKey` (`X-AgroFlow-Dashboard-Key`) para conversaciones y transportistas en `LocalDemo`;
 - esquemas `DriverInput`, `Driver`, `MutationReceipt`, `ConversationEventInput`, `ConversationEventResult`, `ReplyIntentInput`, `ReplyIntent`, `SendStatusInput`, `ProcessingResultInput`, `ConversationSummary`, `ConversationDetail`, `ConversationMessage`, `Page<T>`;
 - códigos nuevos en `ProblemDetails.code`;
-- aumento de `info.version` a 0.4.0 y actualización de su descripción.
+- actualización de versión y descripción del contrato.
 
 ## 9. Migraciones
 

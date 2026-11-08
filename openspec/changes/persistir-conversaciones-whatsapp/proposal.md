@@ -1,6 +1,6 @@
 # Persistir conversaciones de WhatsApp e identificar transportistas
 
-> **Estado: propuesta en revisión (Fase 0).** Este cambio formaliza la [propuesta de persistencia de conversaciones](../../../docs/planning/propuesta-persistencia-conversaciones-whatsapp.md) para su revisión por el equipo. No aprueba decisiones abiertas, no modifica el [contrato OpenAPI](../../../docs/contracts/openapi.yaml) ni autoriza implementar mientras las decisiones bloqueantes listadas en la sección 7 del [diseño](design.md) no estén aprobadas.
+> **Estado: alcance `LocalDemo` aprobado e implementado (PR #97).** Este cambio formaliza e implementa la [propuesta de persistencia de conversaciones](../../../docs/planning/propuesta-persistencia-conversaciones-whatsapp.md) dentro del alcance acotado registrado como resoluciones parciales en [open-decisions.md](../../../docs/planning/open-decisions.md) (`OD-006`, `OD-008`, `OD-009`, `OD-010`, `OD-011` y `OD-013`) y publicado en el [contrato OpenAPI](../../../docs/contracts/openapi.yaml). Los aspectos productivos fuera de esta entrega permanecen pendientes en dicho registro.
 
 ## Objetivo
 
@@ -58,12 +58,12 @@
 |---|---|
 | Backend | Nuevas entidades, servicio y controladores de conversaciones; habilitación del controlador de transportistas; autenticación de servicio; contexto de ingenio para el perfil de demo. |
 | Persistencia | Migraciones en `AgroFlowDbContext` (SQLite): tablas de auditoría e idempotencia ya modeladas, índice global de WhatsApp, canales, conversaciones, mensajes y procesamiento. |
-| Contrato API | Nuevas rutas de transportistas, ingesta, intenciones de respuesta y consultas. Se proponen en el diseño y se publican en OpenAPI en cada etapa aprobada. |
-| n8n | Nodos de validación, registro, enrutamiento y actualización de estado. Requiere actualizar el validador de integraciones de CI. Etapa posterior. |
-| Frontend | Adaptadores HTTP de conversaciones y transportistas. Etapa posterior. |
+| Contrato API | Nuevas rutas de transportistas, ingesta, intenciones de respuesta y consultas publicadas en OpenAPI. |
+| n8n | Nodos de validación, registro, enrutamiento y actualización de estado, junto con el validador de integraciones de CI. |
+| Frontend | Adaptadores HTTP de conversaciones y transportistas con proxy de clave del dashboard en servidor. |
 | Pruebas | Dominio, persistencia SQLite migrada, HTTP, aislamiento entre dos ingenios, concurrencia de duplicados, frontend y fixtures sintéticos del workflow. |
-| CI | `validate-integrations.mjs` debe admitir las rutas nuevas; las pruebas que hoy afirman la fundación deshabilitada se actualizan deliberadamente. |
+| CI | `validate-integrations.mjs` admite las rutas nuevas y las pruebas verifican la superficie publicada. |
 
 ## Trazabilidad
 
-Epic [#46](https://github.com/agustinvallante/AgroFlow/issues/46), con [#7](https://github.com/agustinvallante/AgroFlow/issues/7) (B00) y [#42](https://github.com/agustinvallante/AgroFlow/issues/42) como referencias. Depende de las decisiones OD-006, OD-008, OD-009, OD-010, OD-011 y OD-013 del [registro de decisiones](../../../docs/planning/open-decisions.md).
+Epic [#46](https://github.com/agustinvallante/AgroFlow/issues/46), con [#7](https://github.com/agustinvallante/AgroFlow/issues/7) (B00) y [#42](https://github.com/agustinvallante/AgroFlow/issues/42) como referencias. Se apoya en las resoluciones parciales de OD-006, OD-008, OD-009, OD-010, OD-011 y OD-013 del [registro de decisiones](../../../docs/planning/open-decisions.md).
