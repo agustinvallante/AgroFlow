@@ -52,9 +52,9 @@ Para solicitar un turno, n8n SHALL resolver la finca nombrada por el transportis
 - **WHEN** el chatbot recibe la respuesta
 - **THEN** informa una falla del sistema y no solicita el alta
 
-### Requirement: Solicitud de turno sin bloqueo por memoria conversacional (CU-002, RN-019)
+### Requirement: Solicitud de turno sin bloqueo por memoria conversacional (CU-002)
 
-Cuando el transportista solicita un nuevo turno, n8n MUST NOT rechazar la operación por estado inferido de mensajes anteriores en la memoria conversacional, dado que el estado del turno puede cambiar fuera del canal (por ejemplo, cancelación o finalización desde el panel operativo). n8n SHALL resolver la finca, confirmar los datos requeridos con el transportista e invocar el alta en el backend para que la API determine la validez según el estado vigente.
+Cuando el transportista solicita un nuevo turno, n8n MUST NOT rechazar la operación por estado inferido de mensajes anteriores en la memoria conversacional, dado que el estado del turno puede cambiar fuera del canal (por ejemplo, cancelación o finalización desde el panel operativo). Conforme a ADR-003, n8n SHALL seguir el flujo normal de solicitud de turno y dejar que la API determine la validez según el estado vigente.
 
 #### Scenario: Nueva solicitud luego de cancelación en el panel
 

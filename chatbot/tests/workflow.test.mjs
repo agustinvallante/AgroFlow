@@ -483,7 +483,15 @@ test('the agent is forbidden from refusing a new appointment request based on ch
 
   assert.match(prompt, /Never assume from earlier conversation messages that a truck still has \(or does not have\) an active appointment/);
   assert.match(prompt, /Never refuse a new appointment request from chat memory/);
-  assert.match(prompt, /call the creation tool so the backend API decides/);
+  assert.match(prompt, /Never refuse a new appointment request from chat memory: follow the normal request flow and let the backend API decide/);
+  assert.doesNotMatch(prompt, /always resolve the farm, read back the four values for confirmation, and call the creation tool/,
+    'the memory rule must not override the confirmation and farm-resolution conditions');
+});
+
+test('the agent treats an unreachable farm lookup as an error that blocks the creation', () => {
+  const prompt = workflow.nodes.find(node => node.name === 'AI Agent1').parameters.options.systemMessage;
+
+  assert.match(prompt, /Error response \(`statusCode` >= 400, `body` with a `code` field, or `\{ error \}` on a transport failure\): apologize, say the farms could not be checked right now, and do not call the creation tool/);
 });
 
 test('the export is importable: valid JSON shape, positions, unique names and resolvable connections', () => {

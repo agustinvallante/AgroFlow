@@ -147,7 +147,7 @@ export function simulate(workflow, { body, env, http, agent }) {
   /**
    * One call of an HTTP tool by the model: `args` stands in for the values the
    * model would give to $fromAI. Like n8n with neverError, any HTTP status comes
-   * back to the model (`{ statusCode, body, headers }` when `fullResponse` is
+   * back to the model (`{ body, headers, statusCode, statusMessage }` when `fullResponse` is
    * enabled, or the JSON body otherwise); without `fullResponse`, an empty JSON
    * array produces zero items in HttpRequestV3 and ToolsAgent V3 serializes the
    * observation as `''`. A transport error comes back as `{ error }`.
@@ -180,7 +180,7 @@ export function simulate(workflow, { body, env, http, agent }) {
         return { error: `HTTP ${result.statusCode}` };
       }
       if (options.fullResponse) {
-        return { statusCode: result.statusCode, body: result.body ?? {}, headers: {} };
+        return { body: result.body ?? {}, headers: {}, statusCode: result.statusCode, statusMessage: '' };
       }
       if (Array.isArray(result.body) && result.body.length === 0) {
         return '';
