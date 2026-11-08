@@ -156,6 +156,12 @@ AgroFlow SHALL permitir a los usuarios internos autorizados del ingenio consulta
 - **WHEN** un usuario autorizado de uno de ellos consulta las conversaciones
 - **THEN** AgroFlow devuelve solo las de su ingenio, de la más reciente a la más antigua
 
+#### Scenario: Revisión según el último mensaje entrante
+
+- **GIVEN** una conversación con un procesamiento fallido o un envío incierto anterior a su último mensaje entrante, sin problemas desde ese mensaje
+- **WHEN** un usuario autorizado consulta las conversaciones
+- **THEN** AgroFlow indica que la conversación no requiere revisión y el mensaje afectado conserva su estado en el historial
+
 #### Scenario: Conversación de otro ingenio
 
 - **GIVEN** el identificador de una conversación de otro ingenio

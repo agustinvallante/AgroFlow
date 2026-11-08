@@ -87,6 +87,70 @@ describe("ChatbotView con AgroFlow API", () => {
     expect(mocks.obtenerMensajes).toHaveBeenCalledWith("c2");
   });
 
+  describe("transcript", () => {
+    const cuerpo = () => document.querySelector(".chat-transcript-body") as HTMLElement;
+    const clicEn = (texto: string) => fireEvent.click(screen.getByText(texto, { selector: ".conv-top span" }));
+
+    beforeEach(() => {
+      vi.useFakeTimers({ toFake: ["Date"] });
+      vi.setSystemTime(new Date("2026-11-06T21:00:00Z"));
+      vi.spyOn(HTMLElement.prototype, "scrollHeight", "get").mockReturnValue(900);
+    });
+
+    afterEach(() => vi.useRealTimers());
+
+    it("nombra el día real del último mensaje en el encabezado", async () => {
+      mocks.obtenerConversaciones.mockResolvedValue([{ ...reconocida, ultimoMensajeUtc: "2026-11-05T15:00:00Z" }]);
+
+      render(<ChatbotView />);
+      await screen.findByText("[SINTÉTICO] Quiero mi turno");
+
+      const encabezado = document.querySelector(".chat-transcript-head span")?.textContent;
+      expect(encabezado).toContain("Ayer · 12:00");
+      expect(encabezado).not.toContain("Hoy");
+    });
+
+    it("separa los mensajes por día", async () => {
+      mocks.obtenerMensajes.mockResolvedValue([
+        { id: "a", autor: "transportista", texto: "uno", hora: "12:00", fechaUtc: "2026-11-05T15:00:00Z" },
+        { id: "b", autor: "bot", texto: "dos", hora: "12:01", fechaUtc: "2026-11-05T15:01:00Z" },
+        { id: "c", autor: "transportista", texto: "tres", hora: "12:00", fechaUtc: "2026-11-06T15:00:00Z" },
+      ]);
+
+      render(<ChatbotView />);
+      await screen.findByText("tres");
+
+      const divisiones = Array.from(document.querySelectorAll(".chat-dia")).map((d) => d.textContent);
+      expect(divisiones).toEqual(["Ayer", "Hoy"]);
+    });
+
+    it("va al último mensaje al abrir y en cada clic, aunque la conversación ya esté abierta", async () => {
+      render(<ChatbotView />);
+      await screen.findByText("[SINTÉTICO] Quiero mi turno");
+      expect(cuerpo().scrollTop).toBe(900);
+
+      cuerpo().scrollTop = 0;
+      clicEn("Transportista Sintético");
+      expect(cuerpo().scrollTop).toBe(900);
+
+      cuerpo().scrollTop = 0;
+      clicEn("Remitente no registrado · +54•••••••0199");
+      await screen.findByText("[SINTÉTICO] No registrado");
+      expect(cuerpo().scrollTop).toBe(900);
+    });
+
+    it("no muestra los mensajes de la conversación anterior mientras carga la nueva", async () => {
+      render(<ChatbotView />);
+      await screen.findByText("[SINTÉTICO] Quiero mi turno");
+      mocks.obtenerMensajes.mockReturnValue(new Promise(() => undefined));
+
+      clicEn("Remitente no registrado · +54•••••••0199");
+
+      expect(screen.queryByText("[SINTÉTICO] Quiero mi turno")).toBeNull();
+      expect(await screen.findByText("Cargando mensajes...")).toBeTruthy();
+    });
+  });
+
   it("muestra el estado vacío cuando todavía no hay conversaciones", async () => {
     mocks.obtenerConversaciones.mockResolvedValue([]);
 
