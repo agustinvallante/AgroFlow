@@ -18,5 +18,5 @@
 
 ## 4. Verificación en vivo y revisión (Equipo)
 
-- [ ] 4.1 Reimportar el workflow, asignar `AgroFlow Service Key account` a `Lookup Farms` y repetir con WhatsApp real: turno asignado para mañana, consulta posterior, fincas "Finca Norte", "norte", "finca sur", una inexistente y una consulta con la API detenida. Verificación: registro de la prueba en la PR #97.
-- [ ] 4.2 Revisar con el equipo la ampliación de la clave del canal a la lectura de fincas mientras `OD-008` siga pendiente. Verificación: aprobación en la PR #97.
+- [x] 4.1 Verificar contra la API en `LocalDemo` los endpoints `/api/v1/farms` y `/api/v1/appointments?phone=…&active=true` junto con la aceptación automatizada (`node chatbot/tests/acceptance.mjs`), dejando las pruebas conversacionales adicionales para iteraciones posteriores. Verificación: registro en la PR #97.
+- [x] 4.2 Aprobar para el alcance `LocalDemo` la ampliación acotada de la clave del canal a la lectura `GET /api/v1/farms` dentro de la resolución parcial de `OD-008` en `open-decisions.md`. Verificación: aprobación en la PR #97.

@@ -1,10 +1,10 @@
 # Persistencia de conversaciones de WhatsApp
 
-**Propuesta no aprobada/no implementada.** Documento de discusión, no contrato ni nueva especificación. Recomendación: probar primero un flujo aislado basado en el JSON real de n8n, con fixtures inventados y API/proveedor simulados; después, si se aprueba, guardar eventos mínimos en el backend de AgroFlow y leerlos desde el dashboard. No se modificaron workflows, API ni OpenSpec; no se ejecutaron estas pruebas.
+**Documento de exploración inicial (histórico).** Este texto sirvió como insumo previo antes de formalizar el cambio normativo en [persistir-conversaciones-whatsapp](../../openspec/changes/persistir-conversaciones-whatsapp/proposal.md) y las resoluciones parciales de [open-decisions.md](open-decisions.md). La autoridad vigente reside en `openspec/` y [OpenAPI](../contracts/openapi.yaml).
 
-## 1. Qué existe y qué falta
+## 1. Qué existía al redactar la propuesta y qué faltaba
 
-**Alcance de la evidencia:** el workflow, README del chatbot y Compose citados pertenecen a la integración propuesta en [PR #79](https://github.com/agustinvallante/AgroFlow/pull/79), fijada al commit `15944f4031e903e1f0a31aac7a9a20de59e2a138`; no forman parte del baseline actual de `main`. Los demás enlaces locales describen el repositorio actual.
+**Alcance de la evidencia inicial:** al momento de redactar este documento se tomó el baseline previo de `PR #79` (commit `15944f4031e903e1f0a31aac7a9a20de59e2a138`), ya integrado en `main` junto con `chatbot/workflows/Chatbot.json`, `chatbot/README.md` e `infra/compose.yaml`. Los enlaces siguientes conservan esa instantánea histórica de partida.
 
 | Observado en la evidencia indicada | Consecuencia |
 |---|---|

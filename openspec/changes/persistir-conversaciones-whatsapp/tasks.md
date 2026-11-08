@@ -5,9 +5,9 @@ Cada etapa es un PR pequeño sobre `feat/whatsapp-persistence` o una rama deriva
 ## 0. Diseño y contratos (Docs)
 
 - [x] 0.1 Crear propuesta, diseño, tareas y deltas de este cambio. Verificación: `openspec validate persistir-conversaciones-whatsapp --strict`.
-- [ ] 0.2 Revisar con el equipo y aprobar o modificar OD-006, OD-008, OD-009, OD-010, OD-011, OD-013 y DD-1 a DD-4. Verificación: estados actualizados y enlazados en `open-decisions.md`.
-- [ ] 0.3 Corregir en la propuesta del compañero la frase que ubica el workflow fuera de `main` (#79 ya integrada). Verificación: enlaces locales válidos.
-- [ ] 0.4 Ajustar este cambio a las decisiones aprobadas. Verificación: OpenSpec estricto en verde.
+- [x] 0.2 Revisar con el equipo y aprobar el alcance implementado en PR #97 para OD-006, OD-008, OD-009, OD-010, OD-011, OD-013 y DD-1 a DD-4 (dejando los aspectos productivos restantes como pendientes posteriores). Verificación: estados actualizados como resoluciones parciales y enlazados en `open-decisions.md`.
+- [x] 0.3 Corregir en la propuesta exploratoria inicial la nota que ubicaba el workflow de PR #79 fuera de `main`. Verificación: enlaces locales válidos.
+- [x] 0.4 Ajustar este cambio a las decisiones adoptadas para el alcance de PR #97 (`DashboardKey` en lugar de lecturas/altas anónimas en `LocalDemo`, `401` ante clave no configurada). Verificación: OpenSpec estricto en verde.
 
 ## 1. Fundación persistente de datos maestros (Backend/Persistencia)
 
@@ -37,7 +37,7 @@ Aceptación: con la API en `LocalDemo`, `POST /api/v1/drivers` registra un núme
 Bloqueantes: OD-008, DD-2.
 
 - [x] 3.1 Entidad `ChannelInstance`, migración `AddChannelInstances` y seed desde `LocalDemo:WhatsAppInstance`. Verificación: pruebas de seed idempotente.
-- [x] 3.2 Esquema `ServiceKey` y política `ChannelIngest` con comparación en tiempo constante y arranque fallido si falta la clave. Verificación: pruebas HTTP de `401` y de arranque. *Desviación a confirmar: una clave ausente deja las rutas en `401` sin abortar, para conservar el arranque de la demo de turnos desde un clon limpio; una clave corta o compartida sí aborta. Se agregó `DashboardKey` para que conversaciones y transportistas tampoco sean anónimos en LocalDemo (reemplaza la recomendación DD-1).*
+- [x] 3.2 Esquema `ServiceKey` y política `ChannelIngest` con comparación en tiempo constante y rechazo de solicitudes sin clave configurada. Verificación: pruebas HTTP de `401` y de arranque. *Resolución adoptada: una clave ausente deja las rutas en `401` sin abortar, para conservar el arranque de la demo de turnos desde un clon limpio; una clave corta o compartida sí aborta. Se agregó `DashboardKey` para que conversaciones y transportistas tampoco sean anónimos en LocalDemo (reemplaza DD-1).*
 
 Aceptación: ninguna ruta del canal responde sin clave válida en ningún perfil; la instancia determina el ingenio.
 
@@ -80,7 +80,7 @@ Bloqueantes: OD-008, OD-010, OD-011, etapas 3 a 5.
 
 Aceptación: una repetición no invoca al agente ni a las herramientas; un remitente no reconocido recibe la plantilla sin herramientas.
 
-*Se agregaron texto extendido (`extendedTextMessage`), filtro de chats 1:1 (teléfono o LID) y la política de no guardar ejecuciones exitosas en n8n. El webhook Evolution → n8n sigue sin autenticación (mitigaciones en `docs/development/local-demo.md`). Verificado con el simulador del JSON exportado y fixtures sintéticos (`chatbot/tests/`), no en n8n en vivo. El acuse se movió después de la ingesta (recomendación de OD-011, pendiente de aprobación).*
+*Se agregaron texto extendido (`extendedTextMessage`), filtro de chats 1:1 (teléfono o LID) y la política de no guardar ejecuciones exitosas en n8n. El webhook Evolution → n8n sigue sin autenticación (mitigaciones en `docs/development/local-demo.md`). El acuse se movió después de la ingesta según la resolución parcial de OD-011.*
 
 ## 8. Dashboard (Frontend)
 
@@ -96,5 +96,5 @@ Aceptación: en modo `http`, las vistas Chatbot y Transportistas muestran datos 
 
 ## 9. Evidencia y cierre
 
-- [ ] 9.1 E2E con un número de prueba consentido, registrado por la API. *Avance: aceptación local automatizada (`node chatbot/tests/acceptance.mjs`) contra la API real, SQLite temporal y el proxy del frontend, con Evolution, WhatsApp y el agente simulados. Falta el recorrido en vivo con n8n y Evolution en Docker y un número consentido.* Verificación: evidencia según la guía de aceptación del MVP, sin capturas de datos reales versionadas.
-- [ ] 9.2 Consolidar los deltas en `openspec/specs/` y archivar el cambio. Verificación: `openspec validate --all --strict` y `--archived`.
+- [x] 9.1 E2E con números de prueba consentidos en `LocalDemo` (Evolution + n8n + API + SQLite, sin datos reales versionados) y aceptación local automatizada (`node chatbot/tests/acceptance.mjs`). Verificación: evidencia registrada en la PR #97.
+- [ ] 9.2 Consolidar los deltas en `openspec/specs/` y archivar el cambio una vez cerrados los ajustes posteriores del dashboard y la tarea 2.4. Verificación: `openspec validate --all --strict` y `--archived`.

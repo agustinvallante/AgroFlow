@@ -1,6 +1,6 @@
 # Ajustar las consultas del chatbot de WhatsApp
 
-> **Estado: implementado en `feat/whatsapp-persistence` (PR #97), pendiente de revisión del equipo.** Corrige dos hallazgos de la prueba real WhatsApp → Evolution API → n8n → backend → SQLite. No resuelve decisiones abiertas del [registro](../../../docs/planning/open-decisions.md).
+> **Estado: alcance `LocalDemo` aprobado e implementado en `feat/whatsapp-persistence` (PR #97).** Corrige dos hallazgos de la prueba real WhatsApp → Evolution API → n8n → backend → SQLite, dentro de las resoluciones parciales de `OD-008` y `OD-013` registradas en [open-decisions.md](../../../docs/planning/open-decisions.md).
 
 ## Objetivo
 
