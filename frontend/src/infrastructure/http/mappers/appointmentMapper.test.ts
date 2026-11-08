@@ -40,9 +40,8 @@ describe("mapAppointment", () => {
   it("no inventa datos que la API no informa", () => {
     const turno = mapAppointment(dto);
     expect(turno.estado).toBe("ingresado");
-    expect(turno.prioridad).toBeNull();
-    expect(turno.flota).toBeNull();
-    expect(turno.canal).toBeNull();
-    expect(turno.esperaMin).toBeNull();
+    for (const campo of ["prioridad", "flota", "canal", "esperaMin"]) {
+      expect(turno).not.toHaveProperty(campo);
+    }
   });
 });

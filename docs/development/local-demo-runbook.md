@@ -148,7 +148,6 @@ Objetivo: registrar un transportista, simular un mensaje de WhatsApp y verlo alm
 
    ```powershell
    $env:AGROFLOW_DASHBOARD_KEY = "<mismo valor que Dashboard__ApiKey>"
-   $env:VITE_DATA_SOURCE = "http"
    npm run dev
    ```
 

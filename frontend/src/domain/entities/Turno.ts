@@ -1,5 +1,4 @@
-export type FlotaTipo = "propia" | "tercero";
-
+/** Espejo de AppointmentStatus de openapi.yaml (ver appointmentMapper). */
 export type EstadoTurno =
   | "pendiente"
   | "viaje"
@@ -7,21 +6,15 @@ export type EstadoTurno =
   | "ingresado"
   | "descargando"
   | "completado"
-  | "demorado"
   | "cancelado";
-
-export type CanalAsignacion = "bot" | "manual";
-
-export type PrioridadCorte = "alta" | "media" | "normal";
 
 /**
  * Entidad de dominio: representa un turno de ingreso al ingenio
  * asignado a un camión/transportista. No conoce nada de la UI
  * ni de cómo se obtienen o persisten los datos.
  *
- * Los campos que admiten `null` son datos que no toda fuente informa
- * (la API local de la demo no devuelve flota, canal, espera ni prioridad).
- * La UI los muestra como "—" en lugar de calcularlos.
+ * Solo contiene lo que informa AgroFlow API. Flota, canal, espera y
+ * prioridad no están en el contrato y por eso no existen acá.
  */
 export interface Turno {
   id: string;
@@ -30,12 +23,8 @@ export interface Turno {
   patente: string;
   chofer: string;
   finca: string;
-  flota: FlotaTipo | null;
   horasDesdeCorte: number;
   estado: EstadoTurno;
-  canal: CanalAsignacion | null;
-  esperaMin: number | null;
-  prioridad: PrioridadCorte | null;
   ventanaFin?: string; // "HH:MM"
   corteEn?: string; // ISO 8601
   cargaTon?: number;
@@ -43,7 +32,7 @@ export interface Turno {
 }
 
 /**
- * Alta manual con los identificadores naturales del seed. La ventana,
+ * Alta manual con los identificadores naturales que ya existen en la API. La ventana,
  * la prioridad y la capacidad las decide la API, no el formulario.
  */
 export interface NuevoTurnoManual {
@@ -60,11 +49,4 @@ export interface FiltrosTurno {
   estado?: EstadoTurno;
   patente?: string;
   telefono?: string;
-}
-
-/** Regla de negocio pura: a partir de cuántas horas de corte se considera prioridad alta/media. */
-export function calcularPrioridadCorte(horasDesdeCorte: number): PrioridadCorte {
-  if (horasDesdeCorte >= 18) return "alta";
-  if (horasDesdeCorte >= 8) return "media";
-  return "normal";
 }

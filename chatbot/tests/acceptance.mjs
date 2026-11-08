@@ -197,7 +197,7 @@ async function main() {
 
   const vite = start(process.execPath, [viteBin, '--port', String(VITE_PORT), '--strictPort', '--host', '127.0.0.1'], {
     cwd: join(root, 'frontend'),
-    env: { ...process.env, VITE_DATA_SOURCE: 'http', VITE_API_URL: API, AGROFLOW_DASHBOARD_KEY: DASHBOARD_KEY },
+    env: { ...process.env, VITE_API_URL: API, AGROFLOW_DASHBOARD_KEY: DASHBOARD_KEY },
   });
   const front = `http://127.0.0.1:${VITE_PORT}`;
   await waitFor(front, vite, 'El frontend');

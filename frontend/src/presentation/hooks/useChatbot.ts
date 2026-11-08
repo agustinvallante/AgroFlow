@@ -1,14 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { container } from "../../composition/container";
-import type {
-  Conversacion,
-  MensajeChat,
-  MetricasChatbot,
-  PasoFlujoBot,
-  PlantillaMensaje,
-} from "../../domain/entities/Conversacion";
+import type { Conversacion, MensajeChat } from "../../domain/entities/Conversacion";
 
-/** Con la API, la lista y la conversación abierta se refrescan solas. */
+/** La lista y la conversación abierta se refrescan solas. */
 const INTERVALO_REFRESCO_MS = 15_000;
 
 const mensajeDeError = (e: unknown, porDefecto: string) => (e instanceof Error && e.message ? e.message : porDefecto);
@@ -19,9 +13,6 @@ export function useChatbot() {
   const [mensajes, setMensajes] = useState<MensajeChat[]>([]);
   const [cargandoMensajes, setCargandoMensajes] = useState(false);
   const [errorMensajes, setErrorMensajes] = useState<string | null>(null);
-  const [metricas, setMetricas] = useState<MetricasChatbot | null>(null);
-  const [flujo, setFlujo] = useState<PasoFlujoBot[]>([]);
-  const [plantillas, setPlantillas] = useState<PlantillaMensaje[]>([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [errorRefresco, setErrorRefresco] = useState<string | null>(null);
@@ -35,18 +26,11 @@ export function useChatbot() {
   useEffect(() => {
     let activo = true;
     setCargando(true);
-    Promise.all([
-      container.conversaciones.obtenerConversaciones.execute(),
-      container.conversaciones.obtenerMetricasChatbot.execute(),
-      container.conversaciones.obtenerFlujoDeAutomatizacion.execute(),
-      container.conversaciones.obtenerPlantillas.execute(),
-    ])
-      .then(([convs, met, fl, plant]) => {
+    container.conversaciones.obtenerConversaciones
+      .execute()
+      .then((convs) => {
         if (!activo) return;
         setConversaciones(convs);
-        setMetricas(met);
-        setFlujo(fl);
-        setPlantillas(plant);
         setConversacionActivaId(convs[0]?.id ?? null);
       })
       .catch((e) => activo && setError(mensajeDeError(e, "No se pudo cargar la información del chatbot.")))
@@ -69,7 +53,6 @@ export function useChatbot() {
   }, []);
 
   useEffect(() => {
-    if (container.fuenteDatos !== "http") return;
     const id = setInterval(recargar, INTERVALO_REFRESCO_MS);
     return () => clearInterval(id);
   }, [recargar]);
@@ -96,11 +79,6 @@ export function useChatbot() {
   const base = conversaciones.find((c) => c.id === conversacionActivaId) ?? null;
   const conversacionActiva = base ? { ...base, mensajes } : null;
 
-  const guardarPlantillas = useCallback(async (nuevas: PlantillaMensaje[]) => {
-    await container.conversaciones.guardarPlantillas.execute(nuevas);
-    setPlantillas(nuevas);
-  }, []);
-
   return {
     conversaciones,
     conversacionActiva,
@@ -108,11 +86,6 @@ export function useChatbot() {
     cargandoMensajes,
     errorMensajes,
     recargar,
-    metricas,
-    flujo,
-    plantillas,
-    setPlantillas,
-    guardarPlantillas,
     cargando,
     error,
     errorRefresco,

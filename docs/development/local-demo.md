@@ -29,7 +29,7 @@ Requisitos: **.NET 8 SDK**, **Node.js 22** (base de CI), Docker con Compose y, p
    npm run dev -- --host 127.0.0.1 --port 5173 --strictPort
    ```
 
-   Abrir `http://localhost:5173`. La cola usa la API si `VITE_DATA_SOURCE=http`; las demás vistas conservan mocks, según el [README del frontend](../../frontend/README.md).
+   Abrir `http://localhost:5173`. Cola, camiones en curso, transportistas y conversaciones usan la API; lo que no tiene endpoint conserva su diseño, sin datos, según el [README del frontend](../../frontend/README.md).
 4. En una tercera terminal, desde la raíz, iniciar la **infraestructura Docker**:
 
    ```bash
@@ -56,7 +56,6 @@ En Windows, copiar las muestras sólo si falta el destino y restringir sus permi
 En `frontend/.env`, configurar:
 
 ```dotenv
-VITE_DATA_SOURCE=http
 VITE_API_URL=http://localhost:5000
 ```
 

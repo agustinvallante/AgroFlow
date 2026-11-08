@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { HttpConversacionRepository } from "./HttpConversacionRepository";
 import { HttpTransportistaRepository } from "./HttpTransportistaRepository";
-import { MockConversacionRepository } from "../../mock/repositories/MockConversacionRepository";
 import { ApiError } from "../ApiClient";
 import { CrearTransportista } from "../../../application/usecases/transportistas/TransportistaUseCases";
 
@@ -44,7 +43,7 @@ describe("repositorios HTTP del dashboard", () => {
   it("lista conversaciones del mismo origen, sin enviar ninguna clave desde el navegador", async () => {
     fetchMock.mockResolvedValueOnce(respuesta(200, { items: [], nextCursor: null }));
 
-    await new HttpConversacionRepository("", new MockConversacionRepository()).obtenerConversaciones();
+    await new HttpConversacionRepository("").obtenerConversaciones();
 
     const [url, init] = fetchMock.mock.calls[0];
     expect(String(url)).toMatch(/\/api\/v1\/conversations\?limit=50$/);
@@ -56,7 +55,7 @@ describe("repositorios HTTP del dashboard", () => {
       .mockResolvedValueOnce(respuesta(200, { items: [mensaje("m1"), mensaje("m2")], nextCursor: "cursor-1" }))
       .mockResolvedValueOnce(respuesta(200, { items: [mensaje("m3")], nextCursor: null }));
 
-    const mensajes = await new HttpConversacionRepository("", new MockConversacionRepository()).obtenerMensajes("c1");
+    const mensajes = await new HttpConversacionRepository("").obtenerMensajes("c1");
 
     expect(mensajes.map((m) => m.id)).toEqual(["m1", "m2", "m3"]);
     expect(String(fetchMock.mock.calls[1][0])).toContain("cursor=cursor-1");
@@ -65,7 +64,7 @@ describe("repositorios HTTP del dashboard", () => {
   it("informa la falta de clave del dashboard con un mensaje accionable", async () => {
     fetchMock.mockResolvedValueOnce(respuesta(401, { code: "UNAUTHENTICATED", title: "No autenticado" }));
 
-    const error = await new HttpConversacionRepository("", new MockConversacionRepository())
+    const error = await new HttpConversacionRepository("")
       .obtenerConversaciones()
       .catch((e: unknown) => e);
 
@@ -83,9 +82,6 @@ describe("repositorios HTTP del dashboard", () => {
       nombre: "Transportista Sintético",
       dni: "20555555555",
       telefono: "+54 9 381 555-0155",
-      patente: "",
-      finca: "",
-      flota: "propia",
     });
 
     const [url, init] = fetchMock.mock.calls[0];
@@ -101,7 +97,7 @@ describe("repositorios HTTP del dashboard", () => {
     fetchMock.mockResolvedValueOnce(respuesta(409, { code: "DUPLICATE_WHATSAPP", title: "x" }));
 
     const error = await new HttpTransportistaRepository("")
-      .crear({ nombre: "T", dni: "1", telefono: "+5493815550155", patente: "", finca: "", flota: "propia" })
+      .crear({ nombre: "T", dni: "1", telefono: "+5493815550155" })
       .catch((e: unknown) => e);
 
     expect((error as ApiError).message).toBe("Ya existe un transportista con ese WhatsApp.");

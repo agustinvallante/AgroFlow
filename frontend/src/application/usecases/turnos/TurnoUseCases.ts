@@ -46,17 +46,6 @@ export class CrearTurnoManual {
   }
 }
 
-export class ReasignarHorarioTurno {
-  private readonly repo: TurnoRepository;
-
-  constructor(repo: TurnoRepository) {
-    this.repo = repo;
-  }
-  execute(id: string, nuevaHora: string): Promise<Turno> {
-    return this.repo.reasignarHorario(id, nuevaHora);
-  }
-}
-
 export class CancelarTurno {
   private readonly repo: TurnoRepository;
 
