@@ -147,8 +147,10 @@ export function simulate(workflow, { body, env, http, agent }) {
   /**
    * One call of an HTTP tool by the model: `args` stands in for the values the
    * model would give to $fromAI. Like n8n with neverError, any HTTP status comes
-   * back to the model as the response body; a transport error comes back as
-   * `{ error }`. Neither reaches the main path.
+   * back to the model (`{ statusCode, body, headers }` when `fullResponse` is
+   * enabled, or the JSON body otherwise); without `fullResponse`, an empty JSON
+   * array produces zero items in HttpRequestV3 and ToolsAgent V3 serializes the
+   * observation as `''`. A transport error comes back as `{ error }`.
    */
   const runTool = async (node, current, args) => {
     if (node.type !== 'n8n-nodes-base.httpRequestTool') throw new SimulationError(`Unsupported tool type ${node.type}`);
@@ -171,10 +173,17 @@ export function simulate(workflow, { body, env, http, agent }) {
       body: parameters.sendBody ? JSON.parse(evaluate(parameters.jsonBody, current, fromAI)) : undefined,
     };
     requests.push(request);
+    const options = parameters.options?.response?.response ?? {};
     try {
       const result = await http(request);
-      if (result.statusCode >= 400 && !parameters.options?.response?.response?.neverError) {
+      if (result.statusCode >= 400 && !options.neverError) {
         return { error: `HTTP ${result.statusCode}` };
+      }
+      if (options.fullResponse) {
+        return { statusCode: result.statusCode, body: result.body ?? {}, headers: {} };
+      }
+      if (Array.isArray(result.body) && result.body.length === 0) {
+        return '';
       }
       return result.body ?? {};
     } catch (error) {
