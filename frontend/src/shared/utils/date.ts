@@ -1,9 +1,3 @@
-export function horaConOffset(offsetMin: number): string {
-  const d = new Date();
-  d.setMinutes(d.getMinutes() + offsetMin);
-  return d.toTimeString().slice(0, 5);
-}
-
 export function horaActual(): string {
   return new Date().toTimeString().slice(0, 8);
 }
@@ -14,10 +8,6 @@ export function fechaLarga(): string {
     day: "numeric",
     month: "long",
   });
-}
-
-export function generarId(prefijo: string): string {
-  return `${prefijo}-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
 }
 
 /*
@@ -70,4 +60,48 @@ export function datetimeLocalARfc3339(valor: string): string {
   const abs = Math.abs(minutos);
   const desplazamiento = `${signo}${String(Math.floor(abs / 60)).padStart(2, "0")}:${String(abs % 60).padStart(2, "0")}`;
   return `${conSegundos}${desplazamiento}`;
+}
+
+/** Zona del ingenio sembrado en la demo local. */
+export const ZONA_INGENIO = "America/Argentina/Tucuman";
+
+const FORMATO_HORA_INGENIO = new Intl.DateTimeFormat("es-AR", {
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+  timeZone: ZONA_INGENIO,
+});
+
+/**
+ * Las fechas del canal de WhatsApp llegan en UTC ("…Z"); se muestran en la
+ * hora del ingenio, no en la del navegador: "2026-01-01T15:00:00Z" → "12:00".
+ */
+export function horaEnZonaIngenio(valorUtc: string | undefined | null): string {
+  if (!valorUtc) return "—";
+  const fecha = new Date(valorUtc);
+  return Number.isNaN(fecha.getTime()) ? "—" : FORMATO_HORA_INGENIO.format(fecha);
+}
+
+const FORMATO_DIA_INGENIO = new Intl.DateTimeFormat("es-AR", {
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+  timeZone: ZONA_INGENIO,
+});
+
+/**
+ * Hora del ingenio, con el día cuando no es hoy (en la zona del ingenio) para
+ * que un mensaje de otro día no parezca de hoy: hoy → "12:00", otro día →
+ * "30/10 12:00".
+ */
+export function fechaHoraEnZonaIngenio(
+  valorUtc: string | undefined | null,
+  ahora: Date = new Date(),
+): string {
+  const hora = horaEnZonaIngenio(valorUtc);
+  if (hora === "—") return hora;
+  const fecha = new Date(valorUtc as string);
+  const dia = FORMATO_DIA_INGENIO.format(fecha);
+  if (dia === FORMATO_DIA_INGENIO.format(ahora)) return hora;
+  return `${dia.slice(0, 5)} ${hora}`;
 }

@@ -28,6 +28,18 @@ services:
       # Workflow expressions read the integration settings below through $env.
       # n8n 2.x blocks $env by default; the demo instance has a single trusted author.
       N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
+      # Minimización de datos personales en el historial de ejecuciones: los
+      # mensajes, teléfonos y respuestas de una ejecución exitosa no se guardan
+      # (el historial autoritativo vive en AgroFlow API); las fallidas se
+      # conservan para diagnóstico y se depuran a las 24 h (máximo 50).
+      EXECUTIONS_DATA_SAVE_ON_SUCCESS: none
+      EXECUTIONS_DATA_SAVE_ON_ERROR: all
+      EXECUTIONS_DATA_SAVE_ON_PROGRESS: "false"
+      EXECUTIONS_DATA_SAVE_MANUAL_EXECUTIONS: "false"
+      EXECUTIONS_DATA_PRUNE: "true"
+      EXECUTIONS_DATA_MAX_AGE: "24"
+      EXECUTIONS_DATA_PRUNE_MAX_COUNT: "50"
+      N8N_DIAGNOSTICS_ENABLED: "false"
       AGROFLOW_API_URL: ${AGROFLOW_API_URL}
       EVOLUTION_INTERNAL_URL: http://evolution:8080
       EVOLUTION_INSTANCE: ${EVOLUTION_INSTANCE}

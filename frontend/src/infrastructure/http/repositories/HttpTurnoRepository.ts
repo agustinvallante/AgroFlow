@@ -1,5 +1,4 @@
 import type { EstadoTurno, FiltrosTurno, NuevoTurnoManual, Turno } from "../../../domain/entities/Turno";
-import type { FrancoTimeline, MetricasPanel } from "../../../domain/entities/MetricasPanel";
 import type { TurnoRepository } from "../../../domain/repositories/TurnoRepository";
 import { ApiClient } from "../ApiClient";
 import type {
@@ -20,7 +19,7 @@ const BASE = "/api/v1/appointments";
 
 /**
  * Implementa TurnoRepository contra AgroFlow API (docs/contracts/openapi.yaml).
- * Casos de uso, hooks y vistas no saben si hablan con esto o con el mock.
+ * Es la única fuente de turnos del dashboard.
  */
 export class HttpTurnoRepository implements TurnoRepository {
   private readonly api: ApiClient;
@@ -68,24 +67,6 @@ export class HttpTurnoRepository implements TurnoRepository {
 
   async cancelarTurno(id: string): Promise<Turno> {
     return this.transicionar(id, "CANCELADO");
-  }
-
-  async reasignarHorario(): Promise<Turno> {
-    throw new Error("La reasignación de horario no forma parte de la demo local.");
-  }
-
-  // Métricas, timeline y molienda no existen en la API de la demo. El
-  // container conecta el panel a datos mock identificados como tales.
-  async obtenerMetricasPanel(): Promise<MetricasPanel> {
-    throw new Error("La API local no expone métricas del panel.");
-  }
-
-  async obtenerTimelineDelDia(): Promise<FrancoTimeline[]> {
-    throw new Error("La API local no expone el timeline del día.");
-  }
-
-  async alternarEstadoMolienda(): Promise<MetricasPanel> {
-    throw new Error("La API local no expone el estado de la molienda.");
   }
 
   /**

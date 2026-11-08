@@ -73,14 +73,16 @@ public sealed class MasterDataTests
     }
 
     [Fact]
-    public void SQLite_model_preserves_appointment_catalog_invariants_without_preparatory_tables()
+    public void SQLite_model_preserves_catalog_invariants_with_system_wide_driver_identifiers()
     {
         using var context = new AgroFlowDbContext(new DbContextOptionsBuilder<AgroFlowDbContext>().UseSqlite("Data Source=:memory:").Options);
         var model = context.Model;
         var transportista = Entity(model, typeof(Transportista), "Transportistas");
         Assert.NotNull(transportista.FindProperty(nameof(Transportista.NormalizedDni)));
         Assert.NotNull(transportista.FindProperty(nameof(Transportista.NormalizedWhatsApp)));
-        AssertUnique(transportista, nameof(Transportista.IngenioId), nameof(Transportista.NormalizedWhatsApp));
+        // Un número identifica a un único transportista en todo el sistema.
+        AssertUnique(transportista, nameof(Transportista.NormalizedWhatsApp));
+        AssertUnique(transportista, nameof(Transportista.NormalizedDni));
 
         var camion = Entity(model, typeof(Camion), "Camiones");
         AssertUnique(camion, nameof(Camion.IngenioId), nameof(Camion.NormalizedPlate));
@@ -93,8 +95,10 @@ public sealed class MasterDataTests
         var activeTruck = AssertUnique(association, nameof(TransportistaCamion.CamionId));
         Assert.Equal("IsActive = 1", activeTruck.GetFilter());
         Assert.Empty(association.GetForeignKeys());
-        Assert.Null(model.FindEntityType(typeof(AuditEvent)));
-        Assert.Null(model.FindEntityType(typeof(IdempotencyRecord)));
+        Entity(model, typeof(AuditEvent), "AuditEvents");
+        var idempotency = Entity(model, typeof(IdempotencyRecord), "IdempotencyRecords");
+        AssertUnique(idempotency, nameof(IdempotencyRecord.Scope), nameof(IdempotencyRecord.ActorIdentity),
+            nameof(IdempotencyRecord.Operation), nameof(IdempotencyRecord.Key));
     }
 
     private static Microsoft.EntityFrameworkCore.Metadata.IEntityType Entity(Microsoft.EntityFrameworkCore.Metadata.IModel model, Type type, string table)
