@@ -12,6 +12,12 @@ Cuando el transportista consulta sus turnos, n8n SHALL listar con el `phone` del
 - **WHEN** pregunta por sus turnos
 - **THEN** el chatbot comunica ese turno con el estado y la ventana devueltos por la API
 
+#### Scenario: Sin turnos activos tras cancelación o finalización
+
+- **GIVEN** un transportista reconocido cuyo único turno fue cancelado o finalizado desde el panel operativo
+- **WHEN** pregunta por sus turnos y la API devuelve una colección vacía
+- **THEN** la herramienta conserva la colección vacía sin degradarla a error y el chatbot informa que no posee turnos activos
+
 #### Scenario: Error de la consulta
 
 - **GIVEN** que la API responde un error al listar turnos
@@ -45,3 +51,13 @@ Para solicitar un turno, n8n SHALL resolver la finca nombrada por el transportis
 - **GIVEN** que la consulta de fincas responde un error
 - **WHEN** el chatbot recibe la respuesta
 - **THEN** informa una falla del sistema y no solicita el alta
+
+### Requirement: Solicitud de turno sin bloqueo por memoria conversacional (CU-002)
+
+Cuando el transportista solicita un nuevo turno, n8n MUST NOT rechazar la operación por estado inferido de mensajes anteriores en la memoria conversacional, dado que el estado del turno puede cambiar fuera del canal (por ejemplo, cancelación o finalización desde el panel operativo). Conforme a ADR-003, n8n SHALL seguir el flujo normal de solicitud de turno y dejar que la API determine la validez según el estado vigente.
+
+#### Scenario: Nueva solicitud luego de cancelación en el panel
+
+- **GIVEN** una conversación previa donde un camión tenía un turno activo que luego fue cancelado desde el panel operativo
+- **WHEN** el transportista vuelve a solicitar un turno para esa patente y confirma los cuatro datos requeridos
+- **THEN** n8n invoca el alta en la API sin rechazar por memoria conversacional y comunica el resultado persistido por el backend
