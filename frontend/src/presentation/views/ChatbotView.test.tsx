@@ -139,6 +139,21 @@ describe("ChatbotView con AgroFlow API", () => {
       expect(cuerpo().scrollTop).toBe(900);
     });
 
+    it("no mueve la vista cuando un refresco trae mensajes nuevos", async () => {
+      render(<ChatbotView />);
+      await screen.findByText("[SINTÉTICO] Quiero mi turno");
+      cuerpo().scrollTop = 120;
+      mocks.obtenerMensajes.mockResolvedValue([
+        ...mensajes.c1,
+        { id: "m9", autor: "transportista", texto: "[SINTÉTICO] Mensaje nuevo", hora: "12:05" },
+      ]);
+
+      fireEvent.click(screen.getByRole("button", { name: "Actualizar" }));
+
+      expect(await screen.findByText("[SINTÉTICO] Mensaje nuevo")).toBeTruthy();
+      expect(cuerpo().scrollTop).toBe(120);
+    });
+
     it("no muestra los mensajes de la conversación anterior mientras carga la nueva", async () => {
       render(<ChatbotView />);
       await screen.findByText("[SINTÉTICO] Quiero mi turno");
