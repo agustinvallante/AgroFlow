@@ -19,6 +19,13 @@ Este directorio es la entrada humana a la documentación. Los requisitos normati
 
 Las políticas de prioridad, ventanas, asociaciones, alcance de catálogos y cola visual aprobadas para el MVP están resumidas en [ADR-004](architecture/decisions/ADR-004-politicas-operativas-del-mvp.md). La continuidad de React/Vite está aceptada en [ADR-005](architecture/decisions/ADR-005-continuidad-react-vite-para-el-mvp.md) y SQLite como motor del MVP en [ADR-006](architecture/decisions/ADR-006-sqlite-para-persistencia-del-mvp.md). Los detalles no aprobados permanecen identificados en [decisiones abiertas](planning/open-decisions.md).
 
+## Avance académico en curso
+
+- [ERS IEEE 830](product/ers/ieee830-ers.md): borrador incompleto para la issue #102; no es normativo ni define criterios de aceptación del MVP.
+- [Generación del PDF de la ERS](development/generating-ers-pdf.md): guía para producir el artefacto del borrador.
+
+La ERS sigue subordinada a las especificaciones vigentes de OpenSpec; estos documentos no reemplazan ni amplían la aceptación del MVP.
+
 ## Contenido
 
 - `product/`: problema, alcance, actores, casos de uso y trazabilidad con las fuentes académicas.

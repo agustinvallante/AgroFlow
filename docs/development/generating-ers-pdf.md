@@ -6,22 +6,22 @@ Esta guía describe el generador aislado de `docs/tools/ers-pdf/`. Produce un PD
 
 ## Ruta verificada y entorno local
 
-La ruta de verificación prevista para este avance es el workflow de GitHub Actions **ERS PDF**, sobre Ubuntu 24.04 y Node.js 22. El workflow todavía debe ejecutarse sobre el candidato; hasta observar una ejecución exitosa y descargar su artefacto, no se afirma que CI haya generado un PDF.
+El primer candidato del avance se verificó en GitHub Actions, workflow **ERS PDF**, [ejecución 42439865843](https://github.com/agustinvallante/AgroFlow/actions/runs/42439865843), para el commit `4a4a758fbd0f2bce3a64d5a54735759235388725`. En Ubuntu 24.04.5, Node.js 22.23.4 y npm 10.9.9, CI aprobó 8 pruebas (0 fallidas, 0 omitidas) y la auditoría informó 0 vulnerabilidades. Se generó un PDF A4 de 3 páginas (35.751 bytes), con aviso de borrador y pies numerados; las tres páginas se revisaron visualmente.
 
-Versiones fijadas por el paquete: `markdown-it` 14.3.3 y Playwright 1.58.2. El setup de Playwright descargó Chromium 145.0.7632.6 (Chromium revision v1208). En el entorno local se observó Node.js 24.19.0 y npm 11.17.0; el workflow usa Node.js 22.
+Versiones fijadas: `markdown-it` 14.3.3 y Playwright 1.58.2; Chromium 145.0.7632.6. Esta evidencia corresponde a ese candidato, no garantiza contenido futuro. Tras cambios al Markdown, ejecutá nuevamente el workflow para verificar el nuevo commit.
 
-Descargar Chromium con Playwright **no instala por sí solo las bibliotecas Linux que el navegador necesita para ejecutarse**. En Ubuntu 24.04 se identificaron como faltantes `libnspr4.so`, `libnss3.so`, `libnssutil3.so`, `libsmime3.so` y `libasound.so.2` (asociada al paquete `libasound2t64`). Por eso, en este entorno WSL local no se puede iniciar Chromium actualmente. Esta guía no pide ni ejecuta cambios del sistema: para usar Chromium localmente, una persona administradora debe preparar previamente esas dependencias para su distribución. Pandoc y TeX no son necesarios.
+En el entorno WSL usado para este avance, Chromium no pudo iniciarse por bibliotecas Linux faltantes. El script `setup:browser` solo descarga el navegador: no instala esas dependencias del sistema. No se ejecutaron instalaciones con `apt` o `sudo` en ese entorno; las dependencias se preparan automáticamente solo en el runner temporal de CI. Pandoc y TeX no son necesarios.
 
 ## Preparación local
 
 Desde la raíz del repositorio, instalá las dependencias aisladas y descargá el navegador:
 
 ```bash
-npm --prefix docs/tools/ers-pdf install
+npm --prefix docs/tools/ers-pdf ci
 npm --prefix docs/tools/ers-pdf run setup:browser
 ```
 
-La descarga usa el caché estándar de Playwright del usuario. Estos comandos preparan el paquete y los binarios del navegador, pero no reemplazan las dependencias Linux del runtime indicadas arriba.
+`ci` usa el lockfile para una instalación reproducible. La descarga usa el caché estándar de Playwright del usuario, pero no reemplaza las dependencias Linux del runtime indicadas arriba.
 
 ## Generación
 
@@ -48,14 +48,14 @@ La entrada debe existir y la salida debe terminar en `.pdf`; si ya existe, el ge
 3. En la sección **Artifacts** de esa ejecución, descargá `ers-tfi-parte2-<sha>`.
 4. Verificá el PDF descargado: sigue identificado como borrador incompleto y no debe presentarse como ERS aceptada.
 
-El artefacto de CI se conserva durante 14 días. La ejecución del workflow y la generación real del artefacto deben observarse antes de afirmar que este camino está verificado.
+El artefacto de CI se conserva durante 14 días. El primer candidato verificado generó el PDF real; para cualquier commit posterior, observá una nueva ejecución exitosa y su artefacto antes de afirmar que ese contenido está verificado.
 
 ## Contenido admitido y límites
 
 - Markdown se transforma a HTML con HTML embebido desactivado; el contenido HTML se muestra como texto y no se ejecuta.
-- La hoja de impresión configura papel A4, tablas y listas; el PDF incluye aviso de borrador y numeración de páginas.
-- Se rechaza la sintaxis de imágenes Markdown, incluidas las imágenes locales y remotas. El generador bloquea todas las solicitudes de red durante la impresión y no descarga fuentes ni imágenes.
-- Los bloques Mermaid, si se agregan, se imprimen como código y **no** como diagramas renderizados. No hay conversión automática de diagramas.
+- La hoja de impresión configura papel A4, tablas y listas. En el candidato verificado, el aviso de borrador apareció en la primera página y los pies numeraron las tres páginas. La maquetación de tablas no se ejercitó en ese esqueleto.
+- Se rechaza la sintaxis de imágenes Markdown, incluidas las imágenes locales y remotas. El generador bloquea las solicitudes de red durante la impresión y no descarga fuentes ni imágenes.
+- Los bloques Mermaid se imprimen como código, no como diagramas renderizados; no hay conversión automática. Estas son limitaciones del generador, no requisitos de contenido de la ERS.
 
 ## Pruebas
 

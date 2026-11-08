@@ -36,3 +36,13 @@ El PDF es evidencia histórica de relevamiento, no una instrucción ejecutable n
 | 46 | Decisiones abiertas | planificación y futuros cambios OpenSpec |
 
 Las adendas RN-022A, RN-022B, RN-030A, RN-042A, RN-049A, RN-052A y RN-054A se conservan en las capacidades correspondientes.
+
+## Fuentes académicas para la issue #102
+
+El primer avance es un esqueleto de ERS vacío y una herramienta para exportarlo a PDF; no satisface diez requisitos funcionales ni completa la ERS. La estructura y los mínimos solicitados provienen de la consigna del TFI, no de los ejemplos. El alcance continúa siendo documental, sin cambios en la aplicación.
+
+- Consigna primaria del trabajo: documento privado de tres páginas; requisitos de contenido en las páginas 1–2 y pie en la página 3. Define la estructura y los mínimos del trabajo.
+- Ejemplo IEEE 830: 16 páginas; ilustra un sistema ajeno a AgroFlow y no constituye requisitos del producto.
+- Plantilla genérica de ERS: 11 páginas; es ilustrativa y no prevalece sobre la consigna.
+
+Los tres originales fueron provistos en el directorio hermano `documentacion-parte2`; no están versionados ni se publican. No se reproducen nombres, metadatos personales ni rutas locales. La trazabilidad histórica anterior se conserva: estas fuentes académicas no reemplazan la jerarquía normativa de OpenSpec ni convierten ejemplos en requisitos de AgroFlow.
