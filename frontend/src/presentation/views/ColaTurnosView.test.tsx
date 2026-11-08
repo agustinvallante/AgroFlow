@@ -9,7 +9,6 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("../../composition/container", () => ({
   container: {
-    fuenteDatos: "http",
     apiUrl: "http://localhost:5000",
     turnos: {
       obtenerTurnosDelDia: { execute: mocks.obtenerTurnos },
@@ -17,7 +16,6 @@ vi.mock("../../composition/container", () => ({
       crearTurnoManual: { execute: vi.fn() },
       cambiarEstadoTurno: { execute: mocks.cambiarEstado },
       cancelarTurno: { execute: vi.fn() },
-      reasignarHorarioTurno: { execute: vi.fn() },
     },
   },
 }));
@@ -32,12 +30,8 @@ const turno: Turno = {
   patente: "AF123BC",
   chofer: "Juan Pérez",
   finca: "Finca Norte",
-  flota: null,
   horasDesdeCorte: 3,
   estado: "pendiente",
-  canal: null,
-  esperaMin: null,
-  prioridad: null,
   cargaTon: 28.5,
 };
 

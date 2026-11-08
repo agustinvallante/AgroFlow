@@ -1,6 +1,7 @@
 using System.Net;
 using AgroFlow.Api.Authorization;
 using AgroFlow.Api.Controllers;
+using AgroFlow.Api.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Mvc;
@@ -16,6 +17,9 @@ public sealed class MasterDataHttpTests
 {
     private const string DriverId = "aaaaaaaa-0000-4000-8000-000000000001";
 
+    // Las rutas de transportistas se publican sólo en LocalDemo, detrás de la
+    // clave del dashboard (ver ConversationsHttpTests); fuera de ese perfil,
+    // como aquí, tampoco existen.
     [Theory]
     [InlineData("GET", "/api/v1/drivers")]
     [InlineData("GET", "/api/v1/drivers/aaaaaaaa-0000-4000-8000-000000000001")]
@@ -23,6 +27,8 @@ public sealed class MasterDataHttpTests
     [InlineData("PUT", "/api/v1/drivers/aaaaaaaa-0000-4000-8000-000000000001")]
     [InlineData("POST", "/api/v1/drivers/aaaaaaaa-0000-4000-8000-000000000001/inactivation")]
     [InlineData("POST", "/api/v1/drivers/aaaaaaaa-0000-4000-8000-000000000001/reactivation")]
+    [InlineData("POST", "/api/v1/conversation-events")]
+    [InlineData("GET", "/api/v1/conversations")]
     [InlineData("GET", "/api/v1/trucks")]
     [InlineData("GET", "/api/v1/farms")]
     [InlineData("GET", "/api/v1/driver-truck-associations")]
@@ -67,7 +73,9 @@ public sealed class MasterDataHttpTests
     private static TestServer CreateTestServer()
     {
         var builder = new WebHostBuilder()
-            .ConfigureServices(services => services.AddControllers().AddApplicationPart(typeof(MasterDataController).Assembly))
+            .ConfigureServices(services => services
+                .AddControllers(options => options.Conventions.Add(new LocalDemoAppointmentsConvention(isLocalDemo: false)))
+                .AddApplicationPart(typeof(MasterDataController).Assembly))
             .Configure(app =>
             {
                 app.UseRouting();

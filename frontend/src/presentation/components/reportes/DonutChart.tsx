@@ -3,9 +3,9 @@ import type { DistribucionFlota } from "../../../domain/entities/Reporte";
 export function DonutChart({
   distribucion,
 }: {
-  distribucion: DistribucionFlota;
+  distribucion: DistribucionFlota | null;
 }) {
-  const pct = distribucion.porcentajePropia;
+  const pct = distribucion?.porcentajePropia ?? 0;
   return (
     <div className="donut-card">
       <div
@@ -18,11 +18,13 @@ export function DonutChart({
         <div
           className="donut"
           style={{
-            background: `conic-gradient(var(--azucar) 0% ${pct}%, var(--cana-700) ${pct}% 100%)`,
+            background: distribucion
+              ? `conic-gradient(var(--azucar) 0% ${pct}%, var(--cana-700) ${pct}% 100%)`
+              : "var(--linea)",
           }}
         />
         <div className="donut-center">
-          <span className="big">{pct}%</span>
+          <span className="big">{distribucion ? `${pct}%` : "—"}</span>
           <span className="small">propia</span>
         </div>
       </div>

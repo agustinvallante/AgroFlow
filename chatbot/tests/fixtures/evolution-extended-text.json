@@ -1,0 +1,23 @@
+{
+  "event": "messages.upsert",
+  "instance": "agroflow-demo",
+  "data": {
+    "key": {
+      "remoteJid": "5493815550101@s.whatsapp.net",
+      "fromMe": false,
+      "id": "FIXTURE-IN-0008"
+    },
+    "pushName": "[SINTÉTICO] Remitente",
+    "message": {
+      "extendedTextMessage": {
+        "text": "  [SINTÉTICO] Respondo a tu mensaje anterior  ",
+        "contextInfo": {
+          "stanzaId": "FIXTURE-OUT-0001"
+        }
+      }
+    },
+    "messageType": "extendedTextMessage",
+    "messageTimestamp": 1767268800
+  },
+  "date_time": "2026-01-01T12:00:00.000Z"
+}

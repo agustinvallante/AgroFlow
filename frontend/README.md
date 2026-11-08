@@ -9,16 +9,20 @@ Next.js y sus librerías asociadas no son decisiones vigentes; véanse los
 
 ## Estado y alcance actual
 
-La cola de turnos puede consumir la API de la demo local (`VITE_DATA_SOURCE=http`)
-o repositorios en memoria (`VITE_DATA_SOURCE=mock`). En modo HTTP, alta, listado,
-filtros, detalle, transiciones y cancelación usan las rutas de appointments
-publicadas en [`docs/contracts/openapi.yaml`](../docs/contracts/openapi.yaml).
-Esto acredita únicamente esa integración de demo, no todos los recorridos del MVP.
+El dashboard muestra **únicamente datos de la API**; no hay repositorios mock ni
+datos de ejemplo. Esto acredita únicamente la integración de demo, no todos los
+recorridos del MVP.
 
-Panel general, chatbot, transportistas, reportes y configuración todavía usan
-mocks y deben identificarse como datos de demostración. No hay requisito de
-conectar todas las pantallas ahora. El mock no es estado operativo ni evidencia
-de aceptación MVP. El backend sigue siendo autoridad sobre reglas y estado.
+| Sección | Fuente |
+|---|---|
+| Cola de turnos | `/api/v1/appointments` ([`openapi.yaml`](../docs/contracts/openapi.yaml)): alta, listado, filtros, detalle, transiciones y cancelación. |
+| Transportistas | `/api/v1/drivers`: lista, registra (WhatsApp E.164) e inhabilita. |
+| Chatbot WhatsApp | `/api/v1/conversations`: conversaciones y mensajes persistidos, con remitente y estado de envío informados por la API; se refresca cada 15 s. Métricas y plantillas no tienen endpoint: conservan su lugar, sin datos ni acciones. |
+| Panel general | Camiones en curso de la API. Indicadores, franjas, feed del chatbot, molienda y avisos no tienen endpoint: conservan su lugar, sin datos ni acciones. |
+| Reportes y configuración | Conservan su diseño, sin datos y con las acciones deshabilitadas. |
+
+No hay requisito de conectar todas las pantallas ahora. El backend sigue siendo
+autoridad sobre reglas y estado.
 
 Antes de ampliar un flujo, consultar las
 [especificaciones vigentes](../openspec/specs/), los
@@ -40,17 +44,37 @@ npm run typecheck # verificación de tipos
 npm run lint      # oxlint
 ```
 
-Copiar `.env.example` como `.env`, elegir `VITE_DATA_SOURCE=http` o `mock` y
-configurar `VITE_API_URL`; reiniciar Vite después de cambiarlo. Vite reenvía
+Copiar `.env.example` como `.env` y configurar `VITE_API_URL`; reiniciar Vite
+después de cambiarlo. El dashboard necesita la API en ejecución. Vite reenvía
 `/api/...` a la URL configurada durante `dev` y `preview`; servir `dist/` desde
 otro servidor requiere su propio proxy.
+
+### Clave del dashboard (intermediario local)
+
+Conversaciones y transportistas exigen `X-AgroFlow-Dashboard-Key`. El navegador
+nunca la conoce: [`server/dashboardProxy.ts`](server/dashboardProxy.ts) la
+agrega en el proxy de Vite, del lado de Node, leyendo `AGROFLOW_DASHBOARD_KEY`
+(sin prefijo `VITE_`) del entorno o de `.env.local`. Además:
+
+- sólo la agrega a `/api/v1/conversations` y `/api/v1/drivers`, y descarta
+  cualquier encabezado `X-AgroFlow-*` que envíe el navegador;
+- exige cliente de loopback, `Host` local y mismo origen (contra DNS
+  rebinding y pedidos de otros sitios); en caso contrario responde `404`;
+- bloquea las rutas de n8n (`/api/v1/conversation-events`,
+  `/api/v1/conversation-reply-intents`).
+
+Limitaciones: cualquier proceso local que pueda hablar con el servidor de Vite
+actúa como el dashboard; no hay usuarios ni roles. Es una medida de demo en
+loopback que B03 reemplaza por JWT con ingenio. Servir `dist/` sin este proxy
+deja esas vistas sin acceso (`401`), nunca sin autenticación.
 
 ## Organización actual
 
 El código existente está organizado en `domain/`, `application/`,
 `infrastructure/`, `composition/`, `presentation/` y `shared/`. En HTTP, el
-`HttpTurnoRepository` y sus DTOs/mappers consumen appointments; los demás
-repositorios de dashboard y catálogo siguen siendo mocks. Esta estructura
+`HttpTurnoRepository`, `HttpTransportistaRepository` y
+`HttpConversacionRepository` con sus DTOs/mappers consumen appointments, drivers
+y conversations. Esta estructura
 vigente se describe aquí como inventario, no como una regla para rehacerla ni
 como autorización para sumar dependencias.
 
@@ -60,7 +84,11 @@ La frontera de dependencias actual es:
 presentation → application → domain ← infrastructure
 ```
 
-`composition/container.ts` selecciona implementaciones HTTP o mock. Ninguna
-capa frontend debe decidir prioridad, capacidad, autorizaciones o transiciones.
-El detalle de la integración de la demo está en
-[`frontend/docs/LOCAL_DEMO_INTEGRATION.md`](docs/LOCAL_DEMO_INTEGRATION.md).
+`composition/container.ts` conecta las implementaciones concretas. Ninguna capa
+frontend debe decidir prioridad, capacidad, autorizaciones o transiciones. Cuando
+el contrato incorpore otra capacidad, se agrega su repositorio HTTP y se conecta
+la vista que hoy se muestra vacía.
+
+El registro de la integración de la demo está en
+[`frontend/docs/LOCAL_DEMO_INTEGRATION.md`](docs/LOCAL_DEMO_INTEGRATION.md); lo
+que describe sobre el modo mock quedó sin efecto.

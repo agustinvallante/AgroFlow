@@ -1,0 +1,20 @@
+{
+  "event": "messages.upsert",
+  "instance": "agroflow-demo",
+  "data": {
+    "key": {
+      "remoteJid": "123456789012345@lid",
+      "fromMe": false,
+      "id": "FIXTURE-IN-0011",
+      "remoteJidAlt": "5493815550101@s.whatsapp.net",
+      "senderPn": "5493815550101@s.whatsapp.net"
+    },
+    "pushName": "[SINTÉTICO] Remitente",
+    "message": {
+      "conversation": "[SINTÉTICO] Hola, quiero consultar mi turno"
+    },
+    "messageType": "conversation",
+    "messageTimestamp": 1767268800
+  },
+  "date_time": "2026-01-01T12:00:00.000Z"
+}

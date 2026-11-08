@@ -11,7 +11,6 @@ const { obtenerTurnos, obtenerDetalle, cambiarEstado, cancelar } = vi.hoisted(()
 
 vi.mock("../../composition/container", () => ({
   container: {
-    fuenteDatos: "http",
     apiUrl: "http://localhost:5000",
     turnos: {
       obtenerTurnosDelDia: { execute: obtenerTurnos },
@@ -19,7 +18,6 @@ vi.mock("../../composition/container", () => ({
       crearTurnoManual: { execute: vi.fn() },
       cambiarEstadoTurno: { execute: cambiarEstado },
       cancelarTurno: { execute: cancelar },
-      reasignarHorarioTurno: { execute: vi.fn() },
     },
   },
 }));
@@ -33,12 +31,8 @@ const turno: Turno = {
   patente: "AF123BC",
   chofer: "Juan Pérez",
   finca: "Finca Norte",
-  flota: null,
   horasDesdeCorte: 3,
   estado: "pendiente",
-  canal: null,
-  esperaMin: null,
-  prioridad: null,
 };
 
 const esperar = (ms = 0) => act(() => vi.advanceTimersByTimeAsync(ms));
