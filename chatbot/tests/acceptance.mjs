@@ -260,17 +260,46 @@ async function main() {
     },
   });
   assert.equal(toolCalls.agent.length, 1, 'el agente corrió para el transportista sembrado');
-  assert.ok(Array.isArray(seen.appointments), 'la consulta de turnos devolvió una lista');
-  assert.deepEqual(seen.appointments.map(a => a.id), [createdAppointment.id]);
+  assert.equal(seen.appointments.statusCode, 200);
+  assert.ok(Array.isArray(seen.appointments.body), 'la consulta de turnos devolvió una lista');
+  assert.deepEqual(seen.appointments.body.map(a => a.id), [createdAppointment.id]);
   const windowDay = createdAppointment.window.startAt.slice(0, 10);
   for (const [search, code] of [['FINCA-NORTE', 'FINCA-NORTE'], ['Finca Norte', 'FINCA-NORTE'], ['norte', 'FINCA-NORTE'],
     ['finca sur', 'FINCA-SUR']]) {
-    assert.deepEqual(seen[search].map(f => f.code), [code], `"${search}" se resuelve a ${code}`);
+    assert.equal(seen[search].statusCode, 200);
+    assert.deepEqual(seen[search].body.map(f => f.code), [code], `"${search}" se resuelve a ${code}`);
   }
-  assert.deepEqual(seen['Finca Oeste'], [], 'una finca inexistente no se inventa');
+  assert.equal(seen['Finca Oeste'].statusCode, 200);
+  assert.deepEqual(seen['Finca Oeste'].body, [], 'una finca inexistente no se inventa');
   const anonymousFarms = await fetch(`${API}/api/v1/farms`);
   assert.equal(anonymousFarms.status, 401, 'el catálogo de fincas no es anónimo');
   step(11, `el bot encuentra el turno activo (ventana del ${windowDay}) sin depender de la fecha y resuelve fincas por nombre`);
+
+  // Tras cancelar un turno desde el panel, la consulta entrega body: [] (nunca una cadena vacía)
+  // y la creación para la misma patente vuelve a aceptarse en la API.
+  const cancelled = await fetch(`${API}/api/v1/appointments/${createdAppointment.id}/transitions`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ newStatus: 'CANCELADO' }),
+  });
+  assert.equal(cancelled.status, 200, 'cancelación del turno desde el panel');
+  const afterCancel = {};
+  await runWorkflow(toolCalls, {
+    jid: '5493815550111@s.whatsapp.net', id: 'FIXTURE-ACCEPTANCE-TOOLS-0002',
+    useTools: async callTool => {
+      afterCancel.appointments = await callTool('Lookup Appointments By Phone');
+      afterCancel.recreated = await callTool('Create Appointment', {
+        truckPlate: 'AF123BC',
+        farmCode: 'FINCA-NORTE',
+        cutAt: new Date(Date.now() - 1_800_000).toISOString(),
+        estimatedLoadTons: 24,
+      });
+    },
+  });
+  assert.equal(afterCancel.appointments.statusCode, 200);
+  assert.deepEqual(afterCancel.appointments.body, [], 'sin turnos activos la herramienta conserva la lista vacía');
+  assert.equal(afterCancel.recreated.status, 'ASIGNADO', 'la misma patente admite un nuevo turno tras la cancelación');
+  step(12, 'tras cancelar desde el panel, la consulta conserva body: [] y la patente admite un nuevo turno');
 
   await stop(api);
   console.log('\nAceptación local completa. Evolution, WhatsApp y el agente fueron simulados.');
