@@ -354,7 +354,8 @@ test('the appointment lookup asks for the sender\'s active appointments on any d
   assert.equal(query.get('phone'), '+5493815550101');
   assert.ok(request.url.includes('phone=%2B5493815550101'), 'the + of E.164 travels encoded');
   assert.equal(query.get('active'), 'true');
-  assert.deepEqual(result, [tomorrowAppointment]);
+  assert.equal(result.statusCode, 200);
+  assert.deepEqual(result.body, [tomorrowAppointment]);
 });
 
 test('no appointments, an API error and an unreachable API reach the agent as different results', async () => {
@@ -364,9 +365,39 @@ test('no appointments, an API error and an unreachable API reach the agent as di
   const unreachable = new FakeAgroFlowApi();
   unreachable.lookupAppointments = () => { throw new Error('connect ECONNREFUSED'); };
 
-  assert.deepEqual((await callToolOnce(empty, 'Lookup Appointments By Phone')).result, []);
-  assert.equal((await callToolOnce(failing, 'Lookup Appointments By Phone')).result.code, 'INTERNAL_ERROR');
+  const emptyResult = (await callToolOnce(empty, 'Lookup Appointments By Phone')).result;
+  assert.equal(emptyResult.statusCode, 200);
+  assert.deepEqual(emptyResult.body, []);
+  const failingResult = (await callToolOnce(failing, 'Lookup Appointments By Phone')).result;
+  assert.equal(failingResult.statusCode, 500);
+  assert.equal(failingResult.body.code, 'INTERNAL_ERROR');
   assert.match((await callToolOnce(unreachable, 'Lookup Appointments By Phone')).result.error, /ECONNREFUSED/);
+});
+
+test('array-returning lookup tools enable fullResponse so n8n never collapses an empty list into an empty string', async () => {
+  for (const toolName of ['Lookup Appointments By Phone', 'Lookup Farms']) {
+    const node = workflow.nodes.find(candidate => candidate.name === toolName);
+    assert.equal(node.parameters.options?.response?.response?.fullResponse, true,
+      `${toolName} must keep fullResponse enabled`);
+  }
+
+  const degraded = structuredClone(workflow);
+  const brokenLookup = degraded.nodes.find(node => node.name === 'Lookup Appointments By Phone');
+  delete brokenLookup.parameters.options.response.response.fullResponse;
+  const api = new FakeAgroFlowApi();
+  let observation;
+  await simulate(degraded, {
+    body: fixture('evolution-text-registered'),
+    env,
+    http: async request => request.url.startsWith(env.AGROFLOW_API_URL)
+      ? api.handle(request)
+      : { statusCode: 201, body: { key: { id: 'FIXTURE-OUT-PROVIDER-1' } } },
+    agent: async ({ callTool }) => {
+      observation = await callTool('Lookup Appointments By Phone');
+      return '[SINTÉTICO] Respuesta del agente';
+    },
+  });
+  assert.equal(observation, '', 'without fullResponse, n8n ToolsAgent V3 turns 200 [] into an empty observation');
 });
 
 const norte = { id: 'farm-1', code: 'FINCA-NORTE', name: 'Finca Norte', isActive: true };
@@ -386,7 +417,8 @@ test('the farm lookup sends the caller\'s words unchanged, with the service key 
     assert.equal(query.get('active'), 'true');
     assert.equal(query.get('search'), search);
     assert.equal(request.body, undefined);
-    assert.deepEqual(result, [farm]);
+    assert.equal(result.statusCode, 200);
+    assert.deepEqual(result.body, [farm]);
   }
 });
 
@@ -407,10 +439,14 @@ test('unknown, ambiguous and failed farm lookups reach the agent as distinct res
     results[search] = (await callToolOnce(api, 'Lookup Farms', { search })).result;
   }
 
-  assert.deepEqual(results['Finca Oeste'], []);
-  assert.equal(results.san.length, 2);
-  assert.equal(results.rechazada.code, 'UNAUTHENTICATED');
-  assert.equal(results.rota.code, 'INTERNAL_ERROR');
+  assert.equal(results['Finca Oeste'].statusCode, 200);
+  assert.deepEqual(results['Finca Oeste'].body, []);
+  assert.equal(results.san.statusCode, 200);
+  assert.equal(results.san.body.length, 2);
+  assert.equal(results.rechazada.statusCode, 401);
+  assert.equal(results.rechazada.body.code, 'UNAUTHENTICATED');
+  assert.equal(results.rota.statusCode, 500);
+  assert.equal(results.rota.body.code, 'INTERNAL_ERROR');
   assert.match(results.caida.error, /ECONNREFUSED/);
 });
 
@@ -440,6 +476,22 @@ test('the agent is told to resolve farms through the API and to ask when the nam
   assert.match(prompt, /an error body is not an empty result/);
   assert.match(create, /returned by the farm lookup tool/);
   assert.match(lookup, /including appointments assigned for tomorrow or later days/);
+});
+
+test('the agent is forbidden from refusing a new appointment request based on chat memory', () => {
+  const prompt = workflow.nodes.find(node => node.name === 'AI Agent1').parameters.options.systemMessage;
+
+  assert.match(prompt, /Never assume from earlier conversation messages that a truck still has \(or does not have\) an active appointment/);
+  assert.match(prompt, /Never refuse a new appointment request from chat memory/);
+  assert.match(prompt, /Never refuse a new appointment request from chat memory: follow the normal request flow and let the backend API decide/);
+  assert.doesNotMatch(prompt, /always resolve the farm, read back the four values for confirmation, and call the creation tool/,
+    'the memory rule must not override the confirmation and farm-resolution conditions');
+});
+
+test('the agent treats an unreachable farm lookup as an error that blocks the creation', () => {
+  const prompt = workflow.nodes.find(node => node.name === 'AI Agent1').parameters.options.systemMessage;
+
+  assert.match(prompt, /Error response \(`statusCode` >= 400, `body` with a `code` field, or `\{ error \}` on a transport failure\): apologize, say the farms could not be checked right now, and do not call the creation tool/);
 });
 
 test('the export is importable: valid JSON shape, positions, unique names and resolvable connections', () => {
