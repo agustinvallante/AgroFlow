@@ -20,8 +20,8 @@ export function useTransportistas() {
     try {
       const data = await container.transportistas.obtenerTransportistas.execute();
       setTransportistas(data);
-    } catch {
-      setError("No se pudo cargar el listado de transportistas.");
+    } catch (e) {
+      setError(e instanceof Error && e.message ? e.message : "No se pudo cargar el listado de transportistas.");
     } finally {
       setCargando(false);
     }
@@ -36,9 +36,7 @@ export function useTransportistas() {
     return transportistas.filter((t) => {
       const coincideTexto =
         !texto ||
-        t.nombre.toLowerCase().includes(texto) ||
-        t.patente.toLowerCase().includes(texto) ||
-        t.finca.toLowerCase().includes(texto);
+        [t.nombre, t.patente, t.finca, t.dni, t.telefono].some((campo) => campo?.toLowerCase().includes(texto));
       const coincideFlota = filtroFlota === "todas" || t.flota === filtroFlota;
       const coincideEstado =
         filtroEstado === "todos" || (filtroEstado === "activo") === t.activo;
@@ -52,6 +50,7 @@ export function useTransportistas() {
       propia: transportistas.filter((t) => t.flota === "propia").length,
       tercero: transportistas.filter((t) => t.flota === "tercero").length,
       activos: transportistas.filter((t) => t.activo).length,
+      inactivos: transportistas.filter((t) => !t.activo).length,
     }),
     [transportistas]
   );

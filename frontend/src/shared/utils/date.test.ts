@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { datetimeLocalARfc3339, fechaHoraDeRfc3339, horaDeRfc3339, leerFechaRfc3339 } from "./date";
+import { datetimeLocalARfc3339, fechaHoraDeRfc3339, fechaHoraEnZonaIngenio, horaDeRfc3339, leerFechaRfc3339 } from "./date";
 
 describe("fechas RFC 3339 de la API", () => {
   it("toma la hora escrita con el desplazamiento del ingenio, no la del navegador", () => {
@@ -39,5 +39,27 @@ describe("datetimeLocalARfc3339", () => {
   it("devuelve vacío si el campo está incompleto", () => {
     expect(datetimeLocalARfc3339("")).toBe("");
     expect(datetimeLocalARfc3339("2026-09-28")).toBe("");
+  });
+});
+
+describe("fechaHoraEnZonaIngenio", () => {
+  const ahora = new Date("2026-11-06T21:00:00Z");
+
+  it("muestra solo la hora cuando es de hoy en la zona del ingenio", () => {
+    expect(fechaHoraEnZonaIngenio("2026-11-06T15:00:00Z", ahora)).toBe("12:00");
+  });
+
+  it("agrega el día cuando es de otro día", () => {
+    expect(fechaHoraEnZonaIngenio("2026-10-30T21:44:46Z", ahora)).toBe("30/10 18:44");
+  });
+
+  it("usa el día de la zona del ingenio, no el de UTC", () => {
+    // 01:00 UTC del 07/11 son las 22:00 del 06/11 en Tucumán: sigue siendo hoy.
+    expect(fechaHoraEnZonaIngenio("2026-11-07T01:00:00Z", ahora)).toBe("22:00");
+  });
+
+  it("devuelve un guion si falta la fecha o es inválida", () => {
+    expect(fechaHoraEnZonaIngenio(undefined, ahora)).toBe("—");
+    expect(fechaHoraEnZonaIngenio("no-es-fecha", ahora)).toBe("—");
   });
 });

@@ -11,7 +11,7 @@ namespace AgroFlow.Tests;
 public sealed class EfModelAndMigrationVerificationTests
 {
     [Fact]
-    public void Live_SQLite_model_matches_appointment_schema_and_ignores_unmigrated_audit_foundation()
+    public void Live_SQLite_model_matches_migrated_appointment_master_data_and_channel_schema()
     {
         using var context = new AgroFlowDbContext(new DbContextOptionsBuilder<AgroFlowDbContext>().UseSqlite("Data Source=:memory:").Options);
         var model = context.Model;
@@ -23,14 +23,23 @@ public sealed class EfModelAndMigrationVerificationTests
         Assert.NotNull(finca.FindProperty(nameof(Finca.NormalizedCode)));
         var association = AssertTable(model, typeof(TransportistaCamion), "TransportistaCamiones");
         Assert.Empty(association.GetForeignKeys());
-        Assert.Null(model.FindEntityType(typeof(AuditEvent)));
-        Assert.Null(model.FindEntityType(typeof(IdempotencyRecord)));
+        AssertTable(model, typeof(AuditEvent), "AuditEvents");
+        AssertTable(model, typeof(IdempotencyRecord), "IdempotencyRecords");
+        AssertTable(model, typeof(ChannelInstance), "ChannelInstances");
+        AssertTable(model, typeof(Conversation), "Conversations");
+        AssertTable(model, typeof(ConversationMessage), "ConversationMessages");
+        AssertTable(model, typeof(MessageProcessing), "MessageProcessings");
+        AssertTable(model, typeof(SeedRecord), "SeedRecords");
+        AssertTable(model, typeof(LocalDemoTeamAssignment), "LocalDemoTeamAssignments");
 
         Assert.False(context.Database.HasPendingModelChanges());
 
         var migrations = context.Database.GetMigrations().ToArray();
         Assert.Contains(migrations, migration => migration.Contains("InitialAppointments", StringComparison.Ordinal));
-        Assert.DoesNotContain(migrations, migration => migration.Contains("MasterData", StringComparison.OrdinalIgnoreCase));
+        Assert.EndsWith("_AddMasterDataFoundationTables", migrations[^4], StringComparison.Ordinal);
+        Assert.EndsWith("_AddWhatsAppConversations", migrations[^3], StringComparison.Ordinal);
+        Assert.EndsWith("_AddSeedRecords", migrations[^2], StringComparison.Ordinal);
+        Assert.EndsWith("_AddLocalDemoTeamAssignments", migrations[^1], StringComparison.Ordinal);
     }
 
     [Fact]

@@ -1,4 +1,6 @@
 import { HttpTurnoRepository } from "../infrastructure/http/repositories/HttpTurnoRepository";
+import { HttpTransportistaRepository } from "../infrastructure/http/repositories/HttpTransportistaRepository";
+import { HttpConversacionRepository } from "../infrastructure/http/repositories/HttpConversacionRepository";
 
 import { MockTurnoRepository } from "../infrastructure/mock/repositories/MockTurnoRepository";
 import { MockTransportistaRepository } from "../infrastructure/mock/repositories/MockTransportistaRepository";
@@ -7,6 +9,8 @@ import { MockReporteRepository } from "../infrastructure/mock/repositories/MockR
 import { MockConfiguracionRepository } from "../infrastructure/mock/repositories/MockConfiguracionRepository";
 
 import type { TurnoRepository } from "../domain/repositories/TurnoRepository";
+import type { TransportistaRepository } from "../domain/repositories/TransportistaRepository";
+import type { ConversacionRepository } from "../domain/repositories/ConversacionRepository";
 
 import {
   AlternarEstadoMolienda,
@@ -29,6 +33,7 @@ import {
 import {
   GuardarPlantillas,
   ObtenerConversaciones,
+  ObtenerMensajesConversacion,
   ObtenerFlujoDeAutomatizacion,
   ObtenerMetricasChatbot,
   ObtenerPlantillas,
@@ -49,15 +54,18 @@ export type FuenteDatos = "mock" | "http";
  * concreta se usa.
  *
  *   VITE_DATA_SOURCE=mock (o sin definir) → todo mock, funciona sin backend
- *   VITE_DATA_SOURCE=http                 → turnos contra AgroFlow API
+ *   VITE_DATA_SOURCE=http                 → turnos, transportistas y
+ *                                           conversaciones contra AgroFlow API
  *
  * El navegador llama a /api en su propio origen y el proxy de Vite
  * (vite.config.ts) lo reenvía a VITE_API_URL, por defecto
  * http://localhost:5000. Así no interviene CORS.
  *
- * La demo local solo expone turnos. Panel (métricas, timeline, molienda),
- * transportistas, conversaciones, reportes y configuración siguen en mock
- * y la UI los identifica como datos de demostración en modo http.
+ * Transportistas y conversaciones exigen la clave del dashboard, que el
+ * proxy agrega del lado servidor (server/dashboardProxy.ts). Panel
+ * (métricas, timeline, molienda), métricas y plantillas del chatbot,
+ * reportes y configuración siguen en mock y la UI los identifica como datos
+ * de demostración en modo http.
  */
 function crearContainer() {
   const fuenteDatos: FuenteDatos = import.meta.env.VITE_DATA_SOURCE === "http" ? "http" : "mock";
@@ -73,8 +81,12 @@ function crearContainer() {
   const panelRepository: TurnoRepository =
     fuenteDatos === "http" ? new MockTurnoRepository() : turnoRepository;
 
-  const transportistaRepository = new MockTransportistaRepository();
-  const conversacionRepository = new MockConversacionRepository();
+  const transportistaRepository: TransportistaRepository =
+    fuenteDatos === "http" ? new HttpTransportistaRepository("") : new MockTransportistaRepository();
+  const conversacionRepository: ConversacionRepository =
+    fuenteDatos === "http"
+      ? new HttpConversacionRepository("", new MockConversacionRepository())
+      : new MockConversacionRepository();
   const reporteRepository = new MockReporteRepository();
   const configuracionRepository = new MockConfiguracionRepository();
 
@@ -101,6 +113,7 @@ function crearContainer() {
     },
     conversaciones: {
       obtenerConversaciones: new ObtenerConversaciones(conversacionRepository),
+      obtenerMensajesConversacion: new ObtenerMensajesConversacion(conversacionRepository),
       obtenerMetricasChatbot: new ObtenerMetricasChatbot(conversacionRepository),
       obtenerFlujoDeAutomatizacion: new ObtenerFlujoDeAutomatizacion(conversacionRepository),
       obtenerPlantillas: new ObtenerPlantillas(conversacionRepository),

@@ -120,10 +120,19 @@ public sealed class EfAppointmentStore : IAppointmentStore
     {
         var ingenio = await _db.Ingenios.AsNoTracking().FirstAsync(cancellationToken);
         var timeZone = ResolveTimeZone(ingenio.TimeZoneId);
-        var effectiveDate = query.Date ?? DateOnly.FromDateTime(
-            TimeZoneInfo.ConvertTime(_timeProvider.GetUtcNow(), timeZone).Date);
+        // Con ActiveOnly y sin fecha no hay día por defecto: un turno asignado
+        // para mañana (o uno vencido que sigue activo) también es "el turno" del
+        // transportista y bloquea un alta nueva para ese camión.
+        DateOnly? effectiveDate = query.Date ?? (query.ActiveOnly
+            ? null
+            : DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(_timeProvider.GetUtcNow(), timeZone).Date));
 
         IQueryable<Turno> turnos = _db.Turnos.AsNoTracking().Where(t => t.IngenioId == ingenio.Id);
+
+        if (query.ActiveOnly)
+        {
+            turnos = turnos.Where(t => t.IsActive);
+        }
 
         if (query.Status is { } status)
         {
@@ -150,7 +159,8 @@ public sealed class EfAppointmentStore : IAppointmentStore
             .ToListAsync(cancellationToken);
 
         var matches = candidates
-            .Where(x => DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(x.Ventana.StartAt, timeZone).Date) == effectiveDate)
+            .Where(x => effectiveDate is null
+                || DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(x.Ventana.StartAt, timeZone).Date) == effectiveDate)
             .OrderBy(x => x.Ventana.StartAt)
             .ToList();
 

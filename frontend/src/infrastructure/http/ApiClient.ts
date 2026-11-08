@@ -3,7 +3,9 @@
  * respuesta de error (application/problem+json) a un ApiError con un mensaje
  * que se puede mostrar tal cual al operador.
  *
- * La demo local no tiene autenticación (security: [] en openapi.yaml).
+ * Turnos no tienen autenticación en la demo local. Conversaciones y
+ * transportistas exigen la clave del dashboard, que agrega el proxy de Vite
+ * del lado servidor (server/dashboardProxy.ts): el navegador nunca la conoce.
  */
 
 /** Forma del error definida en components.schemas.ProblemDetails. */
@@ -34,6 +36,14 @@ const MENSAJES_POR_CODIGO: Record<string, string> = {
   ACTIVE_APPOINTMENT_EXISTS: "El camión ya tiene un turno activo.",
   NO_CAPACITY: "No hay capacidad disponible en las próximas ventanas.",
   INVALID_TRANSITION: "El turno cambió de estado y la acción ya no es válida. Se recargaron los datos.",
+  UNAUTHENTICATED:
+    "El servidor del frontend no tiene configurada la clave del dashboard (AGROFLOW_DASHBOARD_KEY) o la API la rechazó.",
+  DUPLICATE_DNI: "Ya existe un transportista con ese DNI.",
+  DUPLICATE_WHATSAPP: "Ya existe un transportista con ese WhatsApp.",
+  DUPLICATE_IDENTIFIER: "El DNI o el WhatsApp ya están registrados.",
+  RESOURCE_INACTIVE: "El transportista está inhabilitado.",
+  DRIVER_NOT_FOUND: "El transportista ya no existe.",
+  CONVERSATION_NOT_FOUND: "La conversación ya no existe.",
 };
 
 function mensajeDeError(status: number, body: ProblemDetails | null): string {
@@ -75,10 +85,19 @@ export class ApiClient {
     return this.request<T>(url.toString(), { method: "GET" });
   }
 
-  async post<T>(path: string, body?: unknown): Promise<T> {
+  async post<T>(path: string, body?: unknown, headers?: Record<string, string>): Promise<T> {
     return this.request<T>(`${this.baseUrl}${path}`, {
       method: "POST",
       body: body === undefined ? undefined : JSON.stringify(body),
+      headers,
+    });
+  }
+
+  async put<T>(path: string, body: unknown, headers?: Record<string, string>): Promise<T> {
+    return this.request<T>(`${this.baseUrl}${path}`, {
+      method: "PUT",
+      body: JSON.stringify(body),
+      headers,
     });
   }
 

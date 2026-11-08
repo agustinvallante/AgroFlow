@@ -9,9 +9,9 @@ using Microsoft.EntityFrameworkCore.Storage;
 namespace AgroFlow.Data.Repositories;
 
 /// <summary>
-/// Preparatory adapter over the existing appointments SQLite context. Catalog
-/// writes/replay stay disabled: the live schema has no approved B02 audit or
-/// idempotency tables, and this adapter is not registered in API DI.
+/// Adapter over the appointments SQLite context. Audit and idempotency rows are
+/// migrated (AddMasterDataFoundationTables); the API registers it only under
+/// LocalDemo, where the drivers routes are published.
 /// </summary>
 public sealed class EfMasterDataUnitOfWork(AgroFlowDbContext context) : IMasterDataUnitOfWork
 {
@@ -112,7 +112,7 @@ public sealed class EfMasterDataUnitOfWork(AgroFlowDbContext context) : IMasterD
     public async Task Commit(CancellationToken ct)
     {
         try { await context.SaveChangesAsync(ct); }
-        catch (DbUpdateException exception) when (IsSqliteUniqueOrPrimaryKeyViolation(exception))
+        catch (DbUpdateException exception) when (SqliteConstraintErrors.IsUniqueOrPrimaryKeyViolation(exception))
         {
             // Keep the persistence signal generic. SQLite uniqueness can be
             // distinguished by its extended result code; FK/check/trigger and
@@ -125,20 +125,6 @@ public sealed class EfMasterDataUnitOfWork(AgroFlowDbContext context) : IMasterD
     {
         if (context.Model.FindEntityType(typeof(TEntity)) is null)
             throw new InvalidOperationException($"Master-data persistence is disabled until the {dependency} is approved and migrated.");
-    }
-
-    private static bool IsSqliteUniqueOrPrimaryKeyViolation(DbUpdateException exception)
-    {
-        const int SqliteConstraintPrimaryKey = 1555;
-        const int SqliteConstraintUnique = 2067;
-        const int SqliteConstraintRowId = 2579;
-        for (var current = exception.InnerException; current is not null; current = current.InnerException)
-        {
-            if (current is SqliteException sqlite && sqlite.SqliteExtendedErrorCode is
-                SqliteConstraintPrimaryKey or SqliteConstraintUnique or SqliteConstraintRowId)
-                return true;
-        }
-        return false;
     }
 
     private sealed class EfTransaction(IDbContextTransaction transaction) : IMasterDataTransaction

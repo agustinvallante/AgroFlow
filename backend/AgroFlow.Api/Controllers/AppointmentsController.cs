@@ -34,7 +34,7 @@ public sealed class AppointmentsController : ControllerBase
         TimeSpan.FromSeconds(1));
 
     private static readonly HashSet<string> SupportedQueryKeys =
-        new(["date", "status", "truckPlate", "phone"], StringComparer.Ordinal);
+        new(["date", "status", "truckPlate", "phone", "active"], StringComparer.Ordinal);
 
     private static readonly HashSet<string> CreateBodyKeys =
         new(["carrierPhone", "truckPlate", "farmCode", "cutAt", "estimatedLoadTons"], StringComparer.Ordinal);
@@ -149,6 +149,14 @@ public sealed class AppointmentsController : ControllerBase
         var statusText = GetQueryValue("status", errors);
         var plate = GetQueryValue("truckPlate", errors);
         var phone = GetQueryValue("phone", errors);
+        var activeText = GetQueryValue("active", errors);
+
+        // Sólo `true`: "no activos" no tiene un recorrido acordado y, sin fecha
+        // por defecto, devolvería todo el historial terminal.
+        if (activeText is not null && activeText != "true")
+        {
+            errors["active"] = ["Sólo admite el valor true."];
+        }
 
         DateOnly? date = null;
         if (dateText is not null)
@@ -199,7 +207,7 @@ public sealed class AppointmentsController : ControllerBase
         return await ExecuteAsync(async () =>
         {
             var result = await _service.ListAsync(
-                new AppointmentQuery(date, status, plate, phone),
+                new AppointmentQuery(date, status, plate, phone, ActiveOnly: activeText == "true"),
                 cancellationToken);
             return Ok(result.Select(AppointmentHttpMapper.ToResponse).ToArray());
         });
