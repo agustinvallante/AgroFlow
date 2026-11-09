@@ -4,23 +4,28 @@ Este directorio describe cómo se comunican frontend, backend e integraciones. L
 contratos expresan técnicamente el comportamiento definido por OpenSpec; no
 agregan reglas de negocio por cuenta propia.
 
-## Artefactos y alcance activo
+## Contratos por perfil
 
-- [`openapi.yaml`](openapi.yaml): contrato HTTP activo de la demo local. Publica
-  `GET /health` y las operaciones de alta, listado, detalle y transición de
-  `/api/v1/appointments`. Mantiene versión `0.3.0`, esquemas de errores de la
-demo y seguridad deshabilitada explícitamente por operación.
+- [`openapi.yaml`](openapi.yaml): contrato HTTP activo de `LocalDemo` (0.5.0).
+  Describe salud, turnos, canal WhatsApp, conversaciones, transportistas y
+  consulta de fincas. Cada operación declara su propia seguridad.
+- [`openapi.mvp-appointment-reads.yaml`](openapi.mvp-appointment-reads.yaml):
+  contrato objetivo de listado y detalle internos del MVP, con autenticación
+  Bearer y ámbito por ingenio. Reutiliza los esquemas comunes del contrato
+  de la demo y se rige por el
+  [cambio OpenSpec de lecturas](../../openspec/changes/definir-lecturas-turnos-mvp/proposal.md).
+  Las operaciones `listarTurnosMvp` y `obtenerTurnoMvp` quedan pendientes de
+  implementación hasta que estén listas sus dependencias.
 - [`master-data-foundation-proposal.md`](master-data-foundation-proposal.md):
   inventario no normativo de ideas técnicas de PR #47 para evaluar después de
   resolver B00/B02/B03 y las decisiones correspondientes.
 - Futuros esquemas de eventos o webhooks: deben documentar versión,
 autenticación, correlación, idempotencia y errores una vez aprobados.
 
-OpenAPI **no** publica actualmente operaciones de datos maestros, autenticación,
-sesión, asociaciones, dashboard ni paginación. Sus rutas, DTO y reglas de
-idempotencia requieren acuerdo explícito; la propuesta adjunta no es una API
-utilizable. La operación de demo sin autenticación tampoco define la seguridad
-del MVP.
+El contrato de la demo describe la API disponible. El contrato del MVP en este
+corte abarca exclusivamente las dos lecturas internas de turnos. Las
+operaciones de sesión y las demás capacidades del MVP se definen en sus propios
+cambios OpenSpec antes de implementarse.
 
 Las issues y documentos de cada equipo deben enlazar el contrato aprobado y no
 copiar DTOs, filtros, códigos de error ni reglas de transición. Un cambio
@@ -35,11 +40,12 @@ pruebas y documentación coherentes.
 - Negocio: `/api/v1/appointments` y sus subrecursos publicados.
 - El alta resuelve teléfono, patente y código de finca del seed; el listado
   admite los filtros descritos en OpenAPI.
-- Sin autenticación ni selección de ingenio: simplificación local exclusiva de
-  la demo, no una decisión de seguridad MVP.
+- Salud y turnos funcionan sin autenticación en un solo ingenio sembrado.
+  Las operaciones de canal y gestión requieren las claves descritas en
+  OpenAPI.
 
-El contrato de la demo conserva versión `0.3.0`. La salvedad de Docker/Linux y
-el recorrido reproducible están en el [runbook](../development/local-demo-runbook.md);
+La salvedad de Docker/Linux y el recorrido reproducible están en el
+[runbook](../development/local-demo-runbook.md);
 el alcance y exclusiones, en [local-demo-scope.md](../planning/local-demo-scope.md).
 
 ## Reglas
