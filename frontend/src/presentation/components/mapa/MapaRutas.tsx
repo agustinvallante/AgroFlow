@@ -4,7 +4,7 @@ import type { IngenioMapa } from "../../hooks/useMapaSimulado";
 import { FondoMapa } from "./FondoMapa";
 import {
   cajaDeEtiqueta,
-  construirRuta,
+  construirRedRutas,
   crearProyeccion,
   puntoEnRuta,
   ubicarEtiqueta,
@@ -63,7 +63,7 @@ interface MapaRutasProps {
 
 export function MapaRutas({ ingenio, fincas, viajes }: MapaRutasProps) {
   // Lo fijo se ubica una sola vez, así un camión que pasa no hace parpadear estas etiquetas.
-  const { posIngenio, xAviso, marcas, ocupadasFijas } = useMemo(() => {
+  const { posIngenio, xAviso, marcas, tramos, ocupadasFijas } = useMemo(() => {
     const proyectar = crearProyeccion(ingenio ? [ingenio, ...fincas] : fincas, ANCHO, ALTO, MARGEN);
     const destino = ingenio ? proyectar(ingenio) : null;
     const posiciones = fincas.map(proyectar);
@@ -78,17 +78,20 @@ export function MapaRutas({ ingenio, fincas, viajes }: MapaRutasProps) {
       );
     }
 
+    const red = destino ? construirRedRutas(destino, posiciones) : null;
+
     return {
       posIngenio: destino,
       xAviso: aviso,
       ocupadasFijas: ocupadas,
+      tramos: red?.tramos ?? [],
       marcas: fincas.map((finca, i) => {
         const pos = posiciones[i];
         return {
           finca,
           pos,
           etiqueta: ubicarEtiqueta(finca.nombre, posicionesFinca(pos.x, pos.y), ocupadas, ANCHO, ALTO),
-          ruta: destino ? construirRuta(pos, destino, i) : null,
+          ruta: red?.rutas[i] ?? null,
         };
       }),
     };
@@ -115,6 +118,19 @@ export function MapaRutas({ ingenio, fincas, viajes }: MapaRutasProps) {
     return { ...c, texto, etiqueta: ubicarEtiqueta(texto, posiciones, ocupadas, ANCHO, ALTO) };
   });
 
+  // Lo que no tiene camiones queda tenue y debajo, para que no compita con lo activo.
+  const tramosConEstado = tramos
+    .map((tramo) => {
+      const enTramo = camiones.filter((c) => tramo.indices.some((i) => fincas[i].id === c.finca.id));
+      const clase = enTramo.some((c) => c.situacion.estado === "en-ruta")
+        ? "activa"
+        : enTramo.length > 0
+          ? "demorada"
+          : "";
+      return { ...tramo, clase };
+    })
+    .sort((a, b) => Number(a.clase !== "") - Number(b.clase !== ""));
+
   return (
     <svg className="mapa-svg" viewBox={`0 0 ${ANCHO} ${ALTO}`} role="img" aria-label="Mapa simulado de camiones entre fincas e ingenio">
       <FondoMapa />
@@ -125,16 +141,9 @@ export function MapaRutas({ ingenio, fincas, viajes }: MapaRutasProps) {
         </text>
       )}
 
-      {marcas.map(({ finca, ruta }) => {
-        if (!ruta) return null;
-        const enFinca = camiones.filter((c) => c.finca.id === finca.id);
-        const clase = enFinca.some((c) => c.situacion.estado === "en-ruta")
-          ? "activa"
-          : enFinca.length > 0
-            ? "demorada"
-            : "";
-        return <path key={finca.id} d={ruta.d} className={`mapa-ruta ${clase}`} />;
-      })}
+      {tramosConEstado.map(({ id, d, clase }) => (
+        <path key={id} d={d} className={`mapa-ruta ${clase}`} />
+      ))}
 
       {marcas.map(({ finca, pos, etiqueta }) => (
         <g key={finca.id}>

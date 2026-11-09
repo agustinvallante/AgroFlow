@@ -15,7 +15,8 @@ export type IngenioMapa = PuntoGeo & { nombre: string };
 
 const INTERVALO_MS = 100;
 const MS_POR_MINUTO = 60_000;
-const CLAVE_ALMACENAMIENTO = "agroflow.mapa-simulado";
+/** v2: descarta los datos de prueba que quedaron guardados con la clave anterior. */
+const CLAVE_ALMACENAMIENTO = "agroflow.mapa-simulado.v2";
 
 export type DatosFinca = IngenioMapa;
 

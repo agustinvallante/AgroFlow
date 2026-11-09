@@ -20,23 +20,22 @@ function errorDeUbicacion(lat: number, lon: number): string | null {
 interface CamposLugarProps {
   prefijo: string;
   sujeto: string;
-  ejemplo: string;
 }
 
-function CamposLugar({ prefijo, sujeto, ejemplo }: CamposLugarProps) {
+function CamposLugar({ prefijo, sujeto }: CamposLugarProps) {
   return (
     <>
       <div className="form-field">
         <label htmlFor={`${prefijo}-nombre`}>Nombre {sujeto}</label>
-        <input id={`${prefijo}-nombre`} name="nombre" placeholder={ejemplo} />
+        <input id={`${prefijo}-nombre`} name="nombre" />
       </div>
       <div className="form-field">
         <label htmlFor={`${prefijo}-lat`}>Latitud {sujeto}</label>
-        <input id={`${prefijo}-lat`} name="lat" inputMode="decimal" placeholder="-26.90" />
+        <input id={`${prefijo}-lat`} name="lat" inputMode="decimal" />
       </div>
       <div className="form-field">
         <label htmlFor={`${prefijo}-lon`}>Longitud {sujeto}</label>
-        <input id={`${prefijo}-lon`} name="lon" inputMode="decimal" placeholder="-65.60" />
+        <input id={`${prefijo}-lon`} name="lon" inputMode="decimal" />
       </div>
     </>
   );
@@ -69,7 +68,7 @@ export function FormularioIngenio({ onGuardar }: FormularioIngenioProps) {
   return (
     <form onSubmit={enviar} noValidate>
       <div className="form-grid">
-        <CamposLugar prefijo="ingenio" sujeto="del ingenio" ejemplo="Ingenio La Florida" />
+        <CamposLugar prefijo="ingenio" sujeto="del ingenio" />
       </div>
       {error && <div className="error-state">{error}</div>}
       <button className="btn-primary mapa-enviar" type="submit">
@@ -109,7 +108,7 @@ export function FormularioFinca({ fincas, onAgregar }: FormularioFincaProps) {
   return (
     <form onSubmit={enviar} noValidate>
       <div className="form-grid">
-        <CamposLugar prefijo="finca" sujeto="de la finca" ejemplo="Finca Norte" />
+        <CamposLugar prefijo="finca" sujeto="de la finca" />
       </div>
       {error && <div className="error-state">{error}</div>}
       <button className="btn-primary mapa-enviar" type="submit">
@@ -158,7 +157,7 @@ export function FormularioViaje({ hayIngenio, fincas, patentesEnViaje, onAgregar
       <div className="form-grid">
         <div className="form-field">
           <label htmlFor="viaje-patente">Patente</label>
-          <input id="viaje-patente" name="patente" placeholder="AF600FF" />
+          <input id="viaje-patente" name="patente" />
         </div>
         <div className="form-field">
           <label htmlFor="viaje-finca">Finca de origen</label>

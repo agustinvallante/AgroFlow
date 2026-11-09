@@ -6,13 +6,35 @@ export interface Punto {
 }
 
 export interface Ruta {
-  d: string;
-  /** Muestras de la curva y su longitud acumulada, para avanzar a velocidad constante. */
+  /** Muestras del recorrido y su longitud acumulada, para avanzar a velocidad constante. */
   muestras: Punto[];
   acumulado: number[];
 }
 
-const CANTIDAD_MUESTRAS = 64;
+/** Trozo dibujable de la red. Un tronco se dibuja una vez aunque lo usen varias fincas. */
+export interface Tramo {
+  id: string;
+  d: string;
+  muestras: Punto[];
+  /** Posiciones en `origenes` de las fincas que pasan por este tramo. */
+  indices: number[];
+}
+
+export interface RedRutas {
+  rutas: Ruta[];
+  tramos: Tramo[];
+}
+
+const MUESTRAS_RAMAL = 40;
+const MUESTRAS_TRONCO = 16;
+const MAX_CORREDORES = 6;
+/** Un corredor abarca menos de un cuarto de vuelta: mantiene sus ramales dentro de su sector. */
+const APERTURA_MAXIMA = Math.PI / 2;
+/** El ramal se une al tronco antes de la finca más cercana del corredor. */
+const FRACCION_EMPALME = 0.6;
+/** Curvaturas a probar en cada corredor, de la más suave a la vista hasta recto. */
+const CURVATURAS_RAMAL = [0.35, 0.2, 0.1, 0];
+const RADIO_EMPALME = 25;
 
 export interface Caja {
   x: number;
@@ -25,7 +47,7 @@ export interface PosicionEtiqueta extends Punto {
   anchor: "start" | "middle" | "end";
 }
 
-const ANCHO_CARACTER = 7.1;
+const ANCHO_CARACTER = 7.5;
 const ALTO_ETIQUETA = 14;
 
 /** Caja aproximada del texto: la fuente es monoespaciada y `y` es su línea base. */
@@ -96,39 +118,156 @@ function puntoBezier(p0: Punto, c1: Punto, c2: Punto, p3: Punto, t: number): Pun
   };
 }
 
-/** Curva finca → ingenio; `indice` alterna el lado para que las rutas no se encimen. */
-export function construirRuta(origen: Punto, destino: Punto, indice: number): Ruta {
-  const dx = destino.x - origen.x;
-  const dy = destino.y - origen.y;
-  const largo = Math.hypot(dx, dy);
-  const lado = indice % 2 === 0 ? 1 : -1;
-  const curvatura = largo * (0.14 + 0.05 * (indice % 3)) * lado;
-  const normal = largo > 0 ? { x: -dy / largo, y: dx / largo } : { x: 0, y: 0 };
-  const c1 = { x: origen.x + dx * 0.33 + normal.x * curvatura, y: origen.y + dy * 0.33 + normal.y * curvatura };
-  const c2 = {
-    x: origen.x + dx * 0.7 + normal.x * curvatura * 0.6,
-    y: origen.y + dy * 0.7 + normal.y * curvatura * 0.6,
-  };
-
-  const muestras: Punto[] = [];
-  const acumulado: number[] = [];
-  for (let i = 0; i <= CANTIDAD_MUESTRAS; i++) {
-    const punto = puntoBezier(origen, c1, c2, destino, i / CANTIDAD_MUESTRAS);
-    const previo = muestras[i - 1];
-    acumulado.push(previo ? acumulado[i - 1] + Math.hypot(punto.x - previo.x, punto.y - previo.y) : 0);
-    muestras.push(punto);
+function crearRuta(muestras: Punto[]): Ruta {
+  const acumulado = [0];
+  for (let i = 1; i < muestras.length; i++) {
+    acumulado.push(acumulado[i - 1] + Math.hypot(muestras[i].x - muestras[i - 1].x, muestras[i].y - muestras[i - 1].y));
   }
+  return { muestras, acumulado };
+}
 
-  const n = (v: number) => v.toFixed(1);
-  const d = `M ${n(origen.x)} ${n(origen.y)} C ${n(c1.x)} ${n(c1.y)}, ${n(c2.x)} ${n(c2.y)}, ${n(destino.x)} ${n(destino.y)}`;
-  return { d, muestras, acumulado };
+interface FincaPolar {
+  indice: number;
+  angulo: number;
+  radio: number;
+}
+
+/** Corta un corredor demasiado abierto por su mayor hueco, hasta que todos entren en su sector. */
+function limitarApertura(grupo: FincaPolar[]): FincaPolar[][] {
+  if (grupo.length < 2 || grupo[grupo.length - 1].angulo - grupo[0].angulo <= APERTURA_MAXIMA) return [grupo];
+  let corte = 1;
+  for (let i = 1; i < grupo.length; i++) {
+    if (grupo[i].angulo - grupo[i - 1].angulo > grupo[corte].angulo - grupo[corte - 1].angulo) corte = i;
+  }
+  return [...limitarApertura(grupo.slice(0, corte)), ...limitarApertura(grupo.slice(corte))];
+}
+
+/** Agrupa las fincas por dirección desde el ingenio, cortando en los mayores huecos angulares. */
+function agruparEnCorredores(destino: Punto, origenes: Punto[]): FincaPolar[][] {
+  const orden = origenes
+    .map((p, indice) => ({
+      indice,
+      angulo: Math.atan2(p.y - destino.y, p.x - destino.x),
+      radio: Math.hypot(p.x - destino.x, p.y - destino.y),
+    }))
+    .sort((a, b) => a.angulo - b.angulo);
+  const total = orden.length;
+  if (total === 0) return [];
+
+  const huecos = orden.map((f, i) => ({
+    despuesDe: i,
+    hueco: i === total - 1 ? orden[0].angulo + 2 * Math.PI - f.angulo : orden[i + 1].angulo - f.angulo,
+  }));
+  const cantidad = Math.min(total, MAX_CORREDORES, Math.ceil(Math.sqrt(total)));
+  const cortes = new Set([...huecos].sort((a, b) => b.hueco - a.hueco).slice(0, cantidad).map((h) => h.despuesDe));
+
+  // Se recorre el círculo desde un corte, con ángulos continuos al dar la vuelta.
+  const inicio = ([...cortes][0] + 1) % total;
+  const grupos: FincaPolar[][] = [[]];
+  for (let paso = 0; paso < total; paso++) {
+    const posicion = (inicio + paso) % total;
+    const vuelta = inicio + paso >= total ? 2 * Math.PI : 0;
+    grupos[grupos.length - 1].push({ ...orden[posicion], angulo: orden[posicion].angulo + vuelta });
+    if (cortes.has(posicion) && paso < total - 1) grupos.push([]);
+  }
+  return grupos.flatMap(limitarApertura);
+}
+
+const n = (v: number) => v.toFixed(1);
+
+function construirRamal(origen: Punto, empalme: Punto, hacia: Punto, curvatura: number) {
+  const largo = Math.hypot(empalme.x - origen.x, empalme.y - origen.y);
+  const c1 = { x: origen.x + (empalme.x - origen.x) * 0.35, y: origen.y + (empalme.y - origen.y) * 0.35 };
+  // Llega en la dirección del tronco, para que el empalme sea suave.
+  const c2 = { x: empalme.x + hacia.x * largo * curvatura, y: empalme.y + hacia.y * largo * curvatura };
+  const muestras: Punto[] = [];
+  for (let i = 0; i <= MUESTRAS_RAMAL; i++) {
+    muestras.push(puntoBezier(origen, c1, c2, empalme, i / MUESTRAS_RAMAL));
+  }
+  return {
+    muestras,
+    d: `M ${n(origen.x)} ${n(origen.y)} C ${n(c1.x)} ${n(c1.y)}, ${n(c2.x)} ${n(c2.y)}, ${n(empalme.x)} ${n(empalme.y)}`,
+  };
+}
+
+/** Punto en que se cruzan dos segmentos, o `null`. */
+function cruceDeSegmentos(a1: Punto, a2: Punto, b1: Punto, b2: Punto): Punto | null {
+  const divisor = (a2.x - a1.x) * (b2.y - b1.y) - (a2.y - a1.y) * (b2.x - b1.x);
+  if (divisor === 0) return null;
+  const t = ((b1.x - a1.x) * (b2.y - b1.y) - (b1.y - a1.y) * (b2.x - b1.x)) / divisor;
+  const u = ((b1.x - a1.x) * (a2.y - a1.y) - (b1.y - a1.y) * (a2.x - a1.x)) / divisor;
+  return t > 0 && t < 1 && u > 0 && u < 1 ? { x: a1.x + t * (a2.x - a1.x), y: a1.y + t * (a2.y - a1.y) } : null;
+}
+
+/** Si dos ramales se cruzan lejos del empalme, donde se unen a propósito. */
+function hayCruces(ramales: { muestras: Punto[] }[], empalme: Punto): boolean {
+  for (let a = 0; a < ramales.length; a++) {
+    for (let b = a + 1; b < ramales.length; b++) {
+      const p = ramales[a].muestras;
+      const q = ramales[b].muestras;
+      for (let i = 1; i < p.length; i++) {
+        for (let j = 1; j < q.length; j++) {
+          const cruce = cruceDeSegmentos(p[i - 1], p[i], q[j - 1], q[j]);
+          if (cruce && Math.hypot(cruce.x - empalme.x, cruce.y - empalme.y) >= RADIO_EMPALME) return true;
+        }
+      }
+    }
+  }
+  return false;
+}
+
+/**
+ * Red finca → ingenio en forma de árbol: cada finca sigue en su lugar real, un
+ * ramal la une al tronco de su corredor y los troncos llegan al ingenio. Cada
+ * corredor ocupa su propio sector angular, así que no cruza a los demás.
+ */
+export function construirRedRutas(destino: Punto, origenes: Punto[]): RedRutas {
+  const rutas: Ruta[] = new Array(origenes.length);
+  const tramos: Tramo[] = [];
+
+  agruparEnCorredores(destino, origenes).forEach((grupo, g) => {
+    const direccion = grupo.reduce((suma, f) => suma + f.angulo, 0) / grupo.length;
+    const hacia = { x: Math.cos(direccion), y: Math.sin(direccion) };
+    const largoTronco = Math.min(...grupo.map((f) => f.radio)) * FRACCION_EMPALME;
+    const empalme = { x: destino.x + hacia.x * largoTronco, y: destino.y + hacia.y * largoTronco };
+
+    const muestrasTronco: Punto[] = [];
+    for (let i = 0; i <= MUESTRAS_TRONCO; i++) {
+      const t = i / MUESTRAS_TRONCO;
+      muestrasTronco.push({
+        x: empalme.x + (destino.x - empalme.x) * t,
+        y: empalme.y + (destino.y - empalme.y) * t,
+      });
+    }
+    tramos.push({
+      id: `tronco-${g}`,
+      d: `M ${n(empalme.x)} ${n(empalme.y)} L ${n(destino.x)} ${n(destino.y)}`,
+      muestras: muestrasTronco,
+      indices: grupo.map((f) => f.indice),
+    });
+
+    // La curva más suave que no cruce dentro del corredor. Rectos no pueden
+    // cruzarse: todos convergen en el mismo empalme.
+    const ramales =
+      CURVATURAS_RAMAL.map((curvatura) => grupo.map((f) => construirRamal(origenes[f.indice], empalme, hacia, curvatura))).find(
+        (candidatos) => !hayCruces(candidatos, empalme),
+      ) ?? grupo.map((f) => construirRamal(origenes[f.indice], empalme, hacia, 0));
+
+    grupo.forEach(({ indice }, i) => {
+      tramos.push({ id: `ramal-${indice}`, d: ramales[i].d, muestras: ramales[i].muestras, indices: [indice] });
+      rutas[indice] = crearRuta([...ramales[i].muestras, ...muestrasTronco.slice(1)]);
+    });
+  });
+
+  return { rutas, tramos };
 }
 
 /** Punto a la fracción `progreso` de la longitud de la ruta. */
 export function puntoEnRuta({ muestras, acumulado }: Ruta, progreso: number): Punto {
-  const objetivo = Math.min(Math.max(progreso, 0), 1) * acumulado[CANTIDAD_MUESTRAS];
+  const ultimo = muestras.length - 1;
+  const objetivo = Math.min(Math.max(progreso, 0), 1) * acumulado[ultimo];
   let i = 1;
-  while (i < CANTIDAD_MUESTRAS && acumulado[i] < objetivo) i++;
+  while (i < ultimo && acumulado[i] < objetivo) i++;
   const tramo = acumulado[i] - acumulado[i - 1];
   const t = tramo > 0 ? (objetivo - acumulado[i - 1]) / tramo : 0;
   return {

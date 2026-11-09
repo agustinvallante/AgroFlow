@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { cajaDeEtiqueta, construirRuta, crearProyeccion, puntoEnRuta, ubicarEtiqueta, type Caja } from "./geometriaMapa";
+import {
+  cajaDeEtiqueta,
+  construirRedRutas,
+  crearProyeccion,
+  puntoEnRuta,
+  ubicarEtiqueta,
+  type Caja,
+  type Punto,
+  type Tramo,
+} from "./geometriaMapa";
 
 describe("ubicarEtiqueta", () => {
   const derecha = { x: 100, y: 100, anchor: "start" as const };
@@ -48,10 +57,96 @@ describe("crearProyeccion", () => {
   });
 });
 
+/** Generador fijo: el caso es siempre el mismo. */
+function fincasAlAzar(cantidad: number, semilla: number): Punto[] {
+  let s = semilla;
+  const azar = () => (s = (s * 1103515245 + 12345) % 2147483648) / 2147483648;
+  return Array.from({ length: cantidad }, () => ({ x: 70 + azar() * 660, y: 70 + azar() * 360 }));
+}
+
+function cruce(a1: Punto, a2: Punto, b1: Punto, b2: Punto): Punto | null {
+  const d = (a2.x - a1.x) * (b2.y - b1.y) - (a2.y - a1.y) * (b2.x - b1.x);
+  if (d === 0) return null;
+  const t = ((b1.x - a1.x) * (b2.y - b1.y) - (b1.y - a1.y) * (b2.x - b1.x)) / d;
+  const u = ((b1.x - a1.x) * (a2.y - a1.y) - (b1.y - a1.y) * (a2.x - a1.x)) / d;
+  return t > 0 && t < 1 && u > 0 && u < 1 ? { x: a1.x + t * (a2.x - a1.x), y: a1.y + t * (a2.y - a1.y) } : null;
+}
+
+/** Cruces reales entre tramos, sin contar empalmes ni el ingenio, donde se unen a propósito. */
+function contarCruces(tramos: Tramo[]): number {
+  const empalmes = tramos
+    .filter((t) => t.id.startsWith("tronco"))
+    .flatMap((t) => [t.muestras[0], t.muestras[t.muestras.length - 1]]);
+  const enEmpalme = (p: Punto) => empalmes.some((e) => Math.hypot(e.x - p.x, e.y - p.y) < 25);
+  let cruces = 0;
+  for (let i = 0; i < tramos.length; i++) {
+    for (let j = i + 1; j < tramos.length; j++) {
+      const a = tramos[i].muestras;
+      const b = tramos[j].muestras;
+      let hay = false;
+      for (let x = 1; x < a.length && !hay; x++) {
+        for (let y = 1; y < b.length && !hay; y++) {
+          const p = cruce(a[x - 1], a[x], b[y - 1], b[y]);
+          if (p && !enEmpalme(p)) hay = true;
+        }
+      }
+      if (hay) cruces++;
+    }
+  }
+  return cruces;
+}
+
+describe("construirRedRutas", () => {
+  const ingenio = { x: 400, y: 250 };
+
+  it("no cruza rutas, aunque haya muchas fincas", () => {
+    for (const semilla of [1, 7, 42, 99]) {
+      for (const cantidad of [8, 14, 30]) {
+        expect(contarCruces(construirRedRutas(ingenio, fincasAlAzar(cantidad, semilla)).tramos)).toBe(0);
+      }
+    }
+  });
+
+  it("usa pocos troncos compartidos y un ramal por finca", () => {
+    const { tramos, rutas } = construirRedRutas(ingenio, fincasAlAzar(30, 7));
+    const troncos = tramos.filter((t) => t.id.startsWith("tronco"));
+
+    expect(rutas).toHaveLength(30);
+    expect(tramos.filter((t) => t.id.startsWith("ramal"))).toHaveLength(30);
+    expect(troncos.length).toBeLessThanOrEqual(8);
+    expect(troncos.flatMap((t) => t.indices).sort((a, b) => a - b)).toEqual(Array.from({ length: 30 }, (_, i) => i));
+  });
+
+  it("cada ruta parte de su finca real y termina en el ingenio", () => {
+    const fincas = fincasAlAzar(8, 42);
+    const { rutas } = construirRedRutas(ingenio, fincas);
+
+    rutas.forEach((ruta, i) => {
+      expect(puntoEnRuta(ruta, 0).x).toBeCloseTo(fincas[i].x);
+      expect(puntoEnRuta(ruta, 0).y).toBeCloseTo(fincas[i].y);
+      expect(puntoEnRuta(ruta, 1).x).toBeCloseTo(ingenio.x);
+      expect(puntoEnRuta(ruta, 1).y).toBeCloseTo(ingenio.y);
+    });
+  });
+
+  it("no agrupa en un corredor fincas en direcciones opuestas", () => {
+    const { tramos } = construirRedRutas(ingenio, [
+      { x: 100, y: 250 },
+      { x: 700, y: 250 },
+    ]);
+
+    expect(tramos.filter((t) => t.id.startsWith("tronco"))).toHaveLength(2);
+  });
+
+  it("no falla sin fincas", () => {
+    expect(construirRedRutas(ingenio, [])).toEqual({ rutas: [], tramos: [] });
+  });
+});
+
 describe("puntoEnRuta", () => {
   const origen = { x: 0, y: 0 };
   const destino = { x: 300, y: 0 };
-  const ruta = construirRuta(origen, destino, 0);
+  const ruta = construirRedRutas(destino, [origen]).rutas[0];
 
   it("empieza en el origen y termina en el destino", () => {
     expect(puntoEnRuta(ruta, 0)).toEqual(origen);
@@ -65,17 +160,12 @@ describe("puntoEnRuta", () => {
     for (const tramo of tramos) expect(tramo).toBeCloseTo(tramos[0], -0.5);
   });
 
-  it("alterna el lado de la curva según el índice", () => {
-    const opuesta = construirRuta(origen, destino, 1);
-    expect(Math.sign(puntoEnRuta(ruta, 0.5).y)).toBe(-Math.sign(puntoEnRuta(opuesta, 0.5).y));
-  });
-
   it("limita el progreso fuera de rango", () => {
     expect(puntoEnRuta(ruta, -1)).toEqual(origen);
     expect(puntoEnRuta(ruta, 2).x).toBeCloseTo(300);
   });
 
   it("no falla con una ruta de largo cero", () => {
-    expect(puntoEnRuta(construirRuta(origen, origen, 0), 0.5)).toEqual(origen);
+    expect(puntoEnRuta(construirRedRutas(origen, [origen]).rutas[0], 0.5)).toEqual(origen);
   });
 });
