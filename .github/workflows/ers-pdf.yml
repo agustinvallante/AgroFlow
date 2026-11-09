@@ -1,0 +1,59 @@
+name: ERS PDF
+
+on:
+  push:
+    branches:
+      - docs/102-ers-pdf
+      - main
+    paths:
+      - docs/tools/ers-pdf/**
+      - docs/product/ers/ieee830-ers.md
+      - docs/development/generating-ers-pdf.md
+      - .github/workflows/ers-pdf.yml
+  pull_request:
+    branches:
+      - main
+    paths:
+      - docs/tools/ers-pdf/**
+      - docs/product/ers/ieee830-ers.md
+      - docs/development/generating-ers-pdf.md
+      - .github/workflows/ers-pdf.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ers-pdf-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Test and generate PDF
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: docs/tools/ers-pdf/package-lock.json
+      - name: Install isolated generator dependencies
+        run: npm --prefix docs/tools/ers-pdf ci
+      - name: Audit generator dependencies
+        run: npm --prefix docs/tools/ers-pdf audit --audit-level=high
+      - name: Install Playwright Chromium and runner system dependencies
+        run: docs/tools/ers-pdf/node_modules/.bin/playwright install --with-deps chromium
+      - name: Test generator
+        run: npm --prefix docs/tools/ers-pdf test
+      - name: Generate the incomplete ERS PDF
+        run: npm --prefix docs/tools/ers-pdf run build:pdf
+      - name: Upload generated PDF
+        uses: actions/upload-artifact@v7
+        with:
+          name: ers-tfi-parte2-${{ github.sha }}
+          path: artifacts/ers-tfi-parte2.pdf
+          if-no-files-found: error
+          retention-days: 14
