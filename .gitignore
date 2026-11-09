@@ -372,6 +372,8 @@ Logs/
 # SQLite de la demo local de turnos (Persona 2): generado en runtime, no se versiona.
 agroflow-demo.db
 agroflow-demo.db-*
+agroflow-mvp.db
+agroflow-mvp.db-*
 
 # Precarga privada del equipo para LocalDemo: nombres y WhatsApp reales
 # autorizados. Se comparte por un canal seguro, nunca por Git.

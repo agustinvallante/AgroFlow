@@ -11,12 +11,6 @@ public sealed class JwtTokenService(IConfiguration config, ILogger<JwtTokenServi
 {
     public const string IngenioIdClaimType = "ingenioId";
 
-    public string GenerateToken(string userId, string role)
-    {
-        ValidateIdentityAndRole(userId, role);
-        return CreateToken(userId, role, null);
-    }
-
     public string GenerateToken(string userId, string role, Guid ingenioId)
     {
         ValidateIdentityAndRole(userId, role);
@@ -33,7 +27,7 @@ public sealed class JwtTokenService(IConfiguration config, ILogger<JwtTokenServi
             throw new ArgumentException("The role is not approved for internal login.", nameof(role));
     }
 
-    private string CreateToken(string userId, string role, Guid? ingenioId)
+    private string CreateToken(string userId, string role, Guid ingenioId)
     {
         var jwtConfig = config.GetSection("Jwt");
         var keyText = jwtConfig["Key"];
@@ -51,10 +45,9 @@ public sealed class JwtTokenService(IConfiguration config, ILogger<JwtTokenServi
         {
             new(JwtRegisteredClaimNames.Sub, userId),
             new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-            new(ClaimTypes.Role, role)
+            new(ClaimTypes.Role, role),
+            new(IngenioIdClaimType, ingenioId.ToString("D"))
         };
-        if (ingenioId.HasValue)
-            claims.Add(new Claim(IngenioIdClaimType, ingenioId.Value.ToString("D")));
         var expiryText = jwtConfig["ExpiresInMinutes"];
         var expiryMinutes = string.IsNullOrWhiteSpace(expiryText) ? 60 : double.Parse(expiryText);
         if (expiryMinutes <= 0) throw new InvalidOperationException("JWT expiration must be positive.");

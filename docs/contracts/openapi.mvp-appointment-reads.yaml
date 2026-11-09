@@ -3,9 +3,9 @@ info:
   title: AgroFlow API — Lectura interna de turnos del MVP
   version: 0.1.0
   description: >-
-    Contrato objetivo de B00 (#7) para B25 (#29) y B26 (#30), pendiente de
-    implementación. Describe las dos lecturas internas autenticadas. El
-    contrato publicado de LocalDemo vive en openapi.yaml. La autenticación
+    Contrato de B00 (#7) para B25 (#29) y B26 (#30). Describe las dos
+    lecturas internas autenticadas. LocalDemo se documenta en openapi.yaml.
+    La autenticación
     y la autorización preceden a la validación de parámetros. OPERADOR y
     SUPERVISOR pueden consultar sólo el ingenio de su identidad validada.
     Las fechas y horas de las respuestas usan RFC 3339 con el desplazamiento
@@ -58,7 +58,7 @@ paths:
           in: query
           description: >-
             Patente completa. Se comparan letras y dígitos normalizados,
-            ignorando mayúsculas y separadores.
+            ignorando mayúsculas y separadores. Debe contener una letra o dígito.
           schema:
             type: string
             minLength: 6

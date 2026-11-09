@@ -21,7 +21,7 @@ info:
     `DashboardKey`, sólo lectura). Camiones, asociaciones y las mutaciones de
     fincas siguen sin ruta publicada. El contrato objetivo de las dos
     lecturas internas autenticadas está en openapi.mvp-appointment-reads.yaml
-    y corresponde al perfil MVP, pendiente de implementación.
+    y corresponde al perfil MVP.
 servers:
   - url: http://localhost:5000
     description: API ejecutada en el host local

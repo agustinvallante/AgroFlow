@@ -1,4 +1,3 @@
-using AgroFlow.Data;
 using AgroFlow.Data.Appointments;
 using AgroFlow.Data.Identity;
 using AgroFlow.Domain.Entities;
@@ -36,19 +35,21 @@ public sealed class EfModelAndMigrationVerificationTests
 
         var migrations = context.Database.GetMigrations().ToArray();
         Assert.Contains(migrations, migration => migration.Contains("InitialAppointments", StringComparison.Ordinal));
-        Assert.EndsWith("_AddMasterDataFoundationTables", migrations[^4], StringComparison.Ordinal);
-        Assert.EndsWith("_AddWhatsAppConversations", migrations[^3], StringComparison.Ordinal);
-        Assert.EndsWith("_AddSeedRecords", migrations[^2], StringComparison.Ordinal);
-        Assert.EndsWith("_AddLocalDemoTeamAssignments", migrations[^1], StringComparison.Ordinal);
+        Assert.EndsWith("_AddMasterDataFoundationTables", migrations[^5], StringComparison.Ordinal);
+        Assert.EndsWith("_AddWhatsAppConversations", migrations[^4], StringComparison.Ordinal);
+        Assert.EndsWith("_AddSeedRecords", migrations[^3], StringComparison.Ordinal);
+        Assert.EndsWith("_AddLocalDemoTeamAssignments", migrations[^2], StringComparison.Ordinal);
+        Assert.EndsWith("_AddMvpIdentityAndAppointmentReadIndex", migrations[^1], StringComparison.Ordinal);
     }
 
     [Fact]
-    public void Main_Identity_context_keeps_existing_identity_user_schema_and_does_not_register_preparatory_user()
+    public void Sqlite_identity_references_ingenio_and_keeps_password_hash()
     {
-        using var context = new AuthenticateContext(new DbContextOptionsBuilder<AuthenticateContext>().UseSqlite("Data Source=:memory:").Options);
-        var identityUser = AssertTable(context.Model, typeof(IdentityUser), "Usuarios");
+        using var context = new AgroFlowDbContext(new DbContextOptionsBuilder<AgroFlowDbContext>().UseSqlite("Data Source=:memory:").Options);
+        var identityUser = AssertTable(context.Model, typeof(AgroFlowUser), "Usuarios");
         Assert.NotNull(identityUser.FindProperty(nameof(IdentityUser.PasswordHash)));
-        Assert.Null(context.Model.FindEntityType(typeof(AgroFlowUser)));
+        Assert.Contains(identityUser.GetForeignKeys(), key =>
+            key.IsRequired && key.PrincipalEntityType.ClrType == typeof(Ingenio));
     }
 
     private static Microsoft.EntityFrameworkCore.Metadata.IEntityType AssertTable(

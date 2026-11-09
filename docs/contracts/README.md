@@ -10,12 +10,12 @@ agregan reglas de negocio por cuenta propia.
   Describe salud, turnos, canal WhatsApp, conversaciones, transportistas y
   consulta de fincas. Cada operación declara su propia seguridad.
 - [`openapi.mvp-appointment-reads.yaml`](openapi.mvp-appointment-reads.yaml):
-  contrato objetivo de listado y detalle internos del MVP, con autenticación
+  contrato de listado y detalle internos del MVP, con autenticación
   Bearer y ámbito por ingenio. Reutiliza los esquemas comunes del contrato
   de la demo y se rige por el
   [cambio OpenSpec de lecturas](../../openspec/changes/definir-lecturas-turnos-mvp/proposal.md).
-  Las operaciones `listarTurnosMvp` y `obtenerTurnoMvp` quedan pendientes de
-  implementación hasta que estén listas sus dependencias.
+  Las operaciones `listarTurnosMvp` y `obtenerTurnoMvp` se prueban con el
+  [perfil MVP del backend](../../backend/README.md#probar-las-lecturas-internas-del-mvp).
 - [`master-data-foundation-proposal.md`](master-data-foundation-proposal.md):
   inventario no normativo de ideas técnicas de PR #47 para evaluar después de
   resolver B00/B02/B03 y las decisiones correspondientes.

@@ -54,8 +54,8 @@ Los documentos académicos originales son fuentes históricas. Una vez incorpora
 
 - El backend parte de una copia independiente de [ICS2026-backend](https://github.com/agustinvallante/ICS2026-backend), commit `dc40f7cfa515a1425f8709c73ae917e9c004266a`.
 - El frontend React/Vite importado desde [AgroFlow-Dashboard](https://github.com/GabrielBurieque/AgroFlow-Dashboard) está en `frontend/`: muestra solo datos de la API: la cola y el panel usan los turnos de la demo; las secciones sin endpoint conservan su diseño, sin datos. Las propuestas de Next.js y sus librerías asociadas no son arquitectura aprobada; ver [ADR-005](docs/architecture/decisions/ADR-005-continuidad-react-vite-para-el-mvp.md).
-- La solución backend se llama `AgroFlow.sln`, con proyectos y namespaces `AgroFlow.*`. B01 retiró productos, pedidos y clientes del e-commerce, preservando la API de turnos y seed SQLite del perfil `LocalDemo`. Identity/JWT sigue como andamiaje: esta base todavía no equivale a una API MVP con identidad y aislamiento entre ingenios.
-- El contrato HTTP actual cubre exclusivamente la demo local de turnos; para el MVP faltan decisiones, aprobación de rutas y DTO, ampliación de OpenAPI y evidencia de todas las puertas de aceptación. Las propuestas de maestros no forman parte de la superficie publicada.
+- La solución backend `AgroFlow.sln` conserva `LocalDemo` y habilita en el perfil MVP el login interno y las dos lecturas de turnos con SQLite, Identity y ámbito por ingenio. Consultar el [arranque del backend](backend/README.md#probar-las-lecturas-internas-del-mvp).
+- Los contratos HTTP distinguen ambos perfiles. El contrato MVP documenta el listado paginado y el detalle autenticado. [Contratos compartidos](docs/contracts/README.md)
 - Si ya existe una SQLite de la demo anterior, aplicar la [transición con respaldo y selección explícita](docs/development/local-demo-runbook.md#actualización-desde-la-demo-anterior-sin-perder-turnos) antes de iniciar la API renombrada; Git no mueve esos archivos ignorados.
 
 ## Seguridad
