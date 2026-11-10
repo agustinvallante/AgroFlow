@@ -1,15 +1,17 @@
+using AgroFlow.Data.Identity;
 using AgroFlow.Domain.Entities;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace AgroFlow.Data.Appointments;
 
 /// <summary>
-/// Contexto EF Core exclusivo de la demo local de turnos, sobre SQLite.
-/// Separado de <see cref="AgroFlow.Data.AuthenticateContext"/> a propósito:
-/// no depende de SQL Server/LocalDB ni de Identity, que la demo no necesita.
+/// Esquema SQLite de turnos e Identity. LocalDemo usa el mismo historial de
+/// migraciones, pero no registra servicios de Identity ni siembra cuentas.
 /// </summary>
-public sealed class AgroFlowDbContext : DbContext
+public sealed class AgroFlowDbContext : IdentityDbContext<AgroFlowUser>
 {
     public AgroFlowDbContext(DbContextOptions<AgroFlowDbContext> options)
         : base(options)
@@ -35,6 +37,20 @@ public sealed class AgroFlowDbContext : DbContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+
+        modelBuilder.Entity<AgroFlowUser>(user =>
+        {
+            user.ToTable("Usuarios");
+            user.Property(u => u.IngenioId).IsRequired();
+            user.HasOne<Ingenio>().WithMany().HasForeignKey(u => u.IngenioId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+        modelBuilder.Entity<IdentityRole>().ToTable("Roles");
+        modelBuilder.Entity<IdentityUserRole<string>>().ToTable("UsuariosRoles");
+        modelBuilder.Entity<IdentityUserClaim<string>>().ToTable("UsuariosClaims");
+        modelBuilder.Entity<IdentityUserLogin<string>>().ToTable("UsuariosLogins");
+        modelBuilder.Entity<IdentityRoleClaim<string>>().ToTable("RolesClaims");
+        modelBuilder.Entity<IdentityUserToken<string>>().ToTable("UsuariosTokens");
 
         modelBuilder.Entity<Ingenio>(eb =>
         {
@@ -109,6 +125,7 @@ public sealed class AgroFlowDbContext : DbContext
                 "CK_Ventanas_Occupied_Range",
                 "Occupied >= 0 AND Occupied <= Capacity"));
             eb.HasIndex(v => new { v.IngenioId, v.StartAt });
+            eb.HasIndex(v => new { v.IngenioId, v.StartAtUtc });
         });
 
         modelBuilder.Entity<Turno>(eb =>

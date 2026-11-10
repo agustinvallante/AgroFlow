@@ -35,9 +35,10 @@ jobs:
         run: npx --yes @fission-ai/openspec@1.13.1 validate --all --strict --no-interactive
       - name: Validate archived OpenSpec changes
         run: npx --yes @fission-ai/openspec@1.13.1 validate --archived --no-interactive
-      - name: Validate OpenAPI contract
+      - name: Validate OpenAPI contracts
         run: >-
           npx --yes @redocly/cli@2.53.3 lint docs/contracts/openapi.yaml
+          docs/contracts/openapi.mvp-appointment-reads.yaml
           --skip-rule info-license --skip-rule no-server-example.com
       - name: Check local Markdown links
         run: node .github/scripts/check-local-markdown-links.mjs

@@ -1,25 +1,26 @@
+using AgroFlow.Api.Authorization;
 using AgroFlow.Application.Dtos;
 using AgroFlow.Application.Services;
+using AgroFlow.Data.Identity;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 
 namespace AgroFlow.Api.Controllers;
 
 /// <summary>
-/// Base de login de Identity, aislada del perfil de demo. La identidad por
-/// ingenio y los roles del MVP se implementarán en B03.
+/// Login de usuarios internos del MVP.
 /// </summary>
 [ApiController]
 [Route("/api/auth")]
 public sealed class AuthenticateController : ControllerBase
 {
-    private readonly UserManager<IdentityUser> _userManager;
-    private readonly SignInManager<IdentityUser> _signInManager;
+    private readonly UserManager<AgroFlowUser> _userManager;
+    private readonly SignInManager<AgroFlowUser> _signInManager;
     private readonly JwtTokenService _jwtTokenService;
 
     public AuthenticateController(
-        UserManager<IdentityUser> userManager,
-        SignInManager<IdentityUser> signInManager,
+        UserManager<AgroFlowUser> userManager,
+        SignInManager<AgroFlowUser> signInManager,
         JwtTokenService jwtTokenService)
     {
         _userManager = userManager;
@@ -31,7 +32,7 @@ public sealed class AuthenticateController : ControllerBase
     public async Task<IActionResult> Login([FromBody] LoginModel request)
     {
         var user = await _userManager.FindByNameAsync(request.Username);
-        if (user is null)
+        if (user is not { IsActive: true } || user.IngenioId == Guid.Empty)
         {
             return Unauthorized("Credenciales inválidas.");
         }
@@ -43,7 +44,7 @@ public sealed class AuthenticateController : ControllerBase
         }
 
         var roles = await _userManager.GetRolesAsync(user);
-        if (roles.Count != 1 || roles[0] is not ("OPERADOR" or "SUPERVISOR"))
+        if (roles.Count != 1 || !AgroFlowRoles.ApprovedInternalLogin.Contains(roles[0]))
         {
             return Unauthorized("Credenciales inválidas.");
         }
@@ -52,7 +53,7 @@ public sealed class AuthenticateController : ControllerBase
 
         return Ok(new
         {
-            Token = _jwtTokenService.GenerateToken(user.UserName!, role),
+            Token = _jwtTokenService.GenerateToken(user.Id, role, user.IngenioId),
             UserInfo = new
             {
                 Email = user.Email,

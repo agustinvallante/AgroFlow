@@ -18,8 +18,8 @@ using Xunit;
 namespace AgroFlow.Tests;
 
 /// <summary>
-/// Appointments existe sólo en LocalDemo. Fuera de él, ni siquiera un JWT
-/// válido del backend heredado debe publicar la ruta de la demo sin identidad.
+/// Verifica que la variante MVP exige identidad y conserva las escrituras
+/// exclusivamente en LocalDemo.
 /// </summary>
 public sealed class AppointmentsAuthorizationTests
 {
@@ -38,30 +38,28 @@ public sealed class AppointmentsAuthorizationTests
     }
 
     [Fact]
-    public async Task LocalDemo_false_does_not_publish_appointments_for_anonymous_access()
+    public async Task LocalDemo_false_rejects_anonymous_reads()
     {
         await using var app = await StartAsync(isLocalDemo: false);
 
         using var response = await app.Client.GetAsync("/api/v1/appointments");
 
-        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
     [Fact]
-    public async Task LocalDemo_false_does_not_publish_any_appointment_operation_for_authenticated_access()
+    public async Task LocalDemo_false_does_not_publish_appointment_mutations()
     {
         await using var app = await StartAsync(isLocalDemo: false);
         app.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", CreateToken());
 
         var id = Guid.NewGuid();
-        using var list = await app.Client.GetAsync("/api/v1/appointments");
         using var create = await app.Client.PostAsync("/api/v1/appointments", new StringContent("{}"));
-        using var detail = await app.Client.GetAsync($"/api/v1/appointments/{id}");
         using var transition = await app.Client.PostAsync(
             $"/api/v1/appointments/{id}/transitions", new StringContent("{}"));
 
-        Assert.All(new[] { list, create, detail, transition },
-            response => Assert.Equal(HttpStatusCode.NotFound, response.StatusCode));
+        Assert.Equal(HttpStatusCode.MethodNotAllowed, create.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, transition.StatusCode);
     }
 
     private static string CreateToken()

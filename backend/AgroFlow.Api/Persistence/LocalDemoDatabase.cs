@@ -8,14 +8,14 @@ namespace AgroFlow.Api.Persistence;
 /// </summary>
 public static class LocalDemoDatabase
 {
-    public static string ResolveConnectionString(string? connectionString, string contentRootPath)
+    public static string ResolveConnectionString(string? connectionString, string contentRootPath, bool isLocalDemo = true)
     {
         if (string.IsNullOrWhiteSpace(connectionString))
-            throw new InvalidOperationException("Configure ConnectionStrings:AgroFlowDb para la demo local.");
+            throw new InvalidOperationException("Configure la conexión SQLite para el perfil activo.");
 
         var settings = new SqliteConnectionStringBuilder(connectionString);
         if (string.IsNullOrWhiteSpace(settings.DataSource))
-            throw new InvalidOperationException("AgroFlowDb debe identificar una base SQLite.");
+            throw new InvalidOperationException("La conexión debe identificar una base SQLite.");
 
         if (settings.Mode == SqliteOpenMode.Memory || settings.DataSource == ":memory:")
             return settings.ToString();
@@ -28,7 +28,7 @@ public static class LocalDemoDatabase
         // El nombre histórico predeterminado sigue protegido aunque se configure
         // otro destino relativo. También se busca el counterpart de la ruta
         // configurada, normalizada desde la raíz histórica de la API.
-        if (backendDirectory is not null)
+        if (isLocalDemo && backendDirectory is not null)
         {
             var legacyRoot = Path.Combine(backendDirectory, "Dsw2025Tpi.Api");
             var legacyPaths = new HashSet<string>(PathComparer)

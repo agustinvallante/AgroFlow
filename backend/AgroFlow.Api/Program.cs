@@ -1,4 +1,3 @@
-using System.Text;
 using System.Text.Json.Serialization;
 using AgroFlow.Api.Contracts.Appointments;
 using AgroFlow.Api.Middleware;
@@ -9,14 +8,12 @@ using AgroFlow.Application.Appointments;
 using AgroFlow.Application.Conversations;
 using AgroFlow.Application.MasterData;
 using AgroFlow.Application.Services;
-using AgroFlow.Data;
 using AgroFlow.Data.Appointments;
+using AgroFlow.Data.Identity;
 using AgroFlow.Data.Repositories;
 using AgroFlow.Domain.Interfaces;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 
 namespace AgroFlow.Api;
@@ -26,8 +23,6 @@ public class Program
     public static async Task Main(string[] args)
     {
         var builder = WebApplication.CreateBuilder(args);
-        // El perfil sin identidad conserva exactamente los recorridos de la demo.
-        // B03 deberá integrar identidad y turnos antes de retirar esta separación.
         var isLocalDemo = builder.Configuration.GetValue("LocalDemo:Enabled", false);
 
         builder.Services.AddLogging(config =>
@@ -54,10 +49,9 @@ public class Program
             {
                 options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
                 {
-                    In = ParameterLocation.Header,
-                    Name = "Authorization",
-                    Description = "Ingrese el token",
-                    Type = SecuritySchemeType.ApiKey
+                    Scheme = "bearer",
+                    BearerFormat = "JWT",
+                    Type = SecuritySchemeType.Http
                 });
                 options.AddSecurityRequirement(new OpenApiSecurityRequirement
                 {
@@ -76,14 +70,14 @@ public class Program
             }
         });
         builder.Services.AddHealthChecks();
+        var connectionName = isLocalDemo ? "AgroFlowDb" : "AgroFlowMvpDb";
+        var connection = LocalDemoDatabase.ResolveConnectionString(
+            builder.Configuration.GetConnectionString(connectionName), builder.Environment.ContentRootPath, isLocalDemo);
+        builder.Services.AddSingleton(TimeProvider.System);
+        builder.Services.AddDbContext<AgroFlowDbContext>(options => options.UseSqlite(connection));
 
         if (isLocalDemo)
         {
-            var appointmentsConnection = LocalDemoDatabase.ResolveConnectionString(
-                builder.Configuration.GetConnectionString("AgroFlowDb"), builder.Environment.ContentRootPath);
-            builder.Services.AddSingleton(TimeProvider.System);
-            builder.Services.AddDbContext<AgroFlowDbContext>(options =>
-                options.UseSqlite(appointmentsConnection));
             builder.Services.AddScoped<IAppointmentStore, EfAppointmentStore>();
             builder.Services.AddScoped<IAppointmentService, AppointmentService>();
 
@@ -100,44 +94,20 @@ public class Program
         }
         else
         {
-            // Identity/JWT queda como base técnica. Roles y segregación por
-            // ingenio del MVP todavía corresponden a B03.
-            builder.Services.AddDbContext<AuthenticateContext>(options =>
-                options.UseSqlServer(builder.Configuration.GetConnectionString("AgroFlowIdentity")));
-            builder.Services.AddIdentity<IdentityUser, IdentityRole>(options =>
+            builder.Services.AddIdentityCore<AgroFlowUser>(options =>
             {
                 options.Password.RequiredLength = 8;
             })
-                .AddEntityFrameworkStores<AuthenticateContext>()
-                .AddDefaultTokenProviders()
+                .AddRoles<IdentityRole>()
+                .AddSignInManager()
+                .AddEntityFrameworkStores<AgroFlowDbContext>()
                 .AddErrorDescriber<SpanishIdentityErrorDescriber>();
 
-            var jwtConfig = builder.Configuration.GetSection("Jwt");
-            var keyText = jwtConfig["Key"];
-            if (string.IsNullOrWhiteSpace(keyText) || Encoding.UTF8.GetByteCount(keyText) < 32)
-            {
-                throw new InvalidOperationException(
-                    "Fuera de LocalDemo, configure Jwt:Key con al menos 32 bytes mediante secretos o variables de entorno.");
-            }
-
-            builder.Services.AddAuthentication(options =>
-            {
-                options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-                options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-            }).AddJwtBearer(options =>
-            {
-                options.TokenValidationParameters = new TokenValidationParameters
-                {
-                    ValidateIssuer = true,
-                    ValidateAudience = true,
-                    ValidateLifetime = true,
-                    ValidateIssuerSigningKey = true,
-                    ValidIssuer = jwtConfig["Issuer"],
-                    ValidAudience = jwtConfig["Audience"],
-                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(keyText))
-                };
-            });
+            builder.Services.AddMvpJwt(builder.Configuration);
             builder.Services.AddSingleton<JwtTokenService>();
+            builder.Services.AddHttpContextAccessor();
+            builder.Services.AddScoped<ITenantContext, HttpTenantContext>();
+            builder.Services.AddScoped<IAppointmentReader, EfAppointmentStore>();
         }
 
         builder.Services.AddAuthorization(options =>
@@ -178,6 +148,16 @@ public class Program
                 }
             }
         }
+        else
+        {
+            await using var scope = app.Services.CreateAsyncScope();
+            var db = scope.ServiceProvider.GetRequiredService<AgroFlowDbContext>();
+            await db.Database.MigrateAsync();
+            if (app.Configuration["MvpSeed:Password"] is { Length: > 0 } password)
+            {
+                await MvpReadSeed.ApplyAsync(scope.ServiceProvider, password);
+            }
+        }
 
         if (app.Environment.IsDevelopment())
         {
@@ -187,7 +167,7 @@ public class Program
 
         app.UseHttpsRedirection();
         app.UseCors("AllowFrontend");
-        app.UseMiddleware<ExceptionHandlingMiddleware>();
+        app.UseMiddleware<ExceptionHandlingMiddleware>(!isLocalDemo);
         if (!isLocalDemo)
         {
             app.UseAuthentication();

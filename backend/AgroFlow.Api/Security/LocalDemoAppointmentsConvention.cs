@@ -4,11 +4,7 @@ using Microsoft.AspNetCore.Mvc.ApplicationModels;
 namespace AgroFlow.Api.Security;
 
 /// <summary>
-/// La API de turnos sin identidad y las rutas del canal, de conversaciones, de
-/// transportistas y de fincas (que protegen sus claves de <see cref="ApiKeySchemes"/>)
-/// pertenecen exclusivamente al perfil de demo, el único que registra el
-/// SQLite de AgroFlow. El login Identity heredado se conserva sólo fuera de ese
-/// perfil hasta B03.
+/// Publica una sola variante de las rutas de turnos para el perfil activo.
 /// </summary>
 public sealed class LocalDemoAppointmentsConvention(bool isLocalDemo) : IApplicationModelConvention
 {
@@ -24,7 +20,7 @@ public sealed class LocalDemoAppointmentsConvention(bool isLocalDemo) : IApplica
     public void Apply(ApplicationModel application)
     {
         Type[] excludedTypes = isLocalDemo
-            ? [typeof(AuthenticateController)]
+            ? [typeof(AuthenticateController), typeof(MvpAppointmentReadsController)]
             : LocalDemoOnlyControllers;
         var excluded = application.Controllers
             .Where(candidate => excludedTypes.Contains(candidate.ControllerType.AsType()))

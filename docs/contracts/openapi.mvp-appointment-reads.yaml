@@ -1,0 +1,263 @@
+openapi: 3.1.0
+info:
+  title: AgroFlow API — Lectura interna de turnos del MVP
+  version: 0.1.0
+  description: >-
+    Contrato de B00 (#7) para B25 (#29) y B26 (#30). Describe las dos
+    lecturas internas autenticadas. LocalDemo se documenta en openapi.yaml.
+    La autenticación
+    y la autorización preceden a la validación de parámetros. OPERADOR y
+    SUPERVISOR pueden consultar sólo el ingenio de su identidad validada.
+    Las fechas y horas de las respuestas usan RFC 3339 con el desplazamiento
+    de la zona configurada para ese ingenio en cada instante.
+servers:
+  - url: http://localhost:5000
+    description: Origen local del backend una vez habilitado el perfil MVP
+
+security:
+  - BearerAuth: []
+
+tags:
+  - name: Turnos
+    description: Consultas internas de turnos vigentes e históricos.
+
+paths:
+  /api/v1/appointments:
+    get:
+      tags: [Turnos]
+      operationId: listarTurnosMvp
+      summary: Listar turnos del ingenio autenticado
+      description: >-
+        El día operativo es el día calendario en la zona del ingenio: desde
+        su medianoche incluida hasta la siguiente medianoche excluida. Se
+        compara el inicio de la ventana. Combina los filtros con AND y ordena
+        por el instante de inicio ascendente y luego por identificador
+        ascendente. El total se calcula
+        después de aplicar el ámbito y los filtros, antes de paginar. Cada
+        petición lee el estado persistido vigente. Si el conjunto cambia entre
+        peticiones, las páginas pueden cambiar. Rechaza parámetros desconocidos,
+        repetidos o vacíos. Incluye turnos terminales, salvo que el filtro de
+        estado los excluya.
+      parameters:
+        - name: date
+          in: query
+          description: >-
+            Fecha operativa del inicio de la ventana, en formato YYYY-MM-DD.
+            Si se omite, se usa la fecha actual en la zona del ingenio,
+            incluso al combinar otros filtros.
+          schema:
+            type: string
+            format: date
+          example: '2026-07-15'
+        - name: status
+          in: query
+          description: Coincidencia exacta con el estado persistido.
+          schema:
+            $ref: './openapi.yaml#/components/schemas/AppointmentStatus'
+        - name: truckPlate
+          in: query
+          description: >-
+            Patente completa. Se comparan letras y dígitos normalizados,
+            ignorando mayúsculas y separadores. Debe contener una letra o dígito.
+          schema:
+            type: string
+            minLength: 6
+            maxLength: 10
+          example: AF123BC
+        - name: page
+          in: query
+          description: Número de página basado en uno.
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+            maximum: 2147483647
+            default: 1
+        - name: pageSize
+          in: query
+          description: Máximo de turnos por página.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 20
+      responses:
+        '200':
+          description: Página del listado. Sin coincidencias o fuera de rango, items es un arreglo vacío.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppointmentPage'
+              examples:
+                coincidencia:
+                  value:
+                    page: 1
+                    pageSize: 20
+                    totalCount: 1
+                    items:
+                      - &appointmentExample
+                        id: '11111111-1111-4111-8111-111111111111'
+                        carrier:
+                          id: '22222222-2222-4222-8222-222222222222'
+                          name: Transportista de prueba
+                        truck:
+                          id: '33333333-3333-4333-8333-333333333333'
+                          plate: AF123BC
+                        farm:
+                          id: '44444444-4444-4444-8444-444444444444'
+                          name: Finca de prueba
+                        cutAt: '2026-07-15T06:20:00-03:00'
+                        estimatedLoadTons: 28.5
+                        window:
+                          startAt: '2026-07-15T09:30:00-03:00'
+                          endAt: '2026-07-15T10:00:00-03:00'
+                        status: ASIGNADO
+                        createdAt: '2026-07-15T07:30:00-03:00'
+                sinCoincidencias:
+                  value:
+                    page: 1
+                    pageSize: 20
+                    totalCount: 0
+                    items: []
+        '400':
+          $ref: '#/components/responses/InvalidRead'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: './openapi.yaml#/components/responses/InternalError'
+
+  /api/v1/appointments/{id}:
+    get:
+      tags: [Turnos]
+      operationId: obtenerTurnoMvp
+      summary: Consultar el detalle vigente de un turno del ingenio
+      description: >-
+        Busca por identificador dentro del ámbito autorizado. Devuelve el estado
+        y la ventana persistidos, incluso si el turno se finalizó o canceló.
+        Rechaza parámetros de consulta.
+      parameters:
+        - $ref: './openapi.yaml#/components/parameters/AppointmentId'
+      responses:
+        '200':
+          description: Detalle vigente del turno.
+          content:
+            application/json:
+              schema:
+                $ref: './openapi.yaml#/components/schemas/Appointment'
+              example: *appointmentExample
+        '400':
+          $ref: '#/components/responses/InvalidRead'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/AppointmentNotFound'
+        '500':
+          $ref: './openapi.yaml#/components/responses/InternalError'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: >-
+        Token de usuario interno activo, emitido por AgroFlow. Debe identificar
+        al usuario mediante sub e incluir su rol y un único ingenioId válido.
+
+  schemas:
+    AppointmentPage:
+      type: object
+      additionalProperties: false
+      required: [items, page, pageSize, totalCount]
+      properties:
+        items:
+          type: array
+          maxItems: 50
+          items:
+            $ref: './openapi.yaml#/components/schemas/Appointment'
+        page:
+          type: integer
+          minimum: 1
+        pageSize:
+          type: integer
+          minimum: 1
+          maximum: 50
+        totalCount:
+          type: integer
+          format: int64
+          minimum: 0
+
+  responses:
+    InvalidRead:
+      description: Identificador de ruta o parámetro de consulta inválido.
+      content:
+        application/problem+json:
+          schema:
+            $ref: './openapi.yaml#/components/schemas/ProblemDetails'
+          examples:
+            fechaInvalida:
+              value:
+                type: 'about:blank'
+                title: Solicitud inválida
+                status: 400
+                code: VALIDATION_ERROR
+                traceId: 00-prueba
+                errors:
+                  date: ['Debe ser una fecha válida en formato YYYY-MM-DD.']
+            idInvalido:
+              value:
+                type: 'about:blank'
+                title: Solicitud inválida
+                status: 400
+                code: VALIDATION_ERROR
+                traceId: 00-prueba
+                errors:
+                  id: ['Debe ser un UUID válido.']
+
+    Unauthenticated:
+      description: Token ausente, inválido o vencido, o sin identidad de ingenio utilizable.
+      headers:
+        WWW-Authenticate:
+          schema:
+            type: string
+            example: Bearer
+      content:
+        application/problem+json:
+          schema:
+            $ref: './openapi.yaml#/components/schemas/ProblemDetails'
+          example:
+            type: 'about:blank'
+            title: No autenticado
+            status: 401
+            code: UNAUTHENTICATED
+            traceId: 00-prueba
+
+    Forbidden:
+      description: Identidad válida cuyo rol no tiene permiso para la operación.
+      content:
+        application/problem+json:
+          schema:
+            $ref: './openapi.yaml#/components/schemas/ProblemDetails'
+          example:
+            type: 'about:blank'
+            title: Acceso denegado
+            status: 403
+            code: FORBIDDEN
+            traceId: 00-prueba
+
+    AppointmentNotFound:
+      description: El turno no existe en el ingenio autenticado.
+      content:
+        application/problem+json:
+          schema:
+            $ref: './openapi.yaml#/components/schemas/ProblemDetails'
+          example:
+            type: 'about:blank'
+            title: Turno inexistente
+            status: 404
+            code: APPOINTMENT_NOT_FOUND
+            traceId: 00-prueba

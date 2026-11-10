@@ -43,6 +43,9 @@ public sealed record AppointmentResponse(
     string Status,
     DateTimeOffset CreatedAt);
 
+public sealed record AppointmentPageResponse(
+    IReadOnlyList<AppointmentResponse> Items, int Page, int PageSize, long TotalCount);
+
 public sealed class AppointmentProblemDetails
 {
     public string Type { get; init; } = "about:blank";

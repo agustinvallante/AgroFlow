@@ -69,7 +69,7 @@ public sealed class BackendSurfaceTests : IDisposable
     }
 
     [Fact]
-    public async Task Identity_scaffold_keeps_login_but_not_customer_registration()
+    public async Task Mvp_exposes_login_and_only_appointment_reads()
     {
         using var factory = new WebApplicationFactory<Program>()
             .WithWebHostBuilder(builder =>
@@ -77,6 +77,7 @@ public sealed class BackendSurfaceTests : IDisposable
                 builder.UseEnvironment("Development");
                 builder.UseSetting("LocalDemo:Enabled", "false");
                 builder.UseSetting("Jwt:Key", "test-only-key-for-b01-surface-check-123456789");
+                builder.UseSetting("ConnectionStrings:AgroFlowMvpDb", $"Data Source={_dbPath}");
             });
         using var client = factory.CreateClient();
         using var swagger = await client.GetAsync("/swagger/v1/swagger.json");
@@ -89,7 +90,11 @@ public sealed class BackendSurfaceTests : IDisposable
             .ToArray();
         Assert.Contains(paths, path => path.Contains("/auth/login", StringComparison.OrdinalIgnoreCase));
         Assert.DoesNotContain(paths, path => path.Contains("/auth/register", StringComparison.OrdinalIgnoreCase));
-        Assert.DoesNotContain(paths, path => path.Contains("/appointments", StringComparison.OrdinalIgnoreCase));
+        Assert.Equal(new[] { "get" }, document.RootElement.GetProperty("paths")
+            .GetProperty("/api/v1/appointments").EnumerateObject().Select(operation => operation.Name));
+        Assert.Equal(new[] { "get" }, document.RootElement.GetProperty("paths")
+            .GetProperty("/api/v1/appointments/{id}").EnumerateObject().Select(operation => operation.Name));
+        Assert.DoesNotContain(paths, path => path.EndsWith("/transitions", StringComparison.Ordinal));
         Assert.DoesNotContain(paths, path => path.Contains("/products", StringComparison.OrdinalIgnoreCase));
         Assert.DoesNotContain(paths, path => path.Contains("/orders", StringComparison.OrdinalIgnoreCase));
     }
