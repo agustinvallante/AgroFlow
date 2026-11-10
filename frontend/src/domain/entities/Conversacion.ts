@@ -15,6 +15,8 @@ export interface MensajeChat {
   autor: "transportista" | "bot";
   texto: string;
   hora?: string;
+  /** Instante del mensaje, para agruparlo por día. */
+  fechaUtc?: string;
   estadoEnvio?: EstadoEnvio;
   procesamiento?: EstadoProcesamiento;
 }
@@ -23,6 +25,8 @@ export interface Conversacion {
   id: string;
   nombre: string;
   hora: string;
+  /** Instante del último mensaje, para nombrar su día en el encabezado. */
+  ultimoMensajeUtc?: string;
   preview: string;
   estado: EstadoConversacion;
   /** En la fuente http se cargan aparte, al abrir la conversación. */

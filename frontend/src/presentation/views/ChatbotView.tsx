@@ -10,6 +10,7 @@ export function ChatbotView() {
     conversaciones,
     conversacionActiva,
     seleccionarConversacion,
+    seleccion,
     cargandoMensajes,
     errorMensajes,
     recargar,
@@ -55,7 +56,12 @@ export function ChatbotView() {
             activaId={conversacionActiva?.id ?? null}
             onSeleccionar={seleccionarConversacion}
           />
-          <ChatTranscript conversacion={conversacionActiva} cargando={cargandoMensajes} error={errorMensajes} />
+          <ChatTranscript
+            conversacion={conversacionActiva}
+            seleccion={seleccion}
+            cargando={cargandoMensajes}
+            error={errorMensajes}
+          />
         </div>
       </section>
 
