@@ -16,4 +16,7 @@
 - [x] 3.1 Documentar comportamiento y recorrido de verificación.
 - [x] 3.2 Ejecutar tipos, lint, pruebas, build y validación documental.
 - [x] 3.3 Verificar LocalDemo con API/SQLite reales y navegador en otra zona.
-- [ ] 3.4 Abrir una PR conjunta a main y registrar la evidencia sin mergear.
+- [x] 3.4 Abrir una PR conjunta a main y registrar la evidencia sin mergear.
+
+PR de implementación y evidencia:
+[#115](https://github.com/agustinvallante/AgroFlow/pull/115).
