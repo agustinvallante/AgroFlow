@@ -26,6 +26,35 @@ public sealed class EfMasterDataUnitOfWorkTests
     }
 
     [Fact]
+    public async Task Ef_truck_listing_filters_by_ingenio_and_activity_ordered_by_plate()
+    {
+        using var database = new MigratedSqliteDatabase();
+        await using var context = database.CreateContext();
+        var ingenio = new Ingenio("Truck Ingenio");
+        var foreignIngenio = new Ingenio("Foreign Truck Ingenio");
+        context.Ingenios.AddRange(ingenio, foreignIngenio);
+        var second = new Camion(ingenio.Id, "AA-002-AA", Camion.FleetTypeTerceros);
+        var first = new Camion(ingenio.Id, "AA-001-AA", Camion.FleetTypePropia);
+        var disabled = new Camion(ingenio.Id, "AA-003-AA", Camion.FleetTypePropia);
+        var foreign = new Camion(foreignIngenio.Id, "AA-000-AA", Camion.FleetTypePropia);
+        disabled.Inactivate(DateTime.UtcNow);
+        context.AddRange(second, first, disabled, foreign);
+        await context.SaveChangesAsync();
+
+        var unitOfWork = new EfMasterDataUnitOfWork(context);
+        var all = await unitOfWork.ListCamiones(ingenio.Id, active: null, CancellationToken.None);
+        var active = await unitOfWork.ListCamiones(ingenio.Id, active: true, CancellationToken.None);
+        var inactive = await unitOfWork.ListCamiones(ingenio.Id, active: false, CancellationToken.None);
+        var empty = await unitOfWork.ListCamiones(Guid.NewGuid(), active: null, CancellationToken.None);
+
+        Assert.Equal([first.Id, second.Id, disabled.Id], all.Select(c => c.Id));
+        Assert.Equal([first.Id, second.Id], active.Select(c => c.Id));
+        Assert.Equal([disabled.Id], inactive.Select(c => c.Id));
+        Assert.DoesNotContain(foreign.Id, all.Select(c => c.Id));
+        Assert.Empty(empty);
+    }
+
+    [Fact]
     public async Task Ef_association_listing_filters_by_activity_and_ingenio_in_stable_id_order()
     {
         using var database = new MigratedSqliteDatabase();
