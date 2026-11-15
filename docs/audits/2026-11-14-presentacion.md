@@ -186,4 +186,11 @@ Priorizar A01 y A02 y ejecutar A03 y A04 sobre el SHA que se presentará. Resolv
 
 Las issues acotadas de esta auditoría se vinculan abajo para repartirlas. Cada implementación debe actualizar su capacidad OpenSpec y contrato cuando cambie el comportamiento, conservar LocalDemo e incluir evidencia del flujo que corrige.
 
-<!-- audit-issues -->
+| Hallazgo | Prioridad | Issue |
+|---|---|---|
+| A01 | P1 | [#108](https://github.com/agustinvallante/AgroFlow/issues/108) Confirmar el turno creado y mostrar su fecha asignada |
+| A02 | P1 | [#109](https://github.com/agustinvallante/AgroFlow/issues/109) Mostrar en el panel camiones en curso de cualquier fecha |
+| A03 | P1 | [#110](https://github.com/agustinvallante/AgroFlow/issues/110) Verificar WhatsApp real con el SHA final de la demo |
+| A04 | P1 | [#111](https://github.com/agustinvallante/AgroFlow/issues/111) Preparar fixtures, guion y respaldo local repetible de la exposición |
+| A05 | P2 | [#112](https://github.com/agustinvallante/AgroFlow/issues/112) Responder validación 400 ante patentes sin letras ni dígitos |
+| A06 | P2 | [#113](https://github.com/agustinvallante/AgroFlow/issues/113) Recuperar chatbot y transportistas tras un error inicial de API |
