@@ -204,6 +204,70 @@ public sealed class AppointmentsHttpTests
         Assert.Equal(JsonValueKind.Object, body.RootElement.GetProperty("errors").ValueKind);
     }
 
+    // #112: una patente sin letras ni dígitos quedaba vacía al normalizarse y respondía 500.
+    [Theory]
+    [InlineData("------")]
+    [InlineData("--  --  --")]
+    [InlineData("..////..")]
+    [InlineData("      ")]
+    [InlineData("AF1")]
+    [InlineData("AF123BC12345")]
+    public async Task Truck_plate_without_letters_or_digits_is_a_field_validation_error_when_listing(string plate)
+    {
+        var service = new FakeAppointmentService();
+        using var app = await TestApp.StartAsync(service);
+
+        using var response = await app.Client.GetAsync(
+            $"/api/v1/appointments?truckPlate={Uri.EscapeDataString(plate)}");
+
+        using var body = await AssertProblemAsync(response, HttpStatusCode.BadRequest,
+            AppointmentErrorCodes.ValidationError);
+        Assert.True(body.RootElement.GetProperty("errors").TryGetProperty("truckPlate", out _));
+        Assert.Null(service.LastQuery);
+    }
+
+    [Theory]
+    [InlineData("------")]
+    [InlineData("--  --  --")]
+    [InlineData("      ")]
+    [InlineData("AF1")]
+    public async Task Truck_plate_without_letters_or_digits_is_a_field_validation_error_when_creating(string plate)
+    {
+        var service = new FakeAppointmentService();
+        using var app = await TestApp.StartAsync(service);
+
+        using var response = await app.Client.PostAsJsonAsync("/api/v1/appointments", new
+        {
+            carrierPhone = "+5493815550101",
+            truckPlate = plate,
+            farmCode = "FINCA-NORTE",
+            cutAt = "2026-09-28T05:30:00-03:00",
+            estimatedLoadTons = 28.5
+        });
+
+        using var body = await AssertProblemAsync(response, HttpStatusCode.BadRequest,
+            AppointmentErrorCodes.ValidationError);
+        var errors = body.RootElement.GetProperty("errors");
+        Assert.True(errors.TryGetProperty("truckPlate", out _));
+        Assert.False(errors.TryGetProperty("carrierPhone", out _));
+        Assert.Null(service.LastCreate);
+    }
+
+    [Theory]
+    [InlineData("AF123BC")]
+    [InlineData("af-123 bc")]
+    public async Task Truck_plate_with_separators_keeps_reaching_the_service(string plate)
+    {
+        var service = new FakeAppointmentService();
+        using var app = await TestApp.StartAsync(service);
+
+        using var response = await app.Client.GetAsync(
+            $"/api/v1/appointments?date=2026-09-28&truckPlate={Uri.EscapeDataString(plate)}");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(plate, service.LastQuery?.TruckPlate);
+    }
+
     [Theory]
     [InlineData("{\"carrierPhone\":")]
     [InlineData("not-json")]

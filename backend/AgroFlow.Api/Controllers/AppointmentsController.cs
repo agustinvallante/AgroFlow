@@ -79,10 +79,9 @@ public sealed class AppointmentsController : ControllerBase
             errors["carrierPhone"] = ["Debe ser un teléfono completo en formato E.164."];
         }
 
-        if (string.IsNullOrWhiteSpace(request.TruckPlate) ||
-            request.TruckPlate.Length is < 6 or > 10)
+        if (!AppointmentService.IsValidTruckPlate(request.TruckPlate))
         {
-            errors["truckPlate"] = ["Debe contener entre 6 y 10 caracteres."];
+            errors["truckPlate"] = [AppointmentService.TruckPlateError];
         }
 
         if (string.IsNullOrWhiteSpace(request.FarmCode) ||
@@ -189,9 +188,9 @@ public sealed class AppointmentsController : ControllerBase
             }
         }
 
-        if (plate is not null && (plate.Length is < 6 or > 10))
+        if (plate is not null && !AppointmentService.IsValidTruckPlate(plate))
         {
-            errors["truckPlate"] = ["Debe contener entre 6 y 10 caracteres."];
+            errors["truckPlate"] = [AppointmentService.TruckPlateError];
         }
 
         if (phone is not null && !PhonePattern.IsMatch(phone))
