@@ -156,6 +156,12 @@ AgroFlow SHALL permitir a los usuarios internos autorizados del ingenio consulta
 - **WHEN** un usuario autorizado de uno de ellos consulta las conversaciones
 - **THEN** AgroFlow devuelve solo las de su ingenio, de la más reciente a la más antigua
 
+#### Scenario: Revisión según el último mensaje entrante
+
+- **GIVEN** una conversación con un procesamiento fallido o un envío incierto anterior a su último mensaje entrante, sin problemas desde ese mensaje
+- **WHEN** un usuario autorizado consulta las conversaciones
+- **THEN** AgroFlow indica que la conversación no requiere revisión y el mensaje afectado conserva su estado en el historial
+
 #### Scenario: Conversación de otro ingenio
 
 - **GIVEN** el identificador de una conversación de otro ingenio
@@ -193,6 +199,34 @@ Consultar conversaciones o mensajes MUST NOT modificar conversaciones, mensajes,
 - **GIVEN** la vista de conversaciones abierta
 - **WHEN** el frontend vuelve a consultar
 - **THEN** AgroFlow devuelve el estado vigente sin generar cambios
+
+### Requirement: Lectura de una conversación en el dashboard
+
+El dashboard SHALL mostrar los mensajes de la conversación seleccionada agrupados por día, indicar el día real de su último mensaje y llevar la vista al último mensaje cada vez que se la selecciona. Los días SHALL calcularse en la zona horaria del ingenio. El refresco periódico MUST NOT mover la vista.
+
+#### Scenario: Selección de una conversación
+
+- **GIVEN** una conversación con mensajes
+- **WHEN** el usuario la selecciona, aunque ya esté abierta
+- **THEN** el dashboard muestra su último mensaje
+
+#### Scenario: Refresco con la conversación abierta
+
+- **GIVEN** una conversación abierta cuya vista el usuario desplazó
+- **WHEN** el dashboard refresca los mensajes
+- **THEN** la vista conserva su posición
+
+#### Scenario: Mensajes de distintos días
+
+- **GIVEN** una conversación con mensajes de distintos días en la zona horaria del ingenio
+- **WHEN** el usuario la abre
+- **THEN** cada día comienza con una división que indica "Hoy", "Ayer", el día de la semana dentro de la última semana o, si es anterior, la fecha completa
+
+#### Scenario: Último mensaje de otro día
+
+- **GIVEN** una conversación cuyo último mensaje es de un día anterior
+- **WHEN** el usuario la abre
+- **THEN** el encabezado indica ese día y no "Hoy"
 
 ### Requirement: Minimización de datos del canal (OD-009)
 

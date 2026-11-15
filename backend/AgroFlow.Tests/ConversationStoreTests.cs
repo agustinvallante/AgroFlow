@@ -352,6 +352,47 @@ public sealed class ConversationStoreTests : IDisposable
     }
 
     [Fact]
+    public async Task Earlier_unknown_send_stops_needing_attention_after_a_new_inbound_message()
+    {
+        await using var db = CreateContext();
+        var (_, intent) = await IngestAndReplyAsync(db);
+        await Service(db).UpdateSendStatusAsync(new UpdateSendStatusCommand(intent.ReplyId, MessageSendStatus.Unknown, null));
+
+        _clock.Advance(TimeSpan.FromMinutes(1));
+        await Service(db).IngestAsync(Inbound("fixture-in-002"));
+
+        Assert.False(Assert.Single((await Service(db).ListConversationsAsync(_ingenioA, new PageRequest(null, 20))).Items).NeedsAttention);
+    }
+
+    [Fact]
+    public async Task Earlier_processing_failure_stops_needing_attention_after_a_new_inbound_message()
+    {
+        await using var db = CreateContext();
+        var first = await Service(db).IngestAsync(Inbound("fixture-in-001"));
+        await Service(db).ReportProcessingFailureAsync(
+            new ReportProcessingFailureCommand(first.MessageId, first.Processing.ClaimToken!, "AGENT_ERROR"));
+
+        _clock.Advance(TimeSpan.FromMinutes(1));
+        await Service(db).IngestAsync(Inbound("fixture-in-002"));
+
+        Assert.False(Assert.Single((await Service(db).ListConversationsAsync(_ingenioA, new PageRequest(null, 20))).Items).NeedsAttention);
+    }
+
+    [Fact]
+    public async Task Failure_of_the_latest_inbound_message_needs_attention_after_earlier_success()
+    {
+        await using var db = CreateContext();
+        await IngestAndReplyAsync(db);
+
+        _clock.Advance(TimeSpan.FromMinutes(1));
+        var latest = await Service(db).IngestAsync(Inbound("fixture-in-002"));
+        await Service(db).ReportProcessingFailureAsync(
+            new ReportProcessingFailureCommand(latest.MessageId, latest.Processing.ClaimToken!, "AGENT_ERROR"));
+
+        Assert.True(Assert.Single((await Service(db).ListConversationsAsync(_ingenioA, new PageRequest(null, 20))).Items).NeedsAttention);
+    }
+
+    [Fact]
     public async Task Pending_send_cannot_be_reported_as_a_result()
     {
         await using var db = CreateContext();

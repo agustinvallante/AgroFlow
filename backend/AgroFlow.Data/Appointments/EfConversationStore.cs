@@ -338,21 +338,30 @@ public sealed class EfConversationStore : IConversationStore
                 && _db.Conversations.Any(c => c.Id == m.ConversationId && c.LastMessageAtUtc == m.PersistedAtUtc))
             .ToDictionaryAsync(m => m.ConversationId, cancellationToken);
 
-        // Requiere revisión: procesamiento fallido o vencido, o envío incierto.
+        // Requiere revisión: procesamiento fallido o vencido, o envío incierto,
+        // sólo desde el último mensaje entrante. Un problema anterior ya quedó
+        // atrás y sigue visible en el mensaje afectado.
         var nowUtc = UtcNow;
         var attentionByProcessing = await _db.MessageProcessings.AsNoTracking()
             .Where(p => p.Status == ProcessingStatus.Failed
                 || (p.Status == ProcessingStatus.Processing && p.ClaimExpiresAtUtc <= nowUtc))
-            .Join(_db.ConversationMessages.AsNoTracking(), p => p.InboundMessageId, m => m.Id, (p, m) => m.ConversationId)
-            .Where(conversationId => ids.Contains(conversationId))
-            .Distinct()
+            .Join(_db.ConversationMessages.AsNoTracking(), p => p.InboundMessageId, m => m.Id,
+                (p, m) => new { m.ConversationId, m.PersistedAtUtc })
+            .Where(problem => ids.Contains(problem.ConversationId))
             .ToListAsync(cancellationToken);
         var attentionBySend = await _db.ConversationMessages.AsNoTracking()
             .Where(m => ids.Contains(m.ConversationId) && m.SendStatus == MessageSendStatus.Unknown)
-            .Select(m => m.ConversationId)
-            .Distinct()
+            .Select(m => new { m.ConversationId, m.PersistedAtUtc })
             .ToListAsync(cancellationToken);
-        var needsAttention = attentionByProcessing.Concat(attentionBySend).ToHashSet();
+        var lastInboundAtUtc = await _db.ConversationMessages.AsNoTracking()
+            .Where(m => ids.Contains(m.ConversationId) && m.Direction == MessageDirection.Inbound)
+            .GroupBy(m => m.ConversationId)
+            .Select(g => new { ConversationId = g.Key, PersistedAtUtc = g.Max(m => m.PersistedAtUtc) })
+            .ToDictionaryAsync(x => x.ConversationId, x => x.PersistedAtUtc, cancellationToken);
+        var needsAttention = attentionByProcessing.Concat(attentionBySend)
+            .Where(problem => problem.PersistedAtUtc >= lastInboundAtUtc.GetValueOrDefault(problem.ConversationId))
+            .Select(problem => problem.ConversationId)
+            .ToHashSet();
 
         var transportistaIds = conversations.Where(c => c.TransportistaId.HasValue)
             .Select(c => c.TransportistaId!.Value).Distinct().ToArray();

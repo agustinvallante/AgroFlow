@@ -10,6 +10,8 @@ const mensajeDeError = (e: unknown, porDefecto: string) => (e instanceof Error &
 export function useChatbot() {
   const [conversaciones, setConversaciones] = useState<Conversacion[]>([]);
   const [conversacionActivaId, setConversacionActivaId] = useState<string | null>(null);
+  // Cuenta los clics en la lista, incluso sobre la conversación ya abierta.
+  const [seleccion, setSeleccion] = useState(0);
   const [mensajes, setMensajes] = useState<MensajeChat[]>([]);
   const [cargandoMensajes, setCargandoMensajes] = useState(false);
   const [errorMensajes, setErrorMensajes] = useState<string | null>(null);
@@ -76,13 +78,24 @@ export function useChatbot() {
     };
   }, [conversacionActivaId, actualizadoEn]);
 
+  const seleccionarConversacion = useCallback((id: string) => {
+    // Sin esto, la conversación nueva mostraría los mensajes de la anterior hasta cargar.
+    if (id !== activaRef.current) {
+      setMensajes([]);
+      setErrorMensajes(null);
+    }
+    setConversacionActivaId(id);
+    setSeleccion((n) => n + 1);
+  }, []);
+
   const base = conversaciones.find((c) => c.id === conversacionActivaId) ?? null;
   const conversacionActiva = base ? { ...base, mensajes } : null;
 
   return {
     conversaciones,
     conversacionActiva,
-    seleccionarConversacion: setConversacionActivaId,
+    seleccionarConversacion,
+    seleccion,
     cargandoMensajes,
     errorMensajes,
     recargar,

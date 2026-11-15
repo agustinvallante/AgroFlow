@@ -1204,7 +1204,7 @@ components:
           enum: [INBOUND, OUTBOUND, null]
         needsAttention:
           type: boolean
-          description: Procesamiento fallido o vencido, o envío incierto.
+          description: Procesamiento fallido o vencido, o envío incierto, desde el último mensaje entrante.
 
     ConversationSummaryPage:
       type: object
