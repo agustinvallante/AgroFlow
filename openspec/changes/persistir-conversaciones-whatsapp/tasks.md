@@ -89,6 +89,7 @@ Bloqueantes: etapas 2 y 6.
 - [x] 8.1 `HttpConversacionRepository` con su DTO y mapper, y ajuste de la entidad `Conversacion`. Verificación: Vitest.
 - [x] 8.2 `HttpTransportistaRepository` alineado con el modelo de la API. Verificación: Vitest.
 - [x] 8.3 Composición en `container.ts` para el modo HTTP. Verificación: typecheck, lint, build y prueba manual en la demo.
+- [x] 8.4 Transcript del chatbot: ir al último mensaje al seleccionar una conversación, división por día y día real en el encabezado. Verificación: `ChatbotView.test.tsx` y `date.test.ts`.
 
 Aceptación: en modo `http`, las vistas Chatbot y Transportistas muestran datos persistidos y dejan de marcarse como demostración.
 

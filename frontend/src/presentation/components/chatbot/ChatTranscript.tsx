@@ -1,4 +1,6 @@
-import type { Conversacion, EstadoEnvio, EstadoProcesamiento } from "../../../domain/entities/Conversacion";
+import { Fragment, useLayoutEffect, useRef } from "react";
+import type { Conversacion, EstadoEnvio, EstadoProcesamiento, MensajeChat } from "../../../domain/entities/Conversacion";
+import { etiquetaDiaEnZonaIngenio, horaEnZonaIngenio } from "../../../shared/utils/date";
 
 const META_LABEL: Record<Conversacion["estado"], string> = {
   resuelto: "Resuelto",
@@ -22,15 +24,41 @@ const PROCESAMIENTO_LABEL: Partial<Record<EstadoProcesamiento, string>> = {
 
 interface ChatTranscriptProps {
   conversacion: Conversacion | null;
+  /** Cambia con cada clic en la lista: vuelve a llevar la vista al último mensaje. */
+  seleccion?: number;
   cargando?: boolean;
   error?: string | null;
 }
 
-export function ChatTranscript({ conversacion, cargando = false, error = null }: ChatTranscriptProps) {
+/** "Ayer · 18:44"; sin el instante, el texto que ya trae la conversación. */
+function momentoUltimoMensaje({ ultimoMensajeUtc, hora }: Conversacion): string {
+  if (!ultimoMensajeUtc) return hora;
+  return `${etiquetaDiaEnZonaIngenio(ultimoMensajeUtc)} · ${horaEnZonaIngenio(ultimoMensajeUtc)}`;
+}
+
+/** Día del mensaje; `null` si no trae fecha, y entonces no abre una división. */
+const diaDeMensaje = (mensaje: MensajeChat | undefined) =>
+  mensaje?.fechaUtc ? etiquetaDiaEnZonaIngenio(mensaje.fechaUtc) : null;
+
+export function ChatTranscript({ conversacion, seleccion = 0, cargando = false, error = null }: ChatTranscriptProps) {
+  const cuerpoRef = useRef<HTMLDivElement>(null);
+  const seleccionAtendida = useRef<string | null>(null);
+  const claveSeleccion = `${conversacion?.id ?? ""}:${seleccion}`;
+  const cantidadMensajes = conversacion?.mensajes.length ?? 0;
+
+  // Los mensajes llegan después del clic: se baja una sola vez por selección,
+  // cuando ya están, para no mover al usuario en cada refresco.
+  useLayoutEffect(() => {
+    const cuerpo = cuerpoRef.current;
+    if (!cuerpo || cantidadMensajes === 0 || seleccionAtendida.current === claveSeleccion) return;
+    cuerpo.scrollTop = cuerpo.scrollHeight;
+    seleccionAtendida.current = claveSeleccion;
+  }, [claveSeleccion, cantidadMensajes]);
+
   const detalle = conversacion
     ? [
         conversacion.direccion && conversacion.remitenteReconocido ? conversacion.direccion : null,
-        `Hoy · ${conversacion.hora}`,
+        momentoUltimoMensaje(conversacion),
         META_LABEL[conversacion.estado],
       ]
         .filter(Boolean)
@@ -43,20 +71,29 @@ export function ChatTranscript({ conversacion, cargando = false, error = null }:
         <strong>{conversacion?.nombre ?? "—"}</strong>
         <span>{detalle}</span>
       </div>
-      <div className="chat-transcript-body">
+      <div className="chat-transcript-body" ref={cuerpoRef}>
         {error && <div className="error-state">{error}</div>}
         {cargando && conversacion?.mensajes.length === 0 && <div className="loading-state">Cargando mensajes...</div>}
-        {conversacion?.mensajes.map((m, i) => {
+        {conversacion?.mensajes.map((m, i, mensajes) => {
           const estado = m.estadoEnvio ? ENVIO_LABEL[m.estadoEnvio] : m.procesamiento ? PROCESAMIENTO_LABEL[m.procesamiento] : undefined;
+          const dia = diaDeMensaje(m);
+          const empiezaDia = dia !== null && dia !== diaDeMensaje(mensajes[i - 1]);
           return (
-            <div className={`msg ${m.autor === "transportista" ? "in" : "out"}`} key={m.id ?? i}>
-              <span className="who">
-                {m.autor === "transportista" ? "Transportista" : "Bot AgroFlow"}
-                {m.hora ? ` · ${m.hora}` : ""}
-              </span>
-              {m.texto}
-              {estado && <span className={`msg-status ${m.estadoEnvio ?? m.procesamiento}`}>{estado}</span>}
-            </div>
+            <Fragment key={m.id ?? i}>
+              {empiezaDia && (
+                <div className="chat-dia">
+                  <span>{dia}</span>
+                </div>
+              )}
+              <div className={`msg ${m.autor === "transportista" ? "in" : "out"}`}>
+                <span className="who">
+                  {m.autor === "transportista" ? "Transportista" : "Bot AgroFlow"}
+                  {m.hora ? ` · ${m.hora}` : ""}
+                </span>
+                {m.texto}
+                {estado && <span className={`msg-status ${m.estadoEnvio ?? m.procesamiento}`}>{estado}</span>}
+              </div>
+            </Fragment>
           );
         })}
       </div>

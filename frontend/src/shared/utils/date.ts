@@ -105,3 +105,37 @@ export function fechaHoraEnZonaIngenio(
   if (dia === FORMATO_DIA_INGENIO.format(ahora)) return hora;
   return `${dia.slice(0, 5)} ${hora}`;
 }
+
+const FORMATO_DIA_SEMANA_INGENIO = new Intl.DateTimeFormat("es-AR", {
+  weekday: "long",
+  timeZone: ZONA_INGENIO,
+});
+
+const MS_POR_DIA = 86_400_000;
+
+/** Días enteros del calendario en la zona del ingenio, para restar fechas. */
+function numeroDeDiaEnZonaIngenio(fecha: Date): number {
+  const [dia, mes, anio] = FORMATO_DIA_INGENIO.format(fecha).split("/").map(Number);
+  return Date.UTC(anio, mes - 1, dia) / MS_POR_DIA;
+}
+
+/**
+ * Nombre del día como en WhatsApp, en la zona del ingenio: "Hoy", "Ayer", el
+ * día de la semana dentro de la última semana y, antes, "30/10/2026".
+ */
+export function etiquetaDiaEnZonaIngenio(
+  valorUtc: string | undefined | null,
+  ahora: Date = new Date(),
+): string {
+  if (!valorUtc) return "—";
+  const fecha = new Date(valorUtc);
+  if (Number.isNaN(fecha.getTime())) return "—";
+  const diasAtras = numeroDeDiaEnZonaIngenio(ahora) - numeroDeDiaEnZonaIngenio(fecha);
+  if (diasAtras === 0) return "Hoy";
+  if (diasAtras === 1) return "Ayer";
+  if (diasAtras > 1 && diasAtras < 7) {
+    const nombre = FORMATO_DIA_SEMANA_INGENIO.format(fecha);
+    return nombre.charAt(0).toUpperCase() + nombre.slice(1);
+  }
+  return FORMATO_DIA_INGENIO.format(fecha);
+}
