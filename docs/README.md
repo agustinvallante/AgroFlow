@@ -19,6 +19,10 @@ Este directorio es la entrada humana a la documentación. Los requisitos normati
 
 Las políticas de prioridad, ventanas, asociaciones, alcance de catálogos y cola visual aprobadas para el MVP están resumidas en [ADR-004](architecture/decisions/ADR-004-politicas-operativas-del-mvp.md). La continuidad de React/Vite está aceptada en [ADR-005](architecture/decisions/ADR-005-continuidad-react-vite-para-el-mvp.md) y SQLite como motor del MVP en [ADR-006](architecture/decisions/ADR-006-sqlite-para-persistencia-del-mvp.md). Los detalles no aprobados permanecen identificados en [decisiones abiertas](planning/open-decisions.md).
 
+## Demostración del mapa
+
+- [Mapa simulado para la presentación](development/mapa-simulado-presentacion.md) con su alcance, datos ficticios, guion y cobertura.
+
 ## Contenido
 
 - `product/`: problema, alcance, actores, casos de uso y trazabilidad con las fuentes académicas.

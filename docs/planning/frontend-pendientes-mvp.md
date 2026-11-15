@@ -2,6 +2,8 @@
 
 > **Estado: inventario de trabajo, no normativo.** No aprueba rutas, DTO ni decisiones; lo que falta requiere su cambio OpenSpec y contrato. **Corte:** 2026-11-07.
 
+**Actualización del 2026-11-14.** La [PR #105](https://github.com/agustinvallante/AgroFlow/pull/105) incorpora el [mapa simulado para la presentación](../development/mapa-simulado-presentacion.md), pendiente de revisión e integración. Su [cambio OpenSpec](../../openspec/changes/mapa-simulado-presentacion/proposal.md) autoriza datos manuales para el viaje finca → ingenio y conserva la independencia de los turnos de la API. Las filas históricas siguientes describen el corte anterior.
+
 ## Base analizada
 
 | Fuente | Referencia | Estado |

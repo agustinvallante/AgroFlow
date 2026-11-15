@@ -40,6 +40,10 @@ Requisitos: **.NET 8 SDK**, **Node.js 22** (base de CI), Docker con Compose y, p
 
    Esperar los cuatro servicios saludables. Abrir n8n en `http://localhost:5678` y Evolution Manager en `http://localhost:8080/manager`; luego importar y vincular como se indica abajo.
 
+## Mapa para la presentación
+
+La pestaña Mapa permite agregar una simulación independiente al guion. Consultar la [guía del mapa](mapa-simulado-presentacion.md) para cargar ingenio, finca y viaje ficticios, probar x60 y comprobar persistencia. Las operaciones de turnos y WhatsApp siguen el recorrido de API descrito en esta guía.
+
 ## Configuración local sin perder datos
 
 La muestra canónica es [`infra/env.example`](../../infra/env.example); el archivo secreto de ejecución es `infra/.env`, ignorado por Git. No copiar archivos de secretos al repositorio ni pegar sus valores en issues, chats o capturas.
