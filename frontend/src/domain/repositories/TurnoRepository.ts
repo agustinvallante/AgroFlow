@@ -8,6 +8,8 @@ import type { EstadoTurno, FiltrosTurno, NuevoTurnoManual, Turno } from "../enti
  */
 export interface TurnoRepository {
   obtenerTurnosDelDia(filtros?: FiltrosTurno): Promise<Turno[]>;
+  /** Activos de cualquier fecha; incluye asignados, excluye terminales. */
+  obtenerTurnosActivos(): Promise<Turno[]>;
   obtenerTurno(id: string): Promise<Turno>;
   crearTurnoManual(datos: NuevoTurnoManual): Promise<Turno>;
   cancelarTurno(id: string): Promise<Turno>;

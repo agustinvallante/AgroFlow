@@ -36,7 +36,14 @@ export class HttpTurnoRepository implements TurnoRepository {
   async obtenerTurnosDelDia(filtros?: FiltrosTurno): Promise<Turno[]> {
     const query = toListQuery(filtros);
     if (!query) return [];
+    return this.listar(query);
+  }
 
+  async obtenerTurnosActivos(): Promise<Turno[]> {
+    return this.listar({ active: "true" });
+  }
+
+  private async listar(query: Record<string, string | undefined>): Promise<Turno[]> {
     const resumenes = await this.api.get<AppointmentSummaryDto[]>(BASE, query);
     const turnos = await Promise.all(
       resumenes.map(async (resumen) => {

@@ -7,7 +7,7 @@ import { EmptyState, ErrorState, LoadingState } from "../components/common/Statu
 import { CambioEstadoSelect } from "../components/common/CambioEstadoSelect";
 import { ESTADOS_SELECCIONABLES } from "../components/common/estadosSeleccionables";
 import type { Turno } from "../../domain/entities/Turno";
-import { datetimeLocalARfc3339, fechaHoraDeRfc3339 } from "../../shared/utils/date";
+import { datetimeLocalARfc3339, fechaHoraDeRfc3339, ventanaDeRfc3339 } from "../../shared/utils/date";
 
 const ESTADO_OPCIONES: { value: string; label: string }[] = [
   { value: "todos", label: "Todos los estados" },
@@ -51,6 +51,7 @@ export function ColaTurnosView() {
   const [formError, setFormError] = useState<string | null>(null);
   const [guardando, setGuardando] = useState(false);
   const [form, setForm] = useState(FORM_VACIO);
+  const [creado, setCreado] = useState<Turno | null>(null);
 
   const actualizarCampo = (campo: keyof typeof form, valor: string) => {
     setForm((prev) => ({ ...prev, [campo]: valor }));
@@ -58,9 +59,10 @@ export function ColaTurnosView() {
 
   const guardarTurno = async () => {
     setFormError(null);
+    setCreado(null);
     setGuardando(true);
     try {
-      await crearTurno({
+      const confirmado = await crearTurno({
         telefono: form.telefono,
         patente: form.patente,
         codigoFinca: form.codigoFinca,
@@ -68,6 +70,7 @@ export function ColaTurnosView() {
         corteEn: datetimeLocalARfc3339(form.corteEn),
         cargaTon: Number(form.cargaTon) || 0,
       });
+      setCreado(confirmado);
       setForm(FORM_VACIO);
       setMostrarForm(false);
     } catch (e) {
@@ -151,6 +154,14 @@ export function ColaTurnosView() {
         </div>
       )}
 
+      {creado && (
+        <div className="alert-card" role="status" style={{ marginBottom: 22 }}>
+          <strong>Turno creado para {creado.patente}.</strong>
+          <p>Ventana asignada: {ventanaDeRfc3339(creado.ventana.inicio, creado.ventana.fin)}.</p>
+          <p>Seleccionamos la fecha asignada y limpiamos los filtros de estado, patente, teléfono y búsqueda para mostrar el turno.</p>
+        </div>
+      )}
+
       {errorAccion && (
         <div onClick={limpiarErrorAccion} style={{ cursor: "pointer", marginBottom: 12 }} title="Cerrar">
           <ErrorState message={errorAccion} />
@@ -168,7 +179,7 @@ export function ColaTurnosView() {
                 <dt>Estado</dt>
                 <dd><EstadoBadge estado={detalle.estado} /></dd>
                 <dt>Ventana</dt>
-                <dd>{detalle.hora}{detalle.ventanaFin ? ` – ${detalle.ventanaFin}` : ""}</dd>
+                <dd>{ventanaDeRfc3339(detalle.ventana.inicio, detalle.ventana.fin)}</dd>
                 <dt>Patente</dt>
                 <dd>{detalle.patente}</dd>
                 <dt>Transportista</dt>
@@ -254,7 +265,9 @@ export function ColaTurnosView() {
                   className={`fila-seleccionable ${t.id === detalleId ? "activa" : ""}`}
                   onClick={() => abrirDetalle(t.id)}
                 >
-                  <td style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 12.5 }}>{t.hora}</td>
+                  <td style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 12.5 }}>
+                    {ventanaDeRfc3339(t.ventana.inicio, t.ventana.fin)}
+                  </td>
                   <td style={{ fontFamily: "'IBM Plex Mono',monospace" }}>{t.patente}</td>
                   <td>{t.chofer}</td>
                   <td>{t.finca}</td>

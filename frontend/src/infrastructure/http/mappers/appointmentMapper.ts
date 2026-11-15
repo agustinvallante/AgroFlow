@@ -31,6 +31,7 @@ export function toAppointmentStatus(estado: EstadoTurno): AppointmentStatusDto |
 export function mapAppointment(dto: AppointmentDto): Turno {
   return {
     id: dto.id,
+    ventana: { inicio: dto.window.startAt, fin: dto.window.endAt },
     // Hora escrita por la API, en la zona del ingenio (no la del navegador).
     hora: horaDeRfc3339(dto.window.startAt),
     ventanaFin: horaDeRfc3339(dto.window.endAt),

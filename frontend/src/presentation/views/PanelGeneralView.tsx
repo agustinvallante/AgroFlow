@@ -8,6 +8,7 @@ import { EmptyState, ErrorState, LoadingState } from "../components/common/Statu
 import { SIN_DATO } from "../components/common/sinDatos";
 import { BotFeedPanel } from "../components/panel/BotFeedPanel";
 import { Timeline } from "../components/panel/Timeline";
+import { ventanaDeRfc3339 } from "../../shared/utils/date";
 
 const ACTIVOS = ["viaje", "cancha", "ingresado", "descargando"];
 
@@ -17,7 +18,7 @@ const ACTIVOS = ["viaje", "cancha", "ingresado", "descargando"];
  * lugar en la pantalla, sin datos y sin acciones.
  */
 export function PanelGeneralView() {
-  const { turnos, estadoCarga, error, desactualizado, recargar, cambiarEstado, enCurso, errorAccion } = useColaTurnos();
+  const { turnos, estadoCarga, error, desactualizado, recargar, cambiarEstado, enCurso, errorAccion } = useColaTurnos("activos");
   const { hora, fecha } = useClock();
 
   const activos = useMemo(() => turnos.filter((t) => ACTIVOS.includes(t.estado)), [turnos]);
@@ -88,8 +89,7 @@ export function PanelGeneralView() {
                     {activos.map((t) => (
                       <tr key={t.id}>
                         <td style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 12.5 }}>
-                          {t.hora}
-                          {t.ventanaFin ? `–${t.ventanaFin}` : ""}
+                          {ventanaDeRfc3339(t.ventana.inicio, t.ventana.fin)}
                         </td>
                         <td style={{ fontFamily: "'IBM Plex Mono',monospace" }}>{t.patente}</td>
                         <td>

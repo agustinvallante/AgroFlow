@@ -183,6 +183,72 @@ Usá la UI, el chatbot o un cliente HTTP que respete OpenAPI.
 
 Para probar n8n, el workflow debe tomar `carrierPhone` del teléfono del mensaje entrante y enviar los identificadores naturales anteriores directamente a la API. No debe consultar endpoints de datos maestros ni almacenar UUIDs fijos.
 
+## Verificar visibilidad de turnos en el dashboard
+
+Recorrido para #108 y #109, con el mismo contrato LocalDemo y datos ficticios.
+
+1. Abrí Cola de turnos y aplicá una búsqueda, estado o patente que no coincida
+   con el camión que vas a crear. Creá un turno válido con referencias del seed.
+2. Comprobá la confirmación con patente, fecha, rango horario y desplazamiento
+   de la ventana devuelta por la API, el detalle abierto y la selección de su
+   fecha en la cola. El aviso explica que se limpiaron los demás filtros.
+3. Repetí con una ventana del día siguiente. Para reproducirlo sin tocar las
+   reglas ni los datos operativos, usá una base ficticia de prueba después del
+   cierre de ventanas de hoy, o una base de prueba sin cupo futuro hoy y con
+   cupo mañana. La API siempre decide la ventana, no el formulario.
+4. Verificá que fila y detalle muestran el día y hora del ingenio, también con
+   el navegador configurado en otra zona. Si una ventana cruza medianoche, sus
+   dos fechas deben ser distinguibles.
+5. Avanzá el turno a `EN_CAMINO`, abrí Panel general y comprobá que aparece en
+   Camiones en curso aunque su ventana sea de mañana. La consulta de red debe
+   incluir `active=true` sin `date`. Un turno activo atrasado también se incluye.
+   Los `ASIGNADO` todavía no aparecen en esta lista.
+6. Completá el recorrido hasta `FINALIZADO` o cancelá desde un estado permitido.
+   Debe desaparecer tras el refresco. Volvé a la cola y verificá que su fecha y
+   filtros siguen funcionando como consultas diarias.
+7. Detené temporalmente la API con datos ya cargados. La lista previa debe
+   permanecer marcada como desactualizada. Una carga inicial fallida informa
+   el error y ofrece reintento, sin afirmar que no existen camiones.
+
+Pruebas de regresión automatizadas, incluidas ventanas de hoy/mañana, ventana
+vencida, cruce de medianoche, errores y respuestas fuera de orden:
+
+```bash
+npm --prefix frontend test
+npm --prefix frontend run typecheck
+npm --prefix frontend run lint
+npm --prefix frontend run build
+```
+
+No se agregan endpoints. Las operaciones, el filtro `active=true` y las ventanas
+RFC 3339 ya están publicados en [OpenAPI](../contracts/openapi.yaml). Los cambios
+se especifican en
+[visibilidad-turnos-presentacion](../../openspec/changes/visibilidad-turnos-presentacion/proposal.md).
+
+### Evidencia de la corrección conjunta #108 / #109
+
+Verificación del 2026-11-14 sobre la rama
+`fix/demo-turnos-visibilidad-108-109`, creada desde main `8873a26`.
+
+- Frontend: 104 pruebas aprobadas, typecheck y build correctos. Lint termina sin
+  errores, con cinco advertencias preexistentes.
+- Backend sin cambios: build y 352 pruebas aprobados.
+- Integraciones y workflow: 106 pruebas aprobadas. Aceptación local del chatbot
+  contra API/SQLite y proxy reales aprobada, con WhatsApp, Evolution y agente
+  simulados.
+- OpenSpec estricto, OpenAPI y enlaces Markdown locales válidos. OpenAPI conserva
+  la advertencia preexistente sobre la ausencia de respuesta 4xx en `/health`.
+- Chrome con zona `Asia/Tokyo`, API en LocalDemo y SQLite efímera: alta de hoy con
+  filtros previos, confirmación y detalle automáticos, ciclo hasta `FINALIZADO`;
+  alta de mañana, paso a `EN_CAMINO` y aparición en panel; ventana vencida todavía
+  activa visible tras polling; cancelación que la retira del panel y consulta
+  diaria de la fecha anterior que sigue mostrando el turno cancelado.
+
+Las ventanas especiales de hoy y del día anterior se prepararon únicamente en
+esa base temporal para reproducir los escenarios fuera del horario del seed.
+La verificación no cambia el seed ni el calendario del producto. Estos resultados
+acreditan visibilidad e integración local, no una prueba del canal WhatsApp real.
+
 ## Recorrido principal
 
 Sobre el primer turno, solicitar una transición por vez y volver a consultar después de cada respuesta:

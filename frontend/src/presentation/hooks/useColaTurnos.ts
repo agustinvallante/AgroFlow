@@ -48,7 +48,7 @@ interface ResultadoConsulta {
   ultimaActualizacion: Date | null;
 }
 
-export function useColaTurnos() {
+export function useColaTurnos(modo: "dia" | "activos" = "dia") {
   const [resultado, setResultado] = useState<ResultadoConsulta | null>(null);
   const [errorAccion, setErrorAccion] = useState<string | null>(null);
   const [enCurso, setEnCurso] = useState<string | null>(null);
@@ -78,7 +78,7 @@ export function useColaTurnos() {
     };
   }, [fecha, filtroEstado, patente, telefono, filtrosIncompletos]);
 
-  const clave = JSON.stringify(filtrosApi);
+  const clave = JSON.stringify([modo, modo === "dia" ? filtrosApi : null]);
 
   // Un resultado de otros filtros no corresponde a lo que se ve: se trata
   // como si todavía no hubiera respuesta.
@@ -91,9 +91,11 @@ export function useColaTurnos() {
 
   const cargar = useCallback(async () => {
     const consulta = ++ultimaConsulta.current;
-    if (!filtrosApi) return;
+    if (modo === "dia" && !filtrosApi) return;
     try {
-      const data = await container.turnos.obtenerTurnosDelDia.execute(filtrosApi);
+      const data = modo === "activos"
+        ? await container.turnos.obtenerTurnosActivos.execute()
+        : await container.turnos.obtenerTurnosDelDia.execute(filtrosApi!);
       if (consulta !== ultimaConsulta.current) return;
       setResultado({ clave, turnos: data, estado: "ok", error: null, ultimaActualizacion: new Date() });
     } catch (e) {
@@ -107,7 +109,7 @@ export function useColaTurnos() {
           : { clave, turnos: [], estado: "error", error, ultimaActualizacion: null }
       );
     }
-  }, [filtrosApi, clave]);
+  }, [modo, filtrosApi, clave]);
 
   // Turno seleccionado y último pedido de detalle emitido. Una respuesta
   // (o un error) de un pedido anterior se descarta: puede llegar después de
@@ -198,14 +200,25 @@ export function useColaTurnos() {
     [ejecutarAccion]
   );
 
-  const crearTurno = useCallback(
-    async (datos: NuevoTurnoManual) => {
-      // El error se propaga para que el formulario lo muestre.
-      await container.turnos.crearTurnoManual.execute(datos);
-      await cargar();
-    },
-    [cargar]
-  );
+  const crearTurno = useCallback(async (datos: NuevoTurnoManual): Promise<Turno> => {
+    // El error se propaga al formulario. Solo cambiamos la vista tras el POST confirmado.
+    const creado = await container.turnos.crearTurnoManual.execute(datos);
+    ultimaConsulta.current++;
+    ultimoDetalle.current++;
+    setErrorAccion(null);
+    setResultado(null);
+    // El día pertenece al desplazamiento emitido por la API, no al navegador.
+    setFecha(creado.ventana.inicio.slice(0, 10));
+    setFiltroEstado("todos");
+    setPatente("");
+    setTelefono("");
+    setBusqueda("");
+    seleccionado.current = creado.id;
+    setDetalleId(creado.id);
+    setDetalle(creado);
+    // El efecto recarga con los filtros nuevos. No reutilizar cargar() con los anteriores.
+    return creado;
+  }, []);
 
   const turnosFiltrados = useMemo(() => {
     const texto = busqueda.toLowerCase().trim();
