@@ -289,7 +289,11 @@ public sealed class ConversationsHttpTests : IDisposable
         Assert.Contains("/api/v1/conversation-reply-intents", paths);
         Assert.Contains("/api/v1/conversations", paths);
         Assert.Contains("/api/v1/drivers", paths);
-        Assert.DoesNotContain(paths, path => path.Contains("/trucks", StringComparison.Ordinal));
+        // De camiones sólo se publica el listado (B15, #19): sin alta, edición,
+        // inhabilitación ni asociaciones.
+        Assert.Equal(["/api/v1/trucks"], paths.Where(path => path.Contains("/trucks", StringComparison.Ordinal)));
+        var trucks = document.RootElement.GetProperty("paths").GetProperty("/api/v1/trucks");
+        Assert.Equal(["get"], trucks.EnumerateObject().Select(operation => operation.Name));
         // De fincas sólo se publica la consulta del catálogo.
         Assert.Equal(["/api/v1/farms"], paths.Where(path => path.Contains("/farms", StringComparison.Ordinal)));
     }
