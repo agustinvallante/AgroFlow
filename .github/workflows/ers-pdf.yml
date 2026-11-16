@@ -48,7 +48,7 @@ jobs:
         run: docs/tools/ers-pdf/node_modules/.bin/playwright install --with-deps chromium
       - name: Test generator
         run: npm --prefix docs/tools/ers-pdf test
-      - name: Generate the incomplete ERS PDF
+      - name: Generate the ERS draft for review PDF
         run: npm --prefix docs/tools/ers-pdf run build:pdf
       - name: Upload generated PDF
         uses: actions/upload-artifact@v7

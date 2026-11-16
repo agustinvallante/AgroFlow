@@ -2,13 +2,13 @@
 
 Esta guía describe el generador aislado de `docs/tools/ers-pdf/`. Produce un PDF imprimible desde el Markdown de la ERS, sin cambiar la aplicación AgroFlow.
 
-> **Advertencia:** el PDF es un borrador incompleto del primer avance de la issue #102. No es una ERS aceptada ni prueba que el MVP esté terminado o aceptado.
+> **Estado:** el PDF contiene el borrador completo de la ERS para revisión académica. No está aprobado, no es una especificación normativa y no prueba que el MVP esté terminado o aceptado. Cada artefacto debe verificarse en la ejecución de CI correspondiente a su commit.
 
 ## Ruta verificada y entorno local
 
-El primer candidato del avance se verificó en GitHub Actions, workflow **ERS PDF**, [ejecución 42439865843](https://github.com/agustinvallante/AgroFlow/actions/runs/42439865843), para el commit `4a4a758fbd0f2bce3a64d5a54735759235388725`. En Ubuntu 24.04.5, Node.js 22.23.4 y npm 10.9.9, CI aprobó 8 pruebas (0 fallidas, 0 omitidas) y la auditoría informó 0 vulnerabilidades. Se generó un PDF A4 de 3 páginas (35.751 bytes), con aviso de borrador y pies numerados; las tres páginas se revisaron visualmente.
+Como antecedente, el primer candidato del publicador se verificó en GitHub Actions, workflow **ERS PDF**, [ejecución 42439865843](https://github.com/agustinvallante/AgroFlow/actions/runs/42439865843), para el commit `4a4a758fbd0f2bce3a64d5a54735759235388725`. Esa ejecución generó un PDF de tres páginas para el esqueleto de entonces; no verifica la ERS completa actual ni sustituye la revisión visual de su nuevo artefacto.
 
-Versiones fijadas: `markdown-it` 14.3.3 y Playwright 1.58.2; Chromium 145.0.7632.6. Esta evidencia corresponde a ese candidato, no garantiza contenido futuro. Tras cambios al Markdown, ejecutá nuevamente el workflow para verificar el nuevo commit.
+Versiones fijadas: `markdown-it` 14.3.3 y Playwright 1.58.2. CI usa Ubuntu 24.04 y Node.js 22, instala Chromium y genera el artefacto de cada commit elegible. Tras cambios al Markdown, verificá la ejecución y el PDF de ese commit antes de afirmar que fue generado o revisado.
 
 En el entorno WSL usado para este avance, Chromium no pudo iniciarse por bibliotecas Linux faltantes. El script `setup:browser` solo descarga el navegador: no instala esas dependencias del sistema. No se ejecutaron instalaciones con `apt` o `sudo` en ese entorno; las dependencias se preparan automáticamente solo en el runner temporal de CI. Pandoc y TeX no son necesarios.
 
@@ -46,14 +46,14 @@ La entrada debe existir y la salida debe terminar en `.pdf`; si ya existe, el ge
 1. Abrí la ejecución del workflow **ERS PDF** asociada al push o pull request.
 2. Confirmá que el job haya terminado correctamente; el artefacto no se publica si falla una verificación o la generación.
 3. En la sección **Artifacts** de esa ejecución, descargá `ers-tfi-parte2-<sha>`.
-4. Verificá el PDF descargado: sigue identificado como borrador incompleto y no debe presentarse como ERS aceptada.
+4. Verificá el aviso «BORRADOR COMPLETO PARA REVISIÓN · NO APROBADO» y revisá el documento y sus tablas. No lo presentes como ERS aprobada ni como aceptación del MVP.
 
 El artefacto de CI se conserva durante 14 días. El primer candidato verificado generó el PDF real; para cualquier commit posterior, observá una nueva ejecución exitosa y su artefacto antes de afirmar que ese contenido está verificado.
 
 ## Contenido admitido y límites
 
 - Markdown se transforma a HTML con HTML embebido desactivado; el contenido HTML se muestra como texto y no se ejecuta.
-- La hoja de impresión configura papel A4, tablas y listas. En el candidato verificado, el aviso de borrador apareció en la primera página y los pies numeraron las tres páginas. La maquetación de tablas no se ejercitó en ese esqueleto.
+- La hoja de impresión configura papel A4, tablas y listas, con aviso de revisión y pies numerados. El candidato inicial de tres páginas no ejercitó la maquetación de las tablas de la ERS completa; revisá visualmente todas las páginas del artefacto actualizado antes de distribuirlo.
 - Se rechaza la sintaxis de imágenes Markdown, incluidas las imágenes locales y remotas. El generador bloquea las solicitudes de red durante la impresión y no descarga fuentes ni imágenes.
 - Los bloques Mermaid se imprimen como código, no como diagramas renderizados; no hay conversión automática. Estas son limitaciones del generador, no requisitos de contenido de la ERS.
 
@@ -63,4 +63,4 @@ El artefacto de CI se conserva durante 14 días. El primer candidato verificado 
 npm --prefix docs/tools/ers-pdf test
 ```
 
-Las pruebas usan el runner integrado `node --test` e incluyen una generación PDF real, que requiere Chromium y sus bibliotecas Linux de runtime instaladas.
+Las pruebas usan el runner integrado `node --test` e incluyen generación PDF real, que requiere Chromium y sus bibliotecas Linux de runtime. En el entorno WSL usado para esta tarea faltan bibliotecas compartidas; el runtime de generación previsto y comprobable es GitHub Actions Ubuntu 24.04. No se afirma que el PDF actual se haya generado localmente.

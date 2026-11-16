@@ -51,9 +51,9 @@ test("raw HTML is escaped and cannot execute or create active assets", () => {
   assert.doesNotMatch(html, /<script>|<img\s/);
 });
 
-test("renders Spanish characters and the visible incomplete-draft label", () => {
+test("renders Spanish characters and the complete-draft-for-review label", () => {
   const html = renderHtml("# Requisitos de recepción\n\nDescripción: caña, gestión y operación.");
-  assert.match(html, /BORRADOR · ERS INCOMPLETA/);
+  assert.match(html, /BORRADOR COMPLETO PARA REVISIÓN · NO APROBADO/);
   assert.match(html, /recepción/);
   assert.match(html, /caña, gestión y operación/);
 });

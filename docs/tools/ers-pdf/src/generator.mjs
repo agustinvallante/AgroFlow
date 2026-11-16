@@ -62,7 +62,7 @@ export function renderHtml(source) {
   const body = markdown.render(source);
   return `<!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<style>${printCss}</style></head><body><div class="draft-warning">BORRADOR · ERS INCOMPLETA</div>
+<style>${printCss}</style></head><body><div class="draft-warning">BORRADOR COMPLETO PARA REVISIÓN · NO APROBADO</div>
 <main>${body}</main></body></html>`;
 }
 

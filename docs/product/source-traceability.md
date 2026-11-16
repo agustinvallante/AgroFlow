@@ -39,7 +39,7 @@ Las adendas RN-022A, RN-022B, RN-030A, RN-042A, RN-049A, RN-052A y RN-054A se co
 
 ## Fuentes académicas para la issue #102
 
-El primer avance es un esqueleto de ERS vacío y una herramienta para exportarlo a PDF; no satisface diez requisitos funcionales ni completa la ERS. La estructura y los mínimos solicitados provienen de la consigna del TFI, no de los ejemplos. El alcance continúa siendo documental, sin cambios en la aplicación.
+La ERS de la issue #102 contiene el desarrollo de sus 17 apartados, requisitos funcionales y no funcionales, interfaces y matriz de trazabilidad, y se entrega como borrador completo para revisión académica. La consigna del TFI determina la estructura y los mínimos, no los ejemplos. La revisión y aprobación siguen pendientes; el alcance continúa siendo documental, sin cambios en la aplicación.
 
 - Consigna primaria del trabajo: documento privado de tres páginas; requisitos de contenido en las páginas 1–2 y pie en la página 3. Define la estructura y los mínimos del trabajo.
 - Ejemplo IEEE 830: 16 páginas; ilustra un sistema ajeno a AgroFlow y no constituye requisitos del producto.
