@@ -49,4 +49,18 @@ El seed académico se habilita con `MvpSeed__Password`, una contraseña de al me
 2. Consultar `GET /api/v1/appointments?date=2026-07-15` y usar un `id` de `items` en `GET /api/v1/appointments/{id}`. La fecha explícita coincide con la del seed ficticio.
 3. Cambiar a la cuenta del otro ingenio y consultar el mismo ID. Debe responder `404 APPOINTMENT_NOT_FOUND`, igual que con un ID inexistente.
 
-El login y las lecturas internas son el alcance del corte. El dashboard y el bot de la demo usan `LocalDemo`. [Contrato de lecturas](../docs/contracts/openapi.mvp-appointment-reads.yaml)
+El [contrato de este corte](../docs/contracts/openapi.mvp-appointment-reads.yaml)
+publica sólo las dos lecturas internas. El login anterior es andamiaje de prueba
+fuera de contrato, descrito para obtener tokens y reproducir el aislamiento de
+ingenios; no habilita por sí solo la integración de sesión del frontend.
+Su respuesta exitosa actual es JSON con `token` y `userInfo` (`email`,
+`identityId`, `name`, `role`), y las credenciales rechazadas reciben 401 con
+el texto `Credenciales inválidas.`, no `problem+json`.
+
+La especificación de ese login corresponde a
+[B10 #14](https://github.com/agustinvallante/AgroFlow/issues/14), coordinado con
+[B03 #10](https://github.com/agustinvallante/AgroFlow/issues/10).
+El [alcance y los pendientes de seguridad](../openspec/changes/definir-lecturas-turnos-mvp/proposal.md#login-provisional-y-trabajo-restante-de-b03)
+incluyen bloqueo/limitación de intentos y diferencias de tiempo para usuarios
+inexistentes. No se consideran resueltos en este corte.
+El dashboard y el bot de la demo mantienen su recorrido `LocalDemo`.

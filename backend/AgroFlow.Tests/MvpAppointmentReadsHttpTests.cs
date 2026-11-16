@@ -276,6 +276,69 @@ public sealed class MvpAppointmentReadsHttpTests : IDisposable
         Assert.Equal(3, await verification.Users.CountAsync());
     }
 
+    [Theory]
+    [InlineData("2026-07-15T00:00:00-03:00", true)]
+    [InlineData("2026-07-15T23:30:00-03:00", true)]
+    [InlineData("2026-07-16T00:00:00-03:00", false)]
+    public async Task Migrated_window_is_filtered_in_sql_by_the_local_day(string startAt, bool belongsToDay)
+    {
+        var options = new DbContextOptionsBuilder<AgroFlowDbContext>().UseSqlite(ConnectionString).Options;
+        Guid legacyIngenioId;
+        Guid legacyTurnId;
+        await using (var db = new AgroFlowDbContext(options))
+        {
+            await db.GetService<IMigrator>().MigrateAsync("20261023190313_AddLocalDemoTeamAssignments");
+            var now = new DateTimeOffset(2026, 7, 15, 12, 0, 0, TimeSpan.Zero);
+            await AppointmentsSeeder.SeedAsync(db, new FrozenClock(now));
+            legacyIngenioId = (await db.Ingenios.SingleAsync()).Id;
+            var start = DateTimeOffset.Parse(startAt, System.Globalization.CultureInfo.InvariantCulture);
+            var window = new Ventana(legacyIngenioId, start, start.AddMinutes(30), 2);
+            var oldTurn = new Turno(legacyIngenioId,
+                (await db.Transportistas.FirstAsync()).Id, (await db.Camiones.FirstAsync()).Id,
+                (await db.Fincas.FirstAsync()).Id, window.Id, now.AddHours(-2), 12, now);
+            oldTurn.SetStatus(TurnoEstado.Cancelado);
+            db.AddRange(window, oldTurn);
+            await db.SaveChangesAsync();
+            // El arranque debe rellenarlo mediante datetime(StartAt), no mediante el mapper EF.
+            await db.Database.ExecuteSqlInterpolatedAsync(
+                $"UPDATE Ventanas SET StartAtUtc = NULL WHERE Id = {window.Id}");
+            legacyTurnId = oldTurn.Id;
+        }
+
+        using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+        await using (var scope = factory.Services.CreateAsyncScope())
+        {
+            var users = scope.ServiceProvider.GetRequiredService<UserManager<AgroFlowUser>>();
+            // El turno conserva su ingenio histórico; se crea una identidad de ese ámbito.
+            var user = new AgroFlowUser
+            {
+                UserName = "operador-migracion",
+                IsActive = true,
+                IngenioId = legacyIngenioId
+            };
+            Assert.True((await users.CreateAsync(user, Password)).Succeeded);
+            Assert.True((await users.AddToRoleAsync(user, AgroFlowRoles.Operador)).Succeeded);
+        }
+        await LoginAsync(client, "operador-migracion");
+
+        var page = await ListAsync(client, $"date={Day}");
+        if (belongsToDay)
+        {
+            Assert.Equal(legacyTurnId, Assert.Single(page.Items).Id);
+            Assert.Equal(1, page.TotalCount);
+        }
+        else
+        {
+            Assert.Empty(page.Items);
+            Assert.Equal(0, page.TotalCount);
+            var followingDay = await ListAsync(client, "date=2026-07-16");
+            Assert.Equal(legacyTurnId, Assert.Single(followingDay.Items).Id);
+        }
+        var detail = await client.GetFromJsonAsync<AppointmentResponse>($"{Route}/{legacyTurnId}");
+        Assert.Equal(startAt, detail!.Window.StartAt.ToString("yyyy-MM-dd'T'HH:mm:sszzz"));
+    }
+
     private static void AddHistoricalTurn(AgroFlowDbContext db, Turno source, DateTimeOffset start)
     {
         var window = new Ventana(source.IngenioId, start, start.AddMinutes(30), 2);

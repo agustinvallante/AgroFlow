@@ -1,6 +1,6 @@
 # Definir las lecturas internas de turnos del MVP
 
-**Estado:** primer corte de [B00 #7](https://github.com/agustinvallante/AgroFlow/issues/7) con implementación de listado y detalle. Base del código: `main` en `2d71f9e`.
+**Estado:** primer corte de [B00 #7](https://github.com/agustinvallante/AgroFlow/issues/7) con implementación de listado y detalle. Base del código: `main` en `8873a26`, incorporada a la rama mediante merge.
 
 ## Resultado
 
@@ -31,3 +31,37 @@ La consulta de transportista por WhatsApp mantiene su recorrido LocalDemo y se e
 `AgroFlowDbContext` migra los datos de dominio e Identity en un solo archivo SQLite y conserva el historial de migraciones de turnos. El seed académico se habilita con una contraseña externa y crea una vez datos ficticios de dos ingenios. El JWT usa el ID estable de Identity, el rol y el ingenio. En cada lectura se valida que el usuario siga activo y que su ingenio y rol coincidan con los del token. La autorización precede a la validación de parámetros.
 
 La consulta EF acota turno y referencias al ingenio, aplica en SQL los límites UTC del día y devuelve una página con proyección de la cola. El detalle aplica el mismo ámbito y devuelve la representación persistida. El [procedimiento de arranque](../../../backend/README.md#probar-las-lecturas-internas-del-mvp) describe cómo verificar ambas operaciones.
+
+## Login provisional y trabajo restante de B03
+
+`POST /api/auth/login` es andamiaje de prueba fuera del contrato de este corte:
+permite obtener un JWT para ensayar las dos lecturas con las cuentas ficticias.
+La adaptación del login heredado usa el ID de Identity como `sub`, un rol válido
+y `ingenioId`, y rechaza usuarios inactivos o sin ingenio. Esto no constituye la
+entrega del acceso interno completo ni publica un contrato de sesión para F01.
+
+El contrato de login, su validación y sus respuestas se deben especificar en
+[B10 #14](https://github.com/agustinvallante/AgroFlow/issues/14), coordinado con
+[B03 #10](https://github.com/agustinvallante/AgroFlow/issues/10), antes de integrarlo
+como flujo del MVP. Hoy su 401 es texto plano y no el `problem+json` de las
+lecturas. El README describe ese comportamiento únicamente para reproducir las
+pruebas, sin convertirlo en un contrato estable.
+
+En B03 quedan pendientes el bloqueo o limitación de intentos y el tratamiento de
+tiempos de respuesta frente a usuarios inexistentes. Actualmente
+`CheckPasswordSignInAsync` usa `lockoutOnFailure: false` y el usuario inexistente
+se rechaza antes de verificar un hash. El mensaje genérico cumple RN-001/RN-007,
+pero no acredita protección frente a fuerza bruta ni frente a enumeración por
+tiempo. Este corte no modifica esa política ni cierra B03/B10.
+
+## Aceptación y cierre de issues
+
+Las dos lecturas están implementadas y probadas, pero la revisión del contrato
+con F06 y la consolidación del delta continúan pendientes en
+[tasks.md](tasks.md). La PR referencia #29 y #30 sin cerrarlas automáticamente.
+Se podrán cerrar al confirmar su aceptación y separar cualquier pendiente ajeno
+a las lecturas. En particular, la visibilidad de turnos futuros en la demo se
+atiende en [#108](https://github.com/agustinvallante/AgroFlow/issues/108) y
+[#109](https://github.com/agustinvallante/AgroFlow/issues/109), mediante la
+[PR #115](https://github.com/agustinvallante/AgroFlow/pull/115), y la verificación
+de WhatsApp real está en [#110](https://github.com/agustinvallante/AgroFlow/issues/110).

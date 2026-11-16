@@ -23,9 +23,14 @@ agregan reglas de negocio por cuenta propia.
 autenticación, correlación, idempotencia y errores una vez aprobados.
 
 El contrato de la demo describe la API disponible. El contrato del MVP en este
-corte abarca exclusivamente las dos lecturas internas de turnos. Las
-operaciones de sesión y las demás capacidades del MVP se definen en sus propios
-cambios OpenSpec antes de implementarse.
+corte abarca exclusivamente las dos lecturas internas de turnos.
+`POST /api/auth/login` permanece como andamiaje fuera de contrato para obtener
+tokens de prueba; no representa la entrega del acceso interno completo. El
+[alcance y las limitaciones del login](../../openspec/changes/definir-lecturas-turnos-mvp/proposal.md#login-provisional-y-trabajo-restante-de-b03)
+registran la adaptación heredada, su 401 actual de texto plano y los pendientes
+de B03 #10 y B10 #14. Las operaciones de sesión y las demás capacidades del MVP
+deben especificarse en sus propios cambios OpenSpec antes de integrarse como
+flujos del producto.
 
 Las issues y documentos de cada equipo deben enlazar el contrato aprobado y no
 copiar DTOs, filtros, códigos de error ni reglas de transición. Un cambio
