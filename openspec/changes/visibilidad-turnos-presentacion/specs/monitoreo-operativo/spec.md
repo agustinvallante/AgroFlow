@@ -7,15 +7,23 @@
 La lista de camiones en curso del panel SHALL consultar
 `GET /api/v1/appointments?active=true` sin fecha. SHALL mostrar los turnos
 recibidos en `EN_CAMINO`, `EN_ESPERA`, `INGRESADO` y `EN_DESCARGA`, con
-fecha, hora y desplazamiento de ventana. SHALL distinguir los turnos
-`ASIGNADO` de los camiones efectivamente en curso. Esta lista MUST NOT cambiar
+fecha, hora y desplazamiento de ventana. Los turnos `ASIGNADO` MUST NOT
+mostrarse ni contarse en Camiones en curso, porque todavía no iniciaron el
+viaje; se consultan en Cola de turnos para su fecha y no se crea un grupo
+separado de asignados dentro del panel. Esta lista MUST NOT cambiar
 los indicadores diarios ni crear reglas de asignación o transiciones.
 
 #### Scenario: Camión atrasado o asignado para otro día
 
 - **GIVEN** turnos en curso con ventanas anteriores y posteriores al día actual
 - **WHEN** se consulta o refresca el panel
-- **THEN** se muestran todos los que devuelve la consulta activa, con sus fechas identificables
+- **THEN** se muestran los turnos recibidos que están efectivamente en curso, con sus fechas identificables
+
+#### Scenario: Turno asignado que todavía no inició el viaje
+
+- **GIVEN** una respuesta activa con un turno ASIGNADO y otro EN_CAMINO
+- **WHEN** se muestra el panel
+- **THEN** sólo el EN_CAMINO se muestra y cuenta en Camiones en curso, y el ASIGNADO permanece consultable en la cola para su fecha
 
 #### Scenario: Estado terminal persistido
 

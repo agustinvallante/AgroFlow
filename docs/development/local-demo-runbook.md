@@ -192,6 +192,10 @@ Recorrido para #108 y #109, con el mismo contrato LocalDemo y datos ficticios.
 2. Comprobá la confirmación con patente, fecha, rango horario y desplazamiento
    de la ventana devuelta por la API, el detalle abierto y la selección de su
    fecha en la cola. El aviso explica que se limpiaron los demás filtros.
+   Cerrá el aviso sin perder el detalle. Repetí un alta y cambiá cualquiera de
+   los filtros: la confirmación anterior debe retirarse. Verificá también un
+   alta con la fecha ya seleccionada y los demás filtros vacíos; el turno nuevo
+   debe aparecer de inmediato, sin esperar los cuatro segundos de polling.
 3. Repetí con una ventana del día siguiente. Para reproducirlo sin tocar las
    reglas ni los datos operativos, usá una base ficticia de prueba después del
    cierre de ventanas de hoy, o una base de prueba sin cupo futuro hoy y con
@@ -248,6 +252,24 @@ Las ventanas especiales de hoy y del día anterior se prepararon únicamente en
 esa base temporal para reproducir los escenarios fuera del horario del seed.
 La verificación no cambia el seed ni el calendario del producto. Estos resultados
 acreditan visibilidad e integración local, no una prueba del canal WhatsApp real.
+
+### Verificación de las correcciones de review — 2026-11-15
+
+- Frontend: 113 pruebas aprobadas, tipos y build correctos; lint sin errores y
+  con las cinco advertencias preexistentes.
+- Regresiones nuevas: cerrar confirmación sin perder detalle, retirar el aviso
+  al cambiar cualquiera de los cinco filtros, recargar con fecha ya coincidente,
+  separar la selección del detalle de la recarga de lista y reutilizar detalles
+  cacheados durante el polling.
+- OpenSpec estricto y enlaces Markdown válidos.
+- Chrome en `Asia/Tokyo`, LocalDemo y SQLite temporal: se repitieron altas de hoy
+  y mañana, ciclo completo, ventana vencida, cancelación y cola diaria. Se
+  verificó además el cierre del aviso, su retirada al cambiar búsqueda y que un
+  ASIGNADO no aparezca en el panel hasta pasar a EN_CAMINO. Sin errores JavaScript.
+
+La optimización del primer listado con caché vacía queda registrada como
+[pendiente del MVP](../frontend/appointment-query-performance.md), con
+coordinación F06/F07 y #106.
 
 ## Recorrido principal
 

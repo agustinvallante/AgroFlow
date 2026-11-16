@@ -57,6 +57,11 @@ export function ColaTurnosView() {
     setForm((prev) => ({ ...prev, [campo]: valor }));
   };
 
+  const cambiarFiltro = (actualizar: () => void) => {
+    setCreado(null);
+    actualizar();
+  };
+
   const guardarTurno = async () => {
     setFormError(null);
     setCreado(null);
@@ -159,6 +164,7 @@ export function ColaTurnosView() {
           <strong>Turno creado para {creado.patente}.</strong>
           <p>Ventana asignada: {ventanaDeRfc3339(creado.ventana.inicio, creado.ventana.fin)}.</p>
           <p>Seleccionamos la fecha asignada y limpiamos los filtros de estado, patente, teléfono y búsqueda para mostrar el turno.</p>
+          <button className="btn-mini" onClick={() => setCreado(null)}>Cerrar confirmación</button>
         </div>
       )}
 
@@ -207,16 +213,16 @@ export function ColaTurnosView() {
           type="text"
           placeholder="Buscar por patente, chofer o finca..."
           value={filtros.busqueda}
-          onChange={(e) => setBusqueda(e.target.value)}
+          onChange={(e) => cambiarFiltro(() => setBusqueda(e.target.value))}
         />
-        <select value={filtros.filtroEstado} onChange={(e) => setFiltroEstado(e.target.value as typeof filtros.filtroEstado)}>
+        <select aria-label="Filtrar por estado" value={filtros.filtroEstado} onChange={(e) => cambiarFiltro(() => setFiltroEstado(e.target.value as typeof filtros.filtroEstado))}>
           {ESTADO_OPCIONES.map((o) => (
             <option key={o.value} value={o.value}>{o.label}</option>
           ))}
         </select>
-        <input type="date" value={filtros.fecha} onChange={(e) => setFecha(e.target.value)} title="Fecha de la ventana (vacío = hoy)" />
-        <input type="text" placeholder="Patente exacta" value={filtros.patente} onChange={(e) => setPatente(e.target.value)} />
-        <input type="text" placeholder="Teléfono +549..." value={filtros.telefono} onChange={(e) => setTelefono(e.target.value)} />
+        <input type="date" value={filtros.fecha} onChange={(e) => cambiarFiltro(() => setFecha(e.target.value))} title="Fecha de la ventana (vacío = hoy)" />
+        <input type="text" placeholder="Patente exacta" value={filtros.patente} onChange={(e) => cambiarFiltro(() => setPatente(e.target.value))} />
+        <input type="text" placeholder="Teléfono +549..." value={filtros.telefono} onChange={(e) => cambiarFiltro(() => setTelefono(e.target.value))} />
       </div>
 
       {filtrosIncompletos.length > 0 ? (

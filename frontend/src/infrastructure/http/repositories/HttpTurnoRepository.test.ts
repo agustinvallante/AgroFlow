@@ -136,4 +136,19 @@ describe("HttpTurnoRepository: consultas por día y activos", () => {
     fetchMock.mockRejectedValue(new TypeError("Failed to fetch"));
     await expect(new HttpTurnoRepository("").obtenerTurnosActivos()).rejects.toThrow();
   });
+
+  it("reutiliza los detalles cacheados durante el polling y conserva el resumen vigente", async () => {
+    fetchMock.mockResolvedValueOnce(respuesta(200, [turnoApi]))
+      .mockResolvedValueOnce(respuesta(200, turnoApi))
+      .mockResolvedValueOnce(respuesta(200, [{ ...turnoApi, status: "EN_DESCARGA" }]));
+    const repo = new HttpTurnoRepository("");
+    await repo.obtenerTurnosActivos();
+    expect(fetchMock).toHaveBeenCalledTimes(2); // Listado y detalle en la primera carga.
+    const actualizados = await repo.obtenerTurnosActivos();
+    expect(fetchMock).toHaveBeenCalledTimes(3); // El refresco sólo pide el listado.
+    expect(actualizados[0].estado).toBe("descargando");
+    const url = new URL(String(fetchMock.mock.calls[2][0]));
+    expect(url.pathname).toBe("/api/v1/appointments");
+    expect(url.searchParams.get("active")).toBe("true");
+  });
 });

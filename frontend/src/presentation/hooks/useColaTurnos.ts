@@ -52,6 +52,7 @@ export function useColaTurnos(modo: "dia" | "activos" = "dia") {
   const [resultado, setResultado] = useState<ResultadoConsulta | null>(null);
   const [errorAccion, setErrorAccion] = useState<string | null>(null);
   const [enCurso, setEnCurso] = useState<string | null>(null);
+  const [revisionLista, setRevisionLista] = useState(0);
 
   // Filtros que resuelve la API.
   const [filtroEstado, setFiltroEstado] = useState<FiltroEstado>("todos");
@@ -134,12 +135,15 @@ export function useColaTurnos(modo: "dia" | "activos" = "dia") {
 
   useEffect(() => {
     cargar();
-    const id = setInterval(() => {
-      cargar();
-      if (detalleId) cargarDetalle(detalleId);
-    }, INTERVALO_POLLING_MS);
+    const id = setInterval(cargar, INTERVALO_POLLING_MS);
     return () => clearInterval(id);
-  }, [cargar, cargarDetalle, detalleId]);
+  }, [cargar, revisionLista]);
+
+  useEffect(() => {
+    if (!detalleId) return;
+    const id = setInterval(() => cargarDetalle(detalleId), INTERVALO_POLLING_MS);
+    return () => clearInterval(id);
+  }, [cargarDetalle, detalleId]);
 
   const abrirDetalle = useCallback(
     (id: string) => {
@@ -216,7 +220,10 @@ export function useColaTurnos(modo: "dia" | "activos" = "dia") {
     seleccionado.current = creado.id;
     setDetalleId(creado.id);
     setDetalle(creado);
-    // El efecto recarga con los filtros nuevos. No reutilizar cargar() con los anteriores.
+    // Invalida explícitamente la lista aun si los filtros ya coincidían.
+    // El efecto usa los filtros del próximo render, sin depender de detalleId
+    // ni reutilizar cargar() con los valores anteriores al alta.
+    setRevisionLista((revision) => revision + 1);
     return creado;
   }, []);
 

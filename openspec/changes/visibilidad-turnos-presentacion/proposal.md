@@ -18,6 +18,18 @@ ventana no pertenece al día actual.
 - Mostrar fechas, horas y desplazamiento del ingenio sin convertirlas a la zona
   del navegador. Mantener polling, errores y descarte de respuestas atrasadas.
 
+## Aclaraciones de la review
+
+Camiones en curso excluye los ASIGNADO; se consultan en la cola para su fecha,
+sin un grupo separado en el panel. La confirmación del alta puede cerrarse y
+se retira al cambiar filtros. La recarga posterior al alta tiene un disparador
+explícito, independiente del detalle seleccionado.
+
+El coste de las consultas de detalle con caché vacía se mantiene documentado
+como [pendiente de rendimiento del MVP](../../../docs/frontend/appointment-query-performance.md),
+coordinado con F06/F07 y la proyección de listado de #106. Este cambio no
+implementa esa adaptación ni modifica el contrato HTTP.
+
 ## Impact
 
 Frontend React/Vite, modelo, repositorio HTTP, casos de uso, hook y vistas de cola

@@ -173,6 +173,39 @@ describe("useColaTurnos: alta confirmada", () => {
     expect(result.current.turnos).toEqual([creado]);
   });
 
+  it("recarga después de crear aunque la fecha y los filtros ya coincidían", async () => {
+    const { result } = renderHook(() => useColaTurnos());
+    await esperar();
+    act(() => result.current.setFecha("2026-09-28"));
+    await esperar();
+    const consultasPrevias = obtenerTurnos.mock.calls.length;
+    obtenerTurnos.mockResolvedValue([turno]);
+    crear.mockResolvedValue(turno);
+
+    await act(() => result.current.crearTurno(datos));
+    await esperar();
+
+    expect(obtenerTurnos).toHaveBeenCalledTimes(consultasPrevias + 1);
+    expect(obtenerTurnos).toHaveBeenLastCalledWith({
+      fecha: "2026-09-28", estado: undefined, patente: undefined, telefono: undefined,
+    });
+    expect(result.current.turnos).toEqual([turno]);
+  });
+
+  it("abrir o cerrar un detalle no recarga el listado ni suspende su polling", async () => {
+    obtenerDetalle.mockResolvedValue(turno);
+    const { result } = renderHook(() => useColaTurnos());
+    await esperar();
+    expect(obtenerTurnos).toHaveBeenCalledTimes(1);
+    act(() => result.current.abrirDetalle(turno.id));
+    await esperar();
+    act(() => result.current.cerrarDetalle());
+    await esperar();
+    expect(obtenerTurnos).toHaveBeenCalledTimes(1);
+    await esperar(INTERVALO_POLLING_MS);
+    expect(obtenerTurnos).toHaveBeenCalledTimes(2);
+  });
+
   it("un alta rechazada conserva los filtros y el detalle anterior", async () => {
     crear.mockRejectedValue(new Error("El camión ya tiene un turno activo."));
     const { result } = renderHook(() => useColaTurnos());

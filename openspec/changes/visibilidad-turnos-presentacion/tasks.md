@@ -20,3 +20,12 @@
 
 PR de implementación y evidencia:
 [#115](https://github.com/agustinvallante/AgroFlow/pull/115).
+
+## 4. Correcciones de la review de Braian
+
+- [x] 4.1 Aclarar que ASIGNADO se excluye de Camiones en curso y se consulta en la cola.
+- [x] 4.2 Permitir cerrar la confirmación y retirarla cuando cambia cualquier filtro.
+- [x] 4.3 Disparar explícitamente la recarga tras el alta y separar el polling de lista y detalle.
+- [x] 4.4 Documentar el coste 1+N de primera carga, la caché y la coordinación de rendimiento con F06/F07/#106.
+- [x] 4.5 Agregar regresiones de aviso, recarga con filtros coincidentes y reutilización de detalles.
+- [x] 4.6 Validar tipos, lint, pruebas, build y documentación, y repetir el recorrido con API/SQLite reales.

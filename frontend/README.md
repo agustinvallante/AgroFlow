@@ -38,7 +38,10 @@ El alta manual confirma el turno devuelto por la API, muestra la fecha y ventana
 asignadas, abre su detalle y selecciona su fecha en la cola. Limpia estado,
 patente, teléfono y búsqueda anteriores y lo informa en pantalla, para que un
 turno de mañana sea accesible aunque antes se estuviera consultando hoy u otro
-camión. Un error del POST conserva el formulario y los filtros.
+camión. El aviso puede cerrarse y desaparece al cambiar un filtro. Un error del
+POST conserva el formulario y los filtros. Cada alta dispara una recarga
+explícita del listado aunque la fecha ya estuviera seleccionada, sin depender
+de abrir el detalle.
 
 La cola conserva su consulta diaria y sus filtros. Camiones en curso usa una
 consulta independiente de activos sin fecha, y muestra sólo los estados en
@@ -50,6 +53,9 @@ incluyendo ambos días si cruzan la medianoche.
 Especificación del cambio en
 [`visibilidad-turnos-presentacion`](../openspec/changes/visibilidad-turnos-presentacion/proposal.md).
 Ver el [recorrido de verificación](../docs/development/local-demo-runbook.md#verificar-visibilidad-de-turnos-en-el-dashboard).
+El [pendiente de rendimiento del MVP](../docs/frontend/appointment-query-performance.md)
+describe el coste de completar resúmenes con detalles, la caché actual y la
+adaptación futura al listado con proyección completa.
 
 ## Cómo correrlo
 
