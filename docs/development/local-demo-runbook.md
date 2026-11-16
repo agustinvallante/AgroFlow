@@ -169,6 +169,15 @@ Prueba automatizada equivalente, con base y claves temporales (no toca la base d
 
 Para usar WhatsApp real hace falta n8n y Evolution en Docker con las credenciales de la [guía de la demo](local-demo.md#importar-el-workflow-y-vincular-credenciales); ese recorrido no se verificó con este cambio.
 
+## Recuperación de las vistas después de una falla
+
+Chatbot y Transportistas muestran **Reintentar** ante una falla inicial.
+Chatbot conserva el refresco automático cada quince segundos y Transportistas
+ofrece **Actualizar** después de cargar. Una falla posterior conserva los datos
+válidos con un aviso, en lugar de mostrarlos como una respuesta vacía.
+El [ensayo de recuperación de #113](dashboard-read-recovery.md) describe cómo
+comprobarlo sin borrar la base de la demo.
+
 ## Smoke test del contrato
 
 Usá la UI, el chatbot o un cliente HTTP que respete OpenAPI.

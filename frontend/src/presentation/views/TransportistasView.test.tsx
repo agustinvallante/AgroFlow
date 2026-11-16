@@ -1,5 +1,5 @@
-import { cleanup, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Transportista } from "../../domain/entities/Transportista";
 
 const mocks = vi.hoisted(() => ({ obtener: vi.fn() }));
@@ -28,6 +28,7 @@ const activo: Transportista = {
 };
 
 describe("TransportistasView", () => {
+  beforeEach(() => { mocks.obtener.mockReset(); });
   afterEach(cleanup);
 
   it("muestra lo que devuelve la API, sin columnas fuera del contrato", async () => {
@@ -58,5 +59,60 @@ describe("TransportistasView", () => {
 
     expect(await screen.findByText("Falta AGROFLOW_DASHBOARD_KEY")).toBeTruthy();
     expect(screen.queryByText(/No hay transportistas/)).toBeNull();
+  });
+
+  it("permite reintentar una falla inicial y muestra los datos cuando vuelve la API", async () => {
+    mocks.obtener.mockRejectedValueOnce(new Error("API no disponible.")).mockResolvedValue([activo]);
+    render(<TransportistasView />);
+    await screen.findByText("API no disponible.");
+    fireEvent.click(screen.getByRole("button", { name: "Reintentar" }));
+    expect(await screen.findByText(activo.nombre)).toBeTruthy();
+    expect(screen.queryByText("API no disponible.")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Reintentar" })).toBeNull();
+  });
+
+  it("mantiene disponible el reintento si la API sigue fallando", async () => {
+    mocks.obtener.mockRejectedValue(new Error("La API sigue sin responder."));
+    render(<TransportistasView />);
+    await screen.findByText("La API sigue sin responder.");
+    fireEvent.click(screen.getByRole("button", { name: "Reintentar" }));
+    await screen.findByText("La API sigue sin responder.");
+    expect(screen.getByRole("button", { name: "Reintentar" })).toBeTruthy();
+    expect(screen.queryByText(/No hay transportistas/)).toBeNull();
+    expect(mocks.obtener).toHaveBeenCalledTimes(2);
+  });
+
+  it("conserva la lista y los filtros ante una falla posterior y se recupera al actualizar", async () => {
+    mocks.obtener.mockResolvedValue([activo]);
+    render(<TransportistasView />);
+    await screen.findByText(activo.nombre);
+    fireEvent.change(screen.getByPlaceholderText("Buscar por nombre, DNI o teléfono..."), {
+      target: { value: "Sintético" },
+    });
+    mocks.obtener.mockRejectedValueOnce(new Error("Falló la actualización."));
+    fireEvent.click(screen.getByRole("button", { name: "Actualizar" }));
+    await screen.findByText("Datos desactualizados.");
+    expect(screen.getByText(activo.nombre)).toBeTruthy();
+    expect(screen.queryByText(/No hay transportistas/)).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Actualizar" }));
+    await screen.findByText(activo.nombre);
+    await waitFor(() => expect(screen.queryByText("Datos desactualizados.")).toBeNull());
+    expect((screen.getByPlaceholderText("Buscar por nombre, DNI o teléfono...") as HTMLInputElement).value).toBe("Sintético");
+  });
+
+  it("descarta un listado atrasado que termina después de una actualización más reciente", async () => {
+    mocks.obtener.mockResolvedValue([activo]);
+    render(<TransportistasView />);
+    await screen.findByText(activo.nombre);
+    let resolverAnterior!: (valor: Transportista[]) => void;
+    const anterior = new Promise<Transportista[]>((resolver) => { resolverAnterior = resolver; });
+    mocks.obtener.mockReturnValueOnce(anterior)
+      .mockResolvedValueOnce([{ ...activo, nombre: "Transportista actualizado" }]);
+    fireEvent.click(screen.getByRole("button", { name: "Actualizar" }));
+    fireEvent.click(screen.getByRole("button", { name: "Actualizar" }));
+    await screen.findByText("Transportista actualizado");
+    await act(async () => resolverAnterior([activo]));
+    expect(screen.getByText("Transportista actualizado")).toBeTruthy();
+    expect(screen.queryByText(activo.nombre)).toBeNull();
   });
 });

@@ -19,7 +19,12 @@ export function ChatbotView() {
     errorRefresco,
   } = useChatbot();
 
-  if (error) return <ErrorState message={error} />;
+  if (error) return (
+    <div className="view" role="alert">
+      <ErrorState message={error} />
+      <button className="btn-mini" onClick={recargar}>Reintentar</button>
+    </div>
+  );
   if (cargando) return <LoadingState label="Cargando el chatbot..." />;
 
   return (
@@ -49,7 +54,13 @@ export function ChatbotView() {
             Actualizar
           </button>
         </div>
-        {errorRefresco && <ErrorState message={errorRefresco} />}
+        {errorRefresco && (
+          <div role="alert">
+            <strong>Datos desactualizados.</strong>
+            <ErrorState message={errorRefresco} />
+            <p>Se conservan las últimas conversaciones obtenidas. Podés actualizar o esperar el próximo refresco.</p>
+          </div>
+        )}
         <div className="chat-layout">
           <ConversationList
             conversaciones={conversaciones}

@@ -57,6 +57,18 @@ El [pendiente de rendimiento del MVP](../docs/frontend/appointment-query-perform
 describe el coste de completar resúmenes con detalles, la caché actual y la
 adaptación futura al listado con proyección completa.
 
+### Recuperación ante fallas de API
+
+Chatbot y Transportistas ofrecen **Reintentar** si falla la carga inicial.
+Chatbot también se recupera automáticamente con su refresco de quince segundos.
+Una falla posterior conserva los datos válidos y muestra el aviso de
+desactualización; Transportistas permite repetir la lectura con **Actualizar**.
+Las respuestas viejas se descartan para conservar únicamente los mensajes de
+la conversación vigente.
+
+Ver [comportamiento y ensayo de recuperación](../docs/development/dashboard-read-recovery.md)
+y [OpenSpec](../openspec/changes/recuperar-cargas-dashboard/proposal.md).
+
 ## Cómo correrlo
 
 ```bash

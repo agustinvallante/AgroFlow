@@ -16,6 +16,8 @@ export function TransportistasView() {
     resumen,
     cargando,
     error,
+    errorRefresco,
+    recargar,
     filtros,
     setBusqueda,
     setFiltroEstado,
@@ -52,7 +54,12 @@ export function TransportistasView() {
     }
   };
 
-  if (error) return <ErrorState message={error} />;
+  if (error) return (
+    <div className="view" role="alert">
+      <ErrorState message={error} />
+      <button className="btn-mini" onClick={recargar}>Reintentar</button>
+    </div>
+  );
 
   return (
     <div className="view">
@@ -61,9 +68,12 @@ export function TransportistasView() {
           <h1>Transportistas</h1>
           <div className="zafra">Transportistas registrados · AgroFlow API</div>
         </div>
-        <button className="btn-primary" onClick={() => setMostrarForm((v) => !v)}>
-          + Nuevo transportista
-        </button>
+        <div className="row-actions">
+          <button className="btn-mini" onClick={recargar}>Actualizar</button>
+          <button className="btn-primary" onClick={() => setMostrarForm((v) => !v)}>
+            + Nuevo transportista
+          </button>
+        </div>
       </div>
 
       <div className="metrics" style={{ marginBottom: 20 }}>
@@ -112,6 +122,13 @@ export function TransportistasView() {
       </div>
 
       {accionError && <ErrorState message={accionError} />}
+      {errorRefresco && (
+        <div role="alert">
+          <strong>Datos desactualizados.</strong>
+          <ErrorState message={errorRefresco} />
+          <p>Se conserva el último listado obtenido. Usá Actualizar para reintentar.</p>
+        </div>
+      )}
 
       {cargando ? (
         <LoadingState label="Cargando transportistas..." />
