@@ -11,7 +11,7 @@ namespace AgroFlow.Data.Appointments;
 /// condicionales (`UPDATE ... WHERE`), nunca lectura-en-memoria seguida de
 /// escritura sin control.
 /// </summary>
-public sealed class EfAppointmentStore : IAppointmentStore, IAppointmentReader
+public sealed class EfAppointmentStore : IAppointmentStore, IAppointmentReader, IWindowReader
 {
     private readonly AgroFlowDbContext _db;
     private readonly TimeProvider _timeProvider;
@@ -255,6 +255,35 @@ public sealed class EfAppointmentStore : IAppointmentStore, IAppointmentReader
         where window.IngenioId == ingenioId && carrier.IngenioId == ingenioId &&
             truck.IngenioId == ingenioId && farm.IngenioId == ingenioId
         select new ReadRow { Turno = turno, Window = window, Carrier = carrier, Truck = truck, Farm = farm };
+
+    public async Task<IReadOnlyList<WindowOccupancy>> ListWindowsAsync(
+        Guid ingenioId, DateOnly? date, CancellationToken cancellationToken)
+    {
+        var timeZone = await GetTimeZoneAsync(ingenioId, cancellationToken);
+        var localDate = date ??
+            DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(_timeProvider.GetUtcNow(), timeZone).DateTime);
+        var start = StartOfLocalDayUtc(localDate, timeZone);
+        // El último día representable no tiene "día siguiente": sin tope, AddDays desborda.
+        var end = localDate == DateOnly.MaxValue
+            ? DateTime.MaxValue
+            : StartOfLocalDayUtc(localDate.AddDays(1), timeZone);
+
+        // StartAtUtc es la única columna que SQLite compara en SQL; el
+        // desplazamiento del ingenio se aplica recién al armar la respuesta.
+        var windows = await _db.Ventanas.AsNoTracking()
+            .Where(v => v.IngenioId == ingenioId && v.StartAtUtc >= start && v.StartAtUtc < end)
+            .OrderBy(v => v.StartAtUtc).ThenBy(v => v.Id)
+            .Select(v => new { v.Id, v.StartAt, v.EndAt, v.Capacity, v.Occupied })
+            .ToListAsync(cancellationToken);
+
+        return windows.Select(v => new WindowOccupancy(
+                v.Id,
+                TimeZoneInfo.ConvertTime(v.StartAt, timeZone),
+                TimeZoneInfo.ConvertTime(v.EndAt, timeZone),
+                v.Capacity,
+                v.Occupied))
+            .ToArray();
+    }
 
     private async Task<TimeZoneInfo> GetTimeZoneAsync(Guid ingenioId, CancellationToken cancellationToken) =>
         ResolveTimeZone(await _db.Ingenios.AsNoTracking().Where(ingenio => ingenio.Id == ingenioId)

@@ -80,6 +80,7 @@ public class Program
         {
             builder.Services.AddScoped<IAppointmentStore, EfAppointmentStore>();
             builder.Services.AddScoped<IAppointmentService, AppointmentService>();
+            builder.Services.AddScoped<IWindowReader, EfAppointmentStore>();
 
             // Canal de WhatsApp, conversaciones y transportistas: siempre
             // detrás de una clave (ApiKeySchemes), nunca anónimos.
