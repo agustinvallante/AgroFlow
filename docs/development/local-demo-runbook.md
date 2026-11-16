@@ -169,6 +169,15 @@ Prueba automatizada equivalente, con base y claves temporales (no toca la base d
 
 Para usar WhatsApp real hace falta n8n y Evolution en Docker con las credenciales de la [guía de la demo](local-demo.md#importar-el-workflow-y-vincular-credenciales); ese recorrido no se verificó con este cambio.
 
+## Franjas y cupos del panel
+
+Con la misma clave del dashboard, **Panel general → Cola del día** muestra
+`GET /api/v1/windows`: todas las franjas, su capacidad, ocupados y disponibles.
+La fecha vacía delega hoy a la API y los horarios conservan el desplazamiento
+del ingenio. Se relee cada cuatro segundos y con **Actualizar franjas**.
+Seguir el [recorrido de alta, cancelación, fechas y recuperación](dashboard-windows-demo.md).
+Es un corte parcial de #73; indicadores e interrupciones permanecen pendientes.
+
 ## Recuperación de las vistas después de una falla
 
 Chatbot y Transportistas muestran **Reintentar** ante una falla inicial.

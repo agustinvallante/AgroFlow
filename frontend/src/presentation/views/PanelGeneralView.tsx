@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { useColaTurnos } from "../hooks/useColaTurnos";
+import { useVentanas } from "../hooks/useVentanas";
 import { useClock } from "../hooks/useClock";
 import { EstadoBadge } from "../components/common/Badges";
 import { CambioEstadoSelect } from "../components/common/CambioEstadoSelect";
@@ -13,13 +14,14 @@ import { ventanaDeRfc3339 } from "../../shared/utils/date";
 const ACTIVOS = ["viaje", "cancha", "ingresado", "descargando"];
 
 /**
- * Los camiones en curso salen de los turnos de AgroFlow API. Indicadores,
- * timeline, chatbot, molienda y avisos no tienen endpoint: conservan su
+ * Camiones en curso y franjas salen de AgroFlow API. Indicadores,
+ * feed del chatbot, molienda y avisos conservan su
  * lugar en la pantalla, sin datos y sin acciones.
  */
 export function PanelGeneralView() {
   const { turnos, estadoCarga, error, desactualizado, recargar, cambiarEstado, enCurso, errorAccion } = useColaTurnos("activos");
   const { hora, fecha } = useClock();
+  const ventanas = useVentanas();
 
   const activos = useMemo(() => turnos.filter((t) => ACTIVOS.includes(t.estado)), [turnos]);
 
@@ -28,7 +30,7 @@ export function PanelGeneralView() {
       <div className="topbar">
         <div>
           <h1>Panel general</h1>
-          <div className="zafra">Camiones en curso: AgroFlow API · Indicadores, cola y avisos: sin datos</div>
+          <div className="zafra">Camiones y franjas: AgroFlow API · Indicadores y avisos: sin datos</div>
         </div>
         <div className="clockbox">
           <div className="time">{hora}</div>
@@ -46,8 +48,26 @@ export function PanelGeneralView() {
       <section>
         <div className="section-head">
           <h2>Cola del día</h2>
+          <div className="franjas-filtros">
+            <label>Fecha de franjas <input type="date" value={ventanas.fecha} onChange={(e) => ventanas.setFecha(e.target.value)} /></label>
+            <button className="btn-mini" onClick={() => ventanas.setFecha("")}>Hoy del ingenio</button>
+            <button className="btn-mini" onClick={ventanas.recargar}>Actualizar franjas</button>
+          </div>
         </div>
-        <Timeline slots={[]} />
+        <p className="meta">Franjas y cupos del ingenio · {ventanas.fecha || "Hoy según la API"} · Refresco cada 4 segundos. Horarios con el desplazamiento del ingenio.</p>
+        {ventanas.cargando ? <LoadingState label="Cargando franjas..." /> : ventanas.error && !ventanas.desactualizado ? (
+          <div role="alert">
+            <ErrorState message={ventanas.error} />
+            <button className="btn-mini" onClick={ventanas.recargar}>Reintentar franjas</button>
+          </div>
+        ) : (
+          <>
+            {ventanas.desactualizado && <div className="aviso-desactualizado" role="alert"><strong>Franjas desactualizadas.</strong> {ventanas.error} Se reintenta automáticamente.</div>}
+            <div className={ventanas.desactualizado ? "datos-desactualizados" : undefined}>
+              {ventanas.ventanas.length === 0 ? <EmptyState message="No hay ventanas configuradas para esta fecha." /> : <Timeline slots={ventanas.ventanas} />}
+            </div>
+          </>
+        )}
       </section>
 
       <div className="grid-2">
@@ -103,7 +123,10 @@ export function PanelGeneralView() {
                           <CambioEstadoSelect
                             estadoActual={t.estado}
                             deshabilitado={enCurso === t.id}
-                            onCambiar={(nuevo) => cambiarEstado(t.id, nuevo)}
+                            onCambiar={async (nuevo) => {
+                              await cambiarEstado(t.id, nuevo);
+                              ventanas.recargar();
+                            }}
                           />
                         </td>
                       </tr>
