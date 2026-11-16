@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: AgroFlow API
-  version: 0.6.0
+  version: 0.7.0
   description: >-
     Contrato HTTP canónico para la demo local de turnos básicos aprobada en la
     issue #49. El perfil local opera con un único ingenio sembrado; no
@@ -19,8 +19,10 @@ info:
     UTC. El cambio `ajustar-consultas-chatbot-whatsapp` agrega el filtro
     `active` del listado de turnos y la consulta de fincas (`ServiceKey` o
     `DashboardKey`, sólo lectura). El cambio `listar-camiones-demo` agrega el
-    listado de camiones (`DashboardKey`, sólo lectura). Las mutaciones de
-    camiones y de fincas y las asociaciones siguen sin ruta publicada. El
+    listado de camiones (`DashboardKey`, sólo lectura). El cambio
+    `listar-ventanas-demo` agrega el listado de ventanas y cupos de una fecha
+    (`DashboardKey`, sólo lectura). Las mutaciones de camiones y de fincas, las
+    asociaciones y la gestión de ventanas siguen sin ruta publicada. El
     contrato objetivo de las dos lecturas internas autenticadas está en
     openapi.mvp-appointment-reads.yaml y corresponde al perfil MVP.
 servers:
@@ -30,7 +32,7 @@ servers:
     description: API del host vista desde n8n en Docker Desktop
 
 # Turnos y salud no incluyen autenticación en la demo local. Canal,
-# conversaciones, transportistas, camiones y fincas usan claves estáticas del perfil LocalDemo
+# conversaciones, transportistas, camiones, ventanas y fincas usan claves estáticas del perfil LocalDemo
 # hasta que B03 emita identidades por ingenio. La seguridad de operaciones MVP
 # sigue definida por sus capacidades y se especificará en contratos aprobados.
 
@@ -51,6 +53,8 @@ tags:
     description: Consulta de sólo lectura del catálogo de fincas del ingenio.
   - name: Camiones
     description: Consulta de sólo lectura de los camiones del ingenio.
+  - name: Ventanas
+    description: Consulta de sólo lectura de las ventanas y cupos del ingenio.
 
 paths:
   /health:
@@ -771,6 +775,59 @@ paths:
           $ref: '#/components/responses/Unauthenticated'
         '500':
           $ref: '#/components/responses/InternalError'
+  /api/v1/windows:
+    get:
+      tags: [Ventanas]
+      operationId: listarVentanas
+      security:
+        - DashboardKey: []
+      summary: Listar las ventanas y cupos del ingenio para una fecha
+      description: >-
+        Sólo lectura, exclusiva del perfil LocalDemo (primera entrega de B39,
+        #44). Devuelve las ventanas persistidas del único ingenio sembrado cuyo
+        inicio cae en la fecha local pedida (de la medianoche local incluida a
+        la siguiente excluida, en la zona horaria del ingenio), incluidas las
+        que no tienen turnos, ordenadas por `startAt`. `occupied` es el cupo
+        ocupado persistido y `available` es `capacity - occupied`, calculado
+        por el backend. Una cancelación libera el cupo en la lectura siguiente.
+        Si la fecha no tiene ventanas responde `200` con un arreglo vacío. La
+        consulta no modifica datos y rechaza parámetros no documentados,
+        repetidos o vacíos. No genera calendario: informa las ventanas que ya
+        existen (en la demo las crea el seed para hoy y mañana, de 08:00 a
+        18:00 en franjas de 30 minutos con cupo 2; son datos de arranque, no
+        reglas del dominio).
+
+
+        Limitaciones: todavía no informa indisponibilidad por interrupciones
+        (depende de B33, #37), no admite alta, edición ni baja de ventanas, ni
+        paginación. La versión del MVP con JWT y roles por ingenio, el
+        calendario configurable y la lectura con dos ingenios autenticados se
+        especificarán en un cambio posterior (OD-004 y OD-012 siguen abiertas).
+      parameters:
+        - name: date
+          in: query
+          required: false
+          description: >-
+            Fecha local (`YYYY-MM-DD`) en la zona horaria del ingenio. Si se
+            omite, se usa la fecha local actual del ingenio.
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Ventanas de la fecha ordenadas por inicio. Sin ventanas, un arreglo vacío.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Window'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '500':
+          $ref: '#/components/responses/InternalError'
 components:
   securitySchemes:
     ServiceKey:
@@ -1411,6 +1468,38 @@ components:
           description: Flota propia del ingenio o de terceros.
         isActive:
           type: boolean
+
+    Window:
+      type: object
+      additionalProperties: false
+      required: [id, startAt, endAt, capacity, occupied, available]
+      properties:
+        id:
+          type: string
+          format: uuid
+        startAt:
+          type: string
+          format: date-time
+          description: >-
+            Inicio de la ventana con el desplazamiento horario del ingenio.
+          examples: ['2026-09-28T08:00:00-03:00']
+        endAt:
+          type: string
+          format: date-time
+          description: Fin de la ventana con el desplazamiento horario del ingenio.
+          examples: ['2026-09-28T08:30:00-03:00']
+        capacity:
+          type: integer
+          minimum: 1
+          description: Cupos configurados para la ventana.
+        occupied:
+          type: integer
+          minimum: 0
+          description: Cupos ocupados, tal como están persistidos.
+        available:
+          type: integer
+          minimum: 0
+          description: Cupos disponibles, `capacity - occupied`, calculados por el backend.
 
     MutationReceipt:
       type: object
