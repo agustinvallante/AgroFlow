@@ -265,21 +265,8 @@ public sealed class AppointmentsController : ControllerBase
         });
     }
 
-    private string? GetQueryValue(string key, Dictionary<string, string[]> errors)
-    {
-        if (!Request.Query.TryGetValue(key, out var values))
-        {
-            return null;
-        }
-
-        if (values.Count != 1 || string.IsNullOrWhiteSpace(values[0]))
-        {
-            errors[key] = ["Debe indicarse exactamente un valor no vacío."];
-            return null;
-        }
-
-        return values[0];
-    }
+    private string? GetQueryValue(string key, Dictionary<string, string[]> errors) =>
+        AppointmentQueryParameters.ReadSingle(Request.Query, key, errors);
 
     private async Task<(T? Request, IActionResult? Failure)> ReadRequestBodyAsync<T>(
         IReadOnlySet<string> allowedKeys,
@@ -394,31 +381,6 @@ public sealed class AppointmentsController : ControllerBase
     private ObjectResult ProblemResult(
         int status,
         string code,
-        IReadOnlyDictionary<string, string[]>? errors = null)
-    {
-        var title = code switch
-        {
-            AppointmentErrorCodes.ValidationError => "Solicitud inválida",
-            AppointmentErrorCodes.ReferenceNotFound => "Referencia inexistente",
-            AppointmentErrorCodes.AppointmentNotFound => "Turno inexistente",
-            AppointmentErrorCodes.ActiveAppointmentExists => "El camión ya posee un turno activo",
-            AppointmentErrorCodes.NoCapacity => "No hay capacidad disponible",
-            AppointmentErrorCodes.InvalidTransition => "Transición inválida",
-            _ => "Error interno"
-        };
-
-        var result = new ObjectResult(new AppointmentProblemDetails
-        {
-            Title = title,
-            Status = status,
-            Code = code,
-            TraceId = HttpContext.TraceIdentifier,
-            Errors = errors
-        })
-        {
-            StatusCode = status
-        };
-        result.ContentTypes.Add("application/problem+json");
-        return result;
-    }
+        IReadOnlyDictionary<string, string[]>? errors = null) =>
+        AppointmentProblems.Result(HttpContext, status, code, errors);
 }
