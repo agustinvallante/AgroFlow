@@ -12,6 +12,22 @@ Versiones fijadas: `markdown-it` 14.3.3 y Playwright 1.58.2. CI usa Ubuntu 24.04
 
 En el entorno WSL usado para este avance, Chromium no pudo iniciarse por bibliotecas Linux faltantes. El script `setup:browser` solo descarga el navegador: no instala esas dependencias del sistema. No se ejecutaron instalaciones con `apt` o `sudo` en ese entorno; las dependencias se preparan automáticamente solo en el runner temporal de CI. Pandoc y TeX no son necesarios.
 
+## Evidencia del borrador completo para revisión
+
+El candidato `e7311a9892299d9c63d9dd6d831c64f62c480175` se verificó en [ERS PDF — ejecución 43788016729](https://github.com/agustinvallante/AgroFlow/actions/runs/43788016729): ocho pruebas aprobadas, ninguna fallida u omitida, auditoría sin vulnerabilidades y generación/publicación correctas. [Descargar el PDF de ese candidato (ZIP)](https://github.com/agustinvallante/AgroFlow/actions/runs/43788016729/artifacts/14191515611); su disponibilidad está sujeta a la retención de 14 días.
+
+| Control | Resultado observado |
+|---|---|
+| Archivo | `ers-tfi-parte2.pdf`, 175.294 bytes, 26 páginas A4 |
+| SHA-256 | `0405a196f125dbc3b10e4b7425230becaab1d73dd50ef193412e4238c5423527` |
+| Contenido exportado | 17 subsecciones, RF-001–RF-016 y 367/367 unidades de texto normalizado del Markdown conservadas |
+| Revisión visual independiente | Las 26 páginas renderizadas a 120 DPI e inspeccionadas individualmente con PyMuPDF 1.26.7; sin recortes, solapamientos, páginas vacías ni filas ilegibles o perdidas |
+| Tablas y numeración | Seis restricciones completas en página 22; 13 filas de trazabilidad en páginas 25–26, encabezado repetido y cierre conservado; pies `n / 26` correctos |
+
+La comprobación adicional del coordinador confirmó la tabla de restricciones y el final de la matriz en las páginas 22 y 26. Se observaron detalles cosméticos no bloqueantes: espacios amplios, algunos títulos separados del cuerpo por un salto y referencias/identificadores largos partidos en varias líneas. No se modificó la maquetación para esta entrega.
+
+Esta evidencia corresponde únicamente al PDF del SHA citado: no constituye aprobación académica, aceptación del MVP ni validación automática de futuros artefactos. La inspección utilizó herramientas aisladas en un directorio temporal, sin instalar paquetes del sistema ni reparar Chromium en WSL.
+
 ## Preparación local
 
 Desde la raíz del repositorio, instalá las dependencias aisladas y descargá el navegador:
