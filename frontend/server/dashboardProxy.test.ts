@@ -94,6 +94,25 @@ describe("intermediario local del dashboard", () => {
     expect(isAllowedDashboardRequest(local(url, { "sec-fetch-site": "cross-site" }))).toBe(false);
   });
 
+  it("autoriza camiones sólo con GET exacto sobre la colección", () => {
+    expect(isAllowedDashboardRequest({ ...local("/api/v1/trucks?active=true"), method: "GET" })).toBe(true);
+    for (const method of ["POST", "PUT", "DELETE"]) {
+      expect(isAllowedDashboardRequest({ ...local("/api/v1/trucks"), method })).toBe(false);
+    }
+    for (const ruta of ["/api/v1/trucksX", "/api/v1/trucks/id", "/api/v1/trucks/../drivers"]) {
+      expect(isAllowedDashboardRequest(local(ruta))).toBe(false);
+    }
+  });
+
+  it("autoriza la gestión de asociaciones desde el mismo origen local", () => {
+    expect(isAllowedDashboardRequest({ ...local("/api/v1/associations?active=true"), method: "GET" })).toBe(true);
+    expect(isAllowedDashboardRequest({ ...local("/api/v1/associations"), method: "POST" })).toBe(true);
+    expect(isAllowedDashboardRequest({ ...local("/api/v1/associations/id/inactivation"), method: "POST" })).toBe(true);
+    expect(isAllowedDashboardRequest(local("/api/v1/associationsX"))).toBe(false);
+    expect(isAllowedDashboardRequest(local("/api/v1/associations", { origin: "https://attacker.example" }))).toBe(false);
+    expect(isAllowedDashboardRequest(local("/api/v1/associations/%2e%2e/conversation-events"))).toBe(false);
+  });
+
   it("ventanas recibe sólo la clave del servidor y el proxy bloquea mutaciones y subrutas", () => {
     const proxy = createApiProxy("http://localhost:5000", "clave-sintetica-del-servidor");
     const windows = proxy["/api/v1/windows"];

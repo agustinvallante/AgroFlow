@@ -2,6 +2,7 @@ import { HttpTurnoRepository } from "../infrastructure/http/repositories/HttpTur
 import { HttpTransportistaRepository } from "../infrastructure/http/repositories/HttpTransportistaRepository";
 import { HttpConversacionRepository } from "../infrastructure/http/repositories/HttpConversacionRepository";
 import { HttpVentanaRepository } from "../infrastructure/http/repositories/HttpVentanaRepository";
+import { HttpAsociacionRepository } from "../infrastructure/http/repositories/HttpAsociacionRepository";
 import { ObtenerVentanas } from "../application/usecases/ventanas/ObtenerVentanas";
 
 import {
@@ -18,6 +19,11 @@ import {
   ObtenerTransportistas,
 } from "../application/usecases/transportistas/TransportistaUseCases";
 import {
+  AsociarCamion,
+  DesasociarCamion,
+  ObtenerFlotaAsociada,
+} from "../application/usecases/transportistas/AsociacionUseCases";
+import {
   ObtenerConversaciones,
   ObtenerMensajesConversacion,
 } from "../application/usecases/conversaciones/ConversacionUseCases";
@@ -31,7 +37,7 @@ import {
  * (vite.config.ts) lo reenvía a VITE_API_URL, por defecto
  * http://localhost:5000. Así no interviene CORS.
  *
- * Transportistas, conversaciones y ventanas exigen la clave del dashboard, que el
+ * Transportistas, asociaciones, camiones, conversaciones y ventanas exigen la clave del dashboard, que el
  * proxy agrega del lado servidor (server/dashboardProxy.ts). Métricas del
  * panel y del chatbot, plantillas, reportes y configuración no tienen
  * endpoint en openapi.yaml: sus vistas conservan el diseño, sin datos.
@@ -44,6 +50,7 @@ function crearContainer() {
   const transportistaRepository = new HttpTransportistaRepository("");
   const conversacionRepository = new HttpConversacionRepository("");
   const ventanaRepository = new HttpVentanaRepository("");
+  const asociacionRepository = new HttpAsociacionRepository("");
 
   return {
     apiUrl,
@@ -62,6 +69,11 @@ function crearContainer() {
       obtenerTransportistas: new ObtenerTransportistas(transportistaRepository),
       crearTransportista: new CrearTransportista(transportistaRepository),
       cambiarEstadoActivoTransportista: new CambiarEstadoActivoTransportista(transportistaRepository),
+    },
+    asociaciones: {
+      obtenerFlotaAsociada: new ObtenerFlotaAsociada(asociacionRepository),
+      asociarCamion: new AsociarCamion(asociacionRepository),
+      desasociarCamion: new DesasociarCamion(asociacionRepository),
     },
     conversaciones: {
       obtenerConversaciones: new ObtenerConversaciones(conversacionRepository),
