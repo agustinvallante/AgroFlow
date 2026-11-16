@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: AgroFlow API
-  version: 0.7.0
+  version: 0.7.1
   description: >-
     Contrato HTTP canónico para la demo local de turnos básicos aprobada en la
     issue #49. El perfil local opera con un único ingenio sembrado; no
@@ -879,10 +879,13 @@ components:
       name: cursor
       in: query
       required: false
-      description: Cursor opaco devuelto como `nextCursor` por la página anterior.
+      description: >-
+        Cursor opaco devuelto como `nextCursor` por la página anterior.
+        Reutilizarlo sin modificar su contenido; el cliente no debe interpretarlo.
+        El límite incluye todos los valores canónicos emitidos por la API.
       schema:
         type: string
-        maxLength: 64
+        maxLength: 70
 
     Limit:
       name: limit
@@ -1322,6 +1325,8 @@ components:
             $ref: '#/components/schemas/ConversationSummary'
         nextCursor:
           type: [string, 'null']
+          maxLength: 70
+          description: Cursor opaco para continuar el listado; null al terminar.
 
     ConversationMessage:
       type: object
@@ -1373,6 +1378,8 @@ components:
             $ref: '#/components/schemas/ConversationMessage'
         nextCursor:
           type: [string, 'null']
+          maxLength: 70
+          description: Cursor opaco para continuar el historial; null al terminar.
 
     DriverInput:
       type: object
