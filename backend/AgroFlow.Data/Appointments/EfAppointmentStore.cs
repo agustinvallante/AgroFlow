@@ -11,7 +11,7 @@ namespace AgroFlow.Data.Appointments;
 /// condicionales (`UPDATE ... WHERE`), nunca lectura-en-memoria seguida de
 /// escritura sin control.
 /// </summary>
-public sealed class EfAppointmentStore : IAppointmentStore
+public sealed class EfAppointmentStore : IAppointmentStore, IAppointmentReader
 {
     private readonly AgroFlowDbContext _db;
     private readonly TimeProvider _timeProvider;
@@ -190,6 +190,88 @@ public sealed class EfAppointmentStore : IAppointmentStore
         return turno is null ? null : await BuildSnapshotAsync(turno, cancellationToken);
     }
 
+    public async Task<AppointmentPage> ListAsync(
+        Guid ingenioId, AppointmentReadQuery query, CancellationToken cancellationToken)
+    {
+        var timeZone = await GetTimeZoneAsync(ingenioId, cancellationToken);
+        var localDate = query.Date ??
+            DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(_timeProvider.GetUtcNow(), timeZone).DateTime);
+        var start = StartOfLocalDayUtc(localDate, timeZone);
+        var rows = ReadRows(ingenioId).Where(row => row.Window.StartAtUtc >= start);
+        if (localDate != DateOnly.MaxValue)
+        {
+            var end = StartOfLocalDayUtc(localDate.AddDays(1), timeZone);
+            rows = rows.Where(row => row.Window.StartAtUtc < end);
+        }
+
+        if (query.Status is { } status)
+        {
+            var domainStatus = AppointmentStatusMapper.ToDomain(status);
+            rows = rows.Where(row => row.Turno.Status == domainStatus);
+        }
+        if (query.TruckPlate is { } truckPlate)
+        {
+            var normalized = Camion.NormalizePlate(truckPlate);
+            rows = rows.Where(row => row.Truck.NormalizedPlate == normalized);
+        }
+
+        var total = await rows.LongCountAsync(cancellationToken);
+        var offset = (long)(query.Page - 1) * query.PageSize;
+        if (offset >= total)
+            return new AppointmentPage([], total);
+
+        var ordered = rows.OrderBy(row => row.Window.StartAtUtc).ThenBy(row => row.Turno.Id);
+        var page = await ordered.Skip(checked((int)offset)).Take(query.PageSize).ToListAsync(cancellationToken);
+        return new AppointmentPage(page.Select(row => ToSnapshot(
+            row.Turno, row.Carrier, row.Truck, row.Farm, row.Window, timeZone)).ToArray(), total);
+    }
+
+    public async Task<AppointmentSnapshot?> GetAsync(Guid ingenioId, Guid id, CancellationToken cancellationToken)
+    {
+        var row = await ReadRows(ingenioId).SingleOrDefaultAsync(item => item.Turno.Id == id, cancellationToken);
+        if (row is null)
+            return null;
+
+        var timeZone = await GetTimeZoneAsync(ingenioId, cancellationToken);
+        return ToSnapshot(row.Turno, row.Carrier, row.Truck, row.Farm, row.Window, timeZone);
+    }
+
+    private sealed class ReadRow
+    {
+        public required Turno Turno { get; init; }
+        public required Ventana Window { get; init; }
+        public required Transportista Carrier { get; init; }
+        public required Camion Truck { get; init; }
+        public required Finca Farm { get; init; }
+    }
+
+    private IQueryable<ReadRow> ReadRows(Guid ingenioId) =>
+        from turno in _db.Turnos.AsNoTracking()
+        where turno.IngenioId == ingenioId
+        join window in _db.Ventanas.AsNoTracking() on turno.VentanaId equals window.Id
+        join carrier in _db.Transportistas.AsNoTracking() on turno.TransportistaId equals carrier.Id
+        join truck in _db.Camiones.AsNoTracking() on turno.CamionId equals truck.Id
+        join farm in _db.Fincas.AsNoTracking() on turno.FincaId equals farm.Id
+        where window.IngenioId == ingenioId && carrier.IngenioId == ingenioId &&
+            truck.IngenioId == ingenioId && farm.IngenioId == ingenioId
+        select new ReadRow { Turno = turno, Window = window, Carrier = carrier, Truck = truck, Farm = farm };
+
+    private async Task<TimeZoneInfo> GetTimeZoneAsync(Guid ingenioId, CancellationToken cancellationToken) =>
+        ResolveTimeZone(await _db.Ingenios.AsNoTracking().Where(ingenio => ingenio.Id == ingenioId)
+            .Select(ingenio => ingenio.TimeZoneId).SingleAsync(cancellationToken));
+
+    private static DateTime StartOfLocalDayUtc(DateOnly date, TimeZoneInfo timeZone)
+    {
+        var midnight = date.ToDateTime(TimeOnly.MinValue);
+        // If the offset changes at midnight, take the first instant of the local day.
+        while (timeZone.IsInvalidTime(midnight))
+            midnight = midnight.AddMinutes(1);
+
+        return timeZone.IsAmbiguousTime(midnight)
+            ? new DateTimeOffset(midnight, timeZone.GetAmbiguousTimeOffsets(midnight).Max()).UtcDateTime
+            : TimeZoneInfo.ConvertTimeToUtc(midnight, timeZone);
+    }
+
     public async Task<AppointmentTransitionResult> TryTransitionAsync(
         Guid id,
         AppointmentStatus expectedStatus,
@@ -288,7 +370,12 @@ public sealed class EfAppointmentStore : IAppointmentStore
         var finca = await _db.Fincas.AsNoTracking().FirstAsync(f => f.Id == turno.FincaId, cancellationToken);
         var ventana = await _db.Ventanas.AsNoTracking().FirstAsync(v => v.Id == turno.VentanaId, cancellationToken);
 
-        return new AppointmentSnapshot(
+        return ToSnapshot(turno, transportista, camion, finca, ventana, timeZone);
+    }
+
+    private static AppointmentSnapshot ToSnapshot(Turno turno, Transportista transportista, Camion camion,
+        Finca finca, Ventana ventana, TimeZoneInfo timeZone) =>
+        new(
             turno.Id,
             new AppointmentReference(transportista.Id, transportista.Name),
             new AppointmentTruckReference(camion.Id, camion.Plate),
@@ -300,7 +387,6 @@ public sealed class EfAppointmentStore : IAppointmentStore
                 TimeZoneInfo.ConvertTime(ventana.EndAt, timeZone)),
             AppointmentStatusMapper.ToApplication(turno.Status),
             TimeZoneInfo.ConvertTime(turno.CreatedAt, timeZone));
-    }
 
     private static TimeZoneInfo ResolveTimeZone(string timeZoneId) =>
         TimeZoneInfo.FindSystemTimeZoneById(timeZoneId);
