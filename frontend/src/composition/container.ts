@@ -8,6 +8,7 @@ import {
   CrearTurnoManual,
   ObtenerDetalleTurno,
   ObtenerTurnosDelDia,
+  ObtenerTurnosActivos,
 } from "../application/usecases/turnos/TurnoUseCases";
 import {
   CambiarEstadoActivoTransportista,
@@ -45,6 +46,7 @@ function crearContainer() {
     apiUrl,
     turnos: {
       obtenerTurnosDelDia: new ObtenerTurnosDelDia(turnoRepository),
+      obtenerTurnosActivos: new ObtenerTurnosActivos(turnoRepository),
       obtenerDetalleTurno: new ObtenerDetalleTurno(turnoRepository),
       crearTurnoManual: new CrearTurnoManual(turnoRepository),
       cancelarTurno: new CancelarTurno(turnoRepository),

@@ -4,6 +4,7 @@ import type { Turno } from "../../domain/entities/Turno";
 
 const mocks = vi.hoisted(() => ({
   obtenerTurnos: vi.fn(),
+  crear: vi.fn(),
   cambiarEstado: vi.fn(),
 }));
 
@@ -13,7 +14,7 @@ vi.mock("../../composition/container", () => ({
     turnos: {
       obtenerTurnosDelDia: { execute: mocks.obtenerTurnos },
       obtenerDetalleTurno: { execute: vi.fn() },
-      crearTurnoManual: { execute: vi.fn() },
+      crearTurnoManual: { execute: mocks.crear },
       cambiarEstadoTurno: { execute: mocks.cambiarEstado },
       cancelarTurno: { execute: vi.fn() },
     },
@@ -25,6 +26,7 @@ import { INTERVALO_POLLING_MS } from "../hooks/useColaTurnos";
 
 const turno: Turno = {
   id: "t1",
+  ventana: { inicio: "2026-09-29T08:00:00-03:00", fin: "2026-09-29T08:30:00-03:00" },
   hora: "08:00",
   offsetMin: 0,
   patente: "AF123BC",
@@ -38,11 +40,26 @@ const turno: Turno = {
 const SIN_COINCIDENCIAS = "No hay turnos que coincidan con estos filtros.";
 const esperar = (ms = 0) => act(() => vi.advanceTimersByTimeAsync(ms));
 
+async function guardarTurnoValido() {
+  fireEvent.click(screen.getByRole("button", { name: "+ Nuevo turno" }));
+  fireEvent.change(screen.getByPlaceholderText("+5493815550101"), { target: { value: "+5493815550101" } });
+  fireEvent.change(screen.getByPlaceholderText("AF123BC"), { target: { value: "AF123BC" } });
+  fireEvent.change(screen.getByPlaceholderText("FINCA-NORTE"), { target: { value: "FINCA-NORTE" } });
+  fireEvent.change(document.querySelector('input[type="datetime-local"]')!, {
+    target: { value: "2026-09-28T05:00" },
+  });
+  fireEvent.change(screen.getByPlaceholderText("28.5"), { target: { value: "28.5" } });
+  mocks.obtenerTurnos.mockResolvedValue([turno]);
+  fireEvent.click(screen.getByRole("button", { name: "Guardar turno" }));
+  await esperar();
+}
+
 describe("ColaTurnosView", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     mocks.obtenerTurnos.mockReset();
     mocks.cambiarEstado.mockReset();
+    mocks.crear.mockReset();
   });
 
   afterEach(() => {
@@ -132,4 +149,62 @@ describe("ColaTurnosView", () => {
 
     expect(mocks.cambiarEstado).toHaveBeenCalledWith("t1", "cancha");
   });
+
+  it("confirma el alta con fecha y zona, explica los filtros y abre el detalle", async () => {
+    mocks.obtenerTurnos.mockResolvedValue([]);
+    mocks.crear.mockResolvedValue(turno);
+    render(<ColaTurnosView />);
+    await esperar();
+    fireEvent.change(screen.getByPlaceholderText("Buscar por patente, chofer o finca..."), {
+      target: { value: "otra finca" },
+    });
+    await guardarTurnoValido();
+
+    expect(screen.getByRole("status").textContent).toContain("Turno creado para AF123BC.");
+    expect(screen.getByRole("status").textContent).toContain("29/09/2026 08:00 – 08:30 (UTC-03:00)");
+    expect(screen.getByRole("status").textContent).toContain("limpiamos los filtros");
+    expect(screen.getByText("Detalle del turno")).toBeTruthy();
+    expect(screen.getAllByText("29/09/2026 08:00 – 08:30 (UTC-03:00)")).toHaveLength(2);
+    expect((document.querySelector('input[type="date"]') as HTMLInputElement).value).toBe("2026-09-29");
+    expect(screen.queryByText("Cargar turno manual")).toBeNull();
+    expect(mocks.obtenerTurnos).toHaveBeenLastCalledWith(expect.objectContaining({ fecha: "2026-09-29" }));
+  });
+
+  it("permite cerrar la confirmación sin quitar el turno ni cerrar su detalle", async () => {
+    mocks.obtenerTurnos.mockResolvedValue([]);
+    mocks.crear.mockResolvedValue(turno);
+    render(<ColaTurnosView />);
+    await esperar();
+    await guardarTurnoValido();
+    fireEvent.click(screen.getByRole("button", { name: "Cerrar confirmación" }));
+
+    expect(screen.queryByText("Turno creado para AF123BC.")).toBeNull();
+    expect(screen.getByText("Detalle del turno")).toBeTruthy();
+    expect(screen.getAllByText("AF123BC")).toHaveLength(2);
+  });
+
+  it.each(["fecha", "estado", "patente", "telefono", "busqueda"])(
+    "retira el aviso anterior cuando el operador cambia %s", async (filtro) => {
+      mocks.obtenerTurnos.mockResolvedValue([]);
+      mocks.crear.mockResolvedValue(turno);
+      render(<ColaTurnosView />);
+      await esperar();
+      await guardarTurnoValido();
+
+      const controles: Record<string, [HTMLElement, string]> = {
+        fecha: [screen.getByTitle("Fecha de la ventana (vacío = hoy)"), "2026-09-30"],
+        estado: [screen.getByRole("combobox", { name: "Filtrar por estado" }), "viaje"],
+        patente: [screen.getByPlaceholderText("Patente exacta"), "ZZZ999"],
+        telefono: [screen.getByPlaceholderText("Teléfono +549..."), "+5493815550199"],
+        busqueda: [screen.getByPlaceholderText("Buscar por patente, chofer o finca..."), "otra finca"],
+      };
+      const [control, value] = controles[filtro];
+      fireEvent.change(control, { target: { value } });
+      await esperar();
+
+      expect(screen.queryByText("Turno creado para AF123BC.")).toBeNull();
+      expect(screen.queryByRole("button", { name: "Cerrar confirmación" })).toBeNull();
+      expect(screen.getByText("Detalle del turno")).toBeTruthy();
+    }
+  );
 });

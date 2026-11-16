@@ -18,6 +18,8 @@ export type EstadoTurno =
  */
 export interface Turno {
   id: string;
+  /** RFC 3339 completos, con el desplazamiento del ingenio informado por la API. */
+  ventana: { inicio: string; fin: string };
   hora: string; // "HH:MM" inicio de la ventana
   offsetMin: number; // minutos respecto al momento actual, usado para ordenar/timeline
   patente: string;

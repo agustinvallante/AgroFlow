@@ -12,6 +12,18 @@ export class ObtenerTurnosDelDia {
   }
 }
 
+/** Consulta activa sin limitar al día de hoy; la API determina los estados activos. */
+export class ObtenerTurnosActivos {
+  private readonly repo: TurnoRepository;
+
+  constructor(repo: TurnoRepository) {
+    this.repo = repo;
+  }
+  execute(): Promise<Turno[]> {
+    return this.repo.obtenerTurnosActivos();
+  }
+}
+
 export class ObtenerDetalleTurno {
   private readonly repo: TurnoRepository;
 
