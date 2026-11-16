@@ -20,7 +20,9 @@ info:
     `active` del listado de turnos y la consulta de fincas (`ServiceKey` o
     `DashboardKey`, sólo lectura). El cambio `listar-camiones-demo` agrega el
     listado de camiones (`DashboardKey`, sólo lectura). Las mutaciones de
-    camiones y de fincas y las asociaciones siguen sin ruta publicada.
+    camiones y de fincas y las asociaciones siguen sin ruta publicada. El
+    contrato objetivo de las dos lecturas internas autenticadas está en
+    openapi.mvp-appointment-reads.yaml y corresponde al perfil MVP.
 servers:
   - url: http://localhost:5000
     description: API ejecutada en el host local
@@ -168,7 +170,9 @@ paths:
           description: >-
             Patente completa. La comparación ignora mayúsculas y separadores:
             sólo se comparan letras y dígitos (por ejemplo, `af-123 bc` equivale
-            a `AF123BC`).
+            a `AF123BC`). Debe contener al menos una letra o dígito; un valor
+            formado sólo por separadores (por ejemplo, `------`) responde
+            `400 VALIDATION_ERROR` con `errors.truckPlate`.
           schema:
             type: string
             minLength: 6
@@ -878,8 +882,10 @@ components:
           description: >-
             Patente del camión activo y asociado al transportista. La resolución
             ignora mayúsculas y separadores: sólo se comparan letras y dígitos.
-            Las respuestas devuelven la patente en la forma canónica almacenada
-            en el seed.
+            Debe contener al menos una letra o dígito; un valor formado sólo por
+            separadores responde `400 VALIDATION_ERROR` con `errors.truckPlate`,
+            sin escribir turnos ni ocupar cupos. Las respuestas devuelven la
+            patente en la forma canónica almacenada en el seed.
         farmCode:
           type: string
           minLength: 1

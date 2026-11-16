@@ -18,7 +18,7 @@ recorridos del MVP.
 | Cola de turnos | `/api/v1/appointments` ([`openapi.yaml`](../docs/contracts/openapi.yaml)): alta, listado, filtros, detalle, transiciones y cancelación. |
 | Transportistas | `/api/v1/drivers`: lista, registra (WhatsApp E.164) e inhabilita. |
 | Chatbot WhatsApp | `/api/v1/conversations`: conversaciones y mensajes persistidos, con remitente y estado de envío informados por la API; se refresca cada 15 s. Métricas y plantillas no tienen endpoint: conservan su lugar, sin datos ni acciones. |
-| Panel general | Camiones en curso de la API. Indicadores, franjas, feed del chatbot, molienda y avisos no tienen endpoint: conservan su lugar, sin datos ni acciones. |
+| Panel general | Camiones en curso mediante `/api/v1/appointments?active=true`, de cualquier fecha. Indicadores, franjas, feed del chatbot, molienda y avisos no tienen endpoint: conservan su lugar, sin datos ni acciones. |
 | Reportes y configuración | Conservan su diseño, sin datos y con las acciones deshabilitadas. |
 
 No hay requisito de conectar todas las pantallas ahora. El backend sigue siendo
@@ -31,6 +31,31 @@ aceptadas y las [decisiones abiertas](../docs/planning/open-decisions.md). La
 integración de datos maestros, autenticación web y demás recorridos espera sus
 contratos y dependencias aprobados; sus propuestas documentales no publican
 rutas utilizables.
+
+### Visibilidad de turnos en la presentación
+
+El alta manual confirma el turno devuelto por la API, muestra la fecha y ventana
+asignadas, abre su detalle y selecciona su fecha en la cola. Limpia estado,
+patente, teléfono y búsqueda anteriores y lo informa en pantalla, para que un
+turno de mañana sea accesible aunque antes se estuviera consultando hoy u otro
+camión. El aviso puede cerrarse y desaparece al cambiar un filtro. Un error del
+POST conserva el formulario y los filtros. Cada alta dispara una recarga
+explícita del listado aunque la fecha ya estuviera seleccionada, sin depender
+de abrir el detalle.
+
+La cola conserva su consulta diaria y sus filtros. Camiones en curso usa una
+consulta independiente de activos sin fecha, y muestra sólo los estados en
+curso, sin incluir los asignados que todavía no iniciaron el viaje. Ambas vistas
+conservan el refresco cada cuatro segundos y los avisos de error/desactualización.
+Las ventanas muestran las fechas y el desplazamiento recibidos del ingenio,
+incluyendo ambos días si cruzan la medianoche.
+
+Especificación del cambio en
+[`visibilidad-turnos-presentacion`](../openspec/changes/visibilidad-turnos-presentacion/proposal.md).
+Ver el [recorrido de verificación](../docs/development/local-demo-runbook.md#verificar-visibilidad-de-turnos-en-el-dashboard).
+El [pendiente de rendimiento del MVP](../docs/frontend/appointment-query-performance.md)
+describe el coste de completar resúmenes con detalles, la caché actual y la
+adaptación futura al listado con proyección completa.
 
 ## Cómo correrlo
 

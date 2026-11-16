@@ -131,6 +131,42 @@ public sealed class AppointmentServiceTests
         Assert.Equal(0, store.CreationContextReads);
     }
 
+    [Theory]
+    [InlineData("------")]
+    [InlineData("--  --  --")]
+    [InlineData("..////..")]
+    public async Task Truck_plate_without_letters_or_digits_is_rejected_before_accessing_the_store(string plate)
+    {
+        var store = new FakeStore { Listed = [] };
+        var service = new AppointmentService(store, new FixedClock(Now));
+
+        var createError = await Assert.ThrowsAsync<AppointmentServiceException>(
+            () => service.CreateAsync(ValidCreate with { TruckPlate = plate }));
+        var listError = await Assert.ThrowsAsync<AppointmentServiceException>(
+            () => service.ListAsync(new AppointmentQuery(null, null, plate, null)));
+
+        foreach (var error in new[] { createError, listError })
+        {
+            Assert.Equal(AppointmentErrorCodes.ValidationError, error.Code);
+            Assert.Equal(["truckPlate"], error.Errors!.Keys);
+        }
+        Assert.Equal(0, store.CreationContextReads);
+        Assert.Null(store.LastQuery);
+    }
+
+    [Theory]
+    [InlineData("AF123BC", true)]
+    [InlineData("af-123 bc", true)]
+    [InlineData("AB-12-34", true)]
+    [InlineData("------", false)]
+    [InlineData("- - - -", false)]
+    [InlineData("AF1", false)]
+    [InlineData("AF123BC12345", false)]
+    [InlineData("", false)]
+    [InlineData(null, false)]
+    public void Truck_plate_rule_requires_length_and_a_letter_or_digit(string? plate, bool expected) =>
+        Assert.Equal(expected, AppointmentService.IsValidTruckPlate(plate));
+
     [Fact]
     public async Task Create_does_not_impose_an_undocumented_cutoff_on_cutAt()
     {
