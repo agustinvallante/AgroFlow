@@ -11,6 +11,7 @@ public sealed class LocalDemoAppointmentsConvention(bool isLocalDemo) : IApplica
     private static readonly Type[] LocalDemoOnlyControllers =
     [
         typeof(AppointmentsController),
+        typeof(AssociationsController),
         typeof(ChannelController),
         typeof(ConversationsController),
         typeof(DriversController),

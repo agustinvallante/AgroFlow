@@ -13,8 +13,8 @@ public sealed class DriverInputRequest
 /// <param name="ActiveTruckPlates">Camiones activos con asociación activa a este transportista (sólo lectura).</param>
 /// <param name="CanRequestAppointments">
 /// Lo decide el backend: un turno exige transportista activo y una asociación
-/// activa con un camión activo (datos-maestros). La gestión de asociaciones
-/// sigue pendiente (OD-002/OD-013) y no tiene ruta publicada.
+/// activa con un camión activo (datos-maestros). Las asociaciones se gestionan
+/// en `/api/v1/associations`.
 /// </param>
 public sealed record DriverResponse(
     Guid Id,

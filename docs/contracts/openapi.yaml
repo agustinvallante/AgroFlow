@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: AgroFlow API
-  version: 0.7.1
+  version: 0.8.0
   description: >-
     Contrato HTTP canónico para la demo local de turnos básicos aprobada en la
     issue #49. El perfil local opera con un único ingenio sembrado; no
@@ -53,6 +53,8 @@ tags:
     description: Consulta de sólo lectura del catálogo de fincas del ingenio.
   - name: Camiones
     description: Consulta de sólo lectura de los camiones del ingenio.
+  - name: Asociaciones
+    description: Gestión de las asociaciones transportista-camión del ingenio.
   - name: Ventanas
     description: Consulta de sólo lectura de las ventanas y cupos del ingenio.
 
@@ -775,6 +777,116 @@ paths:
           $ref: '#/components/responses/Unauthenticated'
         '500':
           $ref: '#/components/responses/InternalError'
+  /api/v1/associations:
+    get:
+      tags: [Asociaciones]
+      operationId: listarAsociaciones
+      security:
+        - DashboardKey: []
+      summary: Listar las asociaciones transportista-camión del ingenio
+      description: >-
+        Exclusiva del perfil LocalDemo. Incluye las asociaciones inactivas, que
+        se conservan como historial. Sin coincidencias responde un arreglo
+        vacío. Rechaza parámetros no documentados, repetidos o vacíos.
+      parameters:
+        - name: active
+          in: query
+          required: false
+          description: Filtra por asociaciones activas (`true`) o históricas (`false`). Sin el parámetro se listan ambas.
+          schema:
+            type: string
+            enum: ['true', 'false']
+      responses:
+        '200':
+          description: Asociaciones del ingenio.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Association'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    post:
+      tags: [Asociaciones]
+      operationId: asociarCamion
+      security:
+        - DashboardKey: []
+      summary: Asociar un camión a un transportista
+      description: >-
+        Exclusiva del perfil LocalDemo. El transportista y el camión deben
+        existir en el ingenio y estar habilitados. Un camión admite un solo
+        transportista activo: si ya tiene uno, responde `409
+        DUPLICATE_ASSOCIATION` sin cambiar la autorización vigente y hay que
+        inhabilitar primero esa asociación. Un transportista puede tener varios
+        camiones. Si el mismo par tuvo una asociación inactiva, se reactiva y
+        se devuelve su identificador. Los turnos existentes no se modifican.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssociationInput'
+      responses:
+        '201':
+          description: Asociación activa creada o reactivada.
+          headers:
+            Location:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MutationReceipt'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/AssociationReferenceNotFound'
+        '409':
+          $ref: '#/components/responses/AssociationConflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /api/v1/associations/{id}/inactivation:
+    parameters:
+      - $ref: '#/components/parameters/AssociationId'
+    post:
+      tags: [Asociaciones]
+      operationId: desasociarCamion
+      security:
+        - DashboardKey: []
+      summary: Inhabilitar una asociación transportista-camión
+      description: >-
+        Exclusiva del perfil LocalDemo. La asociación se conserva como
+        historial y el camión queda libre para otro transportista. Desde ese
+        momento el transportista no puede pedir turnos con ese camión; los
+        turnos ya creados no se modifican.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Asociación inhabilitada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MutationReceipt'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/AssociationReferenceNotFound'
+        '409':
+          $ref: '#/components/responses/AssociationConflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
   /api/v1/windows:
     get:
       tags: [Ventanas]
@@ -871,6 +983,15 @@ components:
       in: path
       required: true
       description: Identificador del transportista.
+      schema:
+        type: string
+        format: uuid
+
+    AssociationId:
+      name: id
+      in: path
+      required: true
+      description: Identificador de la asociación transportista-camión.
       schema:
         type: string
         format: uuid
@@ -1476,6 +1597,38 @@ components:
         isActive:
           type: boolean
 
+    AssociationInput:
+      type: object
+      additionalProperties: false
+      required: [driverId, truckId]
+      properties:
+        driverId:
+          type: string
+          format: uuid
+        truckId:
+          type: string
+          format: uuid
+
+    Association:
+      type: object
+      additionalProperties: false
+      required: [id, driverId, truckId, isActive]
+      description: >-
+        Asociación explícita transportista-camión. Las inactivas se conservan
+        como historial. Las fechas de alta y baja todavía no se persisten.
+      properties:
+        id:
+          type: string
+          format: uuid
+        driverId:
+          type: string
+          format: uuid
+        truckId:
+          type: string
+          format: uuid
+        isActive:
+          type: boolean
+
     Window:
       type: object
       additionalProperties: false
@@ -1571,6 +1724,8 @@ components:
             - DUPLICATE_IDENTIFIER
             - IDEMPOTENCY_KEY_REUSED
             - RESOURCE_INACTIVE
+            - ASSOCIATION_REFERENCE_NOT_FOUND
+            - DUPLICATE_ASSOCIATION
         traceId:
           type: string
           minLength: 1
@@ -1789,6 +1944,45 @@ components:
             status: 404
             code: DRIVER_NOT_FOUND
             traceId: 00-demo-trace
+
+    AssociationReferenceNotFound:
+      description: >-
+        El transportista, el camión o la asociación no existen en el ingenio,
+        o el transportista o el camión están inhabilitados.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+          example:
+            type: 'about:blank'
+            title: Transportista, camión o asociación inexistente o inhabilitado
+            status: 404
+            code: ASSOCIATION_REFERENCE_NOT_FOUND
+            traceId: 00-demo-trace
+
+    AssociationConflict:
+      description: >-
+        El camión ya tiene un transportista activo o la clave de idempotencia
+        se reutilizó con otros datos.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+          examples:
+            duplicateAssociation:
+              value:
+                type: 'about:blank'
+                title: El camión ya tiene un transportista activo
+                status: 409
+                code: DUPLICATE_ASSOCIATION
+                traceId: 00-demo-trace
+            keyReused:
+              value:
+                type: 'about:blank'
+                title: La clave de idempotencia ya se usó con otros datos
+                status: 409
+                code: IDEMPOTENCY_KEY_REUSED
+                traceId: 00-demo-trace
 
     DriverConflict:
       description: >-

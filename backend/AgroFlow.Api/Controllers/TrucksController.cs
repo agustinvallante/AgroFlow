@@ -9,9 +9,9 @@ namespace AgroFlow.Api.Controllers;
 /// <summary>
 /// Listado de camiones del ingenio sobre <see cref="MasterDataService"/>, en
 /// sólo lectura y exclusivo de LocalDemo detrás de la clave del dashboard
-/// (primera entrega de B15, #19). El alta, la edición, la inhabilitación y las
-/// asociaciones siguen sin ruta (campos editables pendientes en OD-013 y
-/// gestión de asociaciones en OD-007). La versión MVP con JWT y paginación
+/// (primera entrega de B15, #19). El alta, la edición y la inhabilitación siguen
+/// sin ruta (campos editables pendientes en OD-013); las asociaciones se
+/// gestionan en <see cref="AssociationsController"/>. La versión MVP con JWT y paginación
 /// queda para un cambio posterior.
 /// </summary>
 [Route("api/v1/trucks")]
