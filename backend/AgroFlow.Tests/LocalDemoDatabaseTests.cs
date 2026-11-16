@@ -263,13 +263,14 @@ public sealed class LocalDemoDatabaseTests : IDisposable
         Assert.All(originalCarriers, original => Assert.Contains(original, carriers));
         var migrations = (await verify.Database.GetAppliedMigrationsAsync()).ToArray();
         Assert.Equal(originalMigrations, migrations.Take(originalMigrations.Length));
-        // Las migraciones del canal se aplican sobre la base existente sin
+        // Las migraciones del canal e Identity se aplican sobre la base existente sin
         // perder turnos, transportistas ni ventanas.
-        Assert.Equal(8, migrations.Length);
+        Assert.Equal(verify.Database.GetMigrations(), migrations);
         Assert.EndsWith("_AddMasterDataFoundationTables", migrations[4], StringComparison.Ordinal);
         Assert.EndsWith("_AddWhatsAppConversations", migrations[5], StringComparison.Ordinal);
         Assert.EndsWith("_AddSeedRecords", migrations[6], StringComparison.Ordinal);
         Assert.EndsWith("_AddLocalDemoTeamAssignments", migrations[7], StringComparison.Ordinal);
+        Assert.EndsWith("_AddMvpIdentityAndAppointmentReadIndex", migrations[8], StringComparison.Ordinal);
         var finalWindow = await verify.Ventanas.SingleAsync(v => v.Id == windowId);
         Assert.Equal(2, finalWindow.Capacity);
         Assert.Equal(1, finalWindow.Occupied);

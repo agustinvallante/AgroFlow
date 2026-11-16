@@ -465,7 +465,8 @@ public sealed class AppointmentsHttpTests
                     .UseTestServer()
                     .ConfigureServices(services =>
                     {
-                        services.AddControllers()
+                        services.AddControllers(options =>
+                                options.Conventions.Add(new LocalDemoAppointmentsConvention(isLocalDemo: true)))
                             .AddApplicationPart(typeof(AppointmentsController).Assembly);
                         services.AddSingleton<IAppointmentService>(service);
                         // Este host prueba el contrato HTTP de la demo local,
