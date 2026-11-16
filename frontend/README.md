@@ -18,7 +18,7 @@ recorridos del MVP.
 | Cola de turnos | `/api/v1/appointments` ([`openapi.yaml`](../docs/contracts/openapi.yaml)): alta, listado, filtros, detalle, transiciones y cancelación. |
 | Transportistas | `/api/v1/drivers`: lista, registra (WhatsApp E.164) e inhabilita. |
 | Chatbot WhatsApp | `/api/v1/conversations`: conversaciones y mensajes persistidos, con remitente y estado de envío informados por la API; se refresca cada 15 s. Métricas y plantillas no tienen endpoint: conservan su lugar, sin datos ni acciones. |
-| Panel general | Camiones en curso mediante `/api/v1/appointments?active=true`, de cualquier fecha. Indicadores, franjas, feed del chatbot, molienda y avisos no tienen endpoint: conservan su lugar, sin datos ni acciones. |
+| Panel general | Camiones en curso mediante `/api/v1/appointments?active=true`, de cualquier fecha. Franjas y cupos mediante `/api/v1/windows` (LocalDemo), con fecha opcional y refresco cada 4 segundos. Indicadores, feed del chatbot, molienda y avisos siguen sin datos ni acciones. |
 | Reportes y configuración | Conservan su diseño, sin datos y con las acciones deshabilitadas. |
 
 No hay requisito de conectar todas las pantallas ahora. El backend sigue siendo
@@ -88,12 +88,12 @@ otro servidor requiere su propio proxy.
 
 ### Clave del dashboard (intermediario local)
 
-Conversaciones y transportistas exigen `X-AgroFlow-Dashboard-Key`. El navegador
+Conversaciones, transportistas y ventanas exigen `X-AgroFlow-Dashboard-Key`. El navegador
 nunca la conoce: [`server/dashboardProxy.ts`](server/dashboardProxy.ts) la
 agrega en el proxy de Vite, del lado de Node, leyendo `AGROFLOW_DASHBOARD_KEY`
 (sin prefijo `VITE_`) del entorno o de `.env.local`. Además:
 
-- sólo la agrega a `/api/v1/conversations` y `/api/v1/drivers`, y descarta
+- sólo la agrega a `/api/v1/conversations`, `/api/v1/drivers` y al GET exacto de `/api/v1/windows`, y descarta
   cualquier encabezado `X-AgroFlow-*` que envíe el navegador;
 - exige cliente de loopback, `Host` local y mismo origen (contra DNS
   rebinding y pedidos de otros sitios); en caso contrario responde `404`;
@@ -105,13 +105,17 @@ actúa como el dashboard; no hay usuarios ni roles. Es una medida de demo en
 loopback que B03 reemplaza por JWT con ingenio. Servir `dist/` sin este proxy
 deja esas vistas sin acceso (`401`), nunca sin autenticación.
 
+Las [franjas del panel](../docs/development/dashboard-windows-demo.md) muestran
+capacidad, ocupados y disponibles sin recalcularlos. Distinguen error inicial,
+fecha vacía y última lectura desactualizada; el filtro no limita Camiones en curso.
+
 ## Organización actual
 
 El código existente está organizado en `domain/`, `application/`,
 `infrastructure/`, `composition/`, `presentation/` y `shared/`. En HTTP, el
 `HttpTurnoRepository`, `HttpTransportistaRepository` y
-`HttpConversacionRepository` con sus DTOs/mappers consumen appointments, drivers
-y conversations. Esta estructura
+`HttpConversacionRepository` y `HttpVentanaRepository` con sus lecturas/DTOs/mappers
+consumen appointments, drivers, conversations y windows. Esta estructura
 vigente se describe aquí como inventario, no como una regla para rehacerla ni
 como autorización para sumar dependencias.
 

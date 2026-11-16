@@ -6,7 +6,7 @@ import type { ProxyOptions } from "vite";
  * dashboard vive sólo en el proceso de Node de Vite (`AGROFLOW_DASHBOARD_KEY`,
  * sin prefijo VITE_): nunca llega al bundle, al navegador ni a su
  * almacenamiento. El proxy la agrega únicamente a las rutas de conversaciones
- * y transportistas, y sólo para solicitudes locales del mismo origen.
+ * y transportistas, y a la lectura de ventanas, sólo para solicitudes locales del mismo origen.
  *
  * Limitación: cualquier proceso o pestaña local que pueda hablar con el
  * servidor de Vite actúa como el dashboard. Es una medida de demo en
@@ -18,11 +18,12 @@ export const DASHBOARD_KEY_HEADER = "x-agroflow-dashboard-key";
 const AGROFLOW_HEADERS = [DASHBOARD_KEY_HEADER, "x-agroflow-service-key"];
 
 /** Rutas que el dashboard puede consultar con la clave. */
-export const DASHBOARD_ROUTES = ["/api/v1/conversations", "/api/v1/drivers"];
+const WINDOWS_ROUTE = "/api/v1/windows";
+export const DASHBOARD_ROUTES = ["/api/v1/conversations", "/api/v1/drivers", WINDOWS_ROUTE];
 /** Rutas de n8n: el navegador nunca las alcanza a través del proxy. */
 export const CHANNEL_ROUTES = ["/api/v1/conversation-events", "/api/v1/conversation-reply-intents"];
 
-type ProxyRequest = Pick<IncomingMessage, "headers" | "url"> & { socket: { remoteAddress?: string } };
+type ProxyRequest = Pick<IncomingMessage, "headers" | "url" | "method"> & { socket: { remoteAddress?: string } };
 
 export function isLoopbackAddress(address: string | undefined): boolean {
   if (!address) return false;
@@ -46,9 +47,11 @@ export function isAllowedDashboardRequest(req: ProxyRequest): boolean {
   if (!isLoopbackAddress(req.socket.remoteAddress) || !isLocalHost(host)) return false;
   const url = req.url ?? "";
   if (/\.\.|%2e|%2f|%5c|\\/i.test(url)) return false;
-  if (!DASHBOARD_ROUTES.some((route) => url === route || url.startsWith(`${route}/`) || url.startsWith(`${route}?`))) {
+  if (!DASHBOARD_ROUTES.some((route) =>
+    url === route || url.startsWith(`${route}?`) || (route !== WINDOWS_ROUTE && url.startsWith(`${route}/`)))) {
     return false;
   }
+  if ((url === WINDOWS_ROUTE || url.startsWith(`${WINDOWS_ROUTE}?`)) && (req.method ?? "GET") !== "GET") return false;
   const fetchSite = req.headers["sec-fetch-site"];
   if (fetchSite && fetchSite !== "same-origin" && fetchSite !== "none") return false;
   const origin = req.headers.origin;
