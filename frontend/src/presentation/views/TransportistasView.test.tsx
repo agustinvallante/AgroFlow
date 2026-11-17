@@ -2,7 +2,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-libra
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Transportista } from "../../domain/entities/Transportista";
 
-const mocks = vi.hoisted(() => ({ obtener: vi.fn() }));
+const mocks = vi.hoisted(() => ({ obtener: vi.fn(), flota: vi.fn(), asociar: vi.fn(), desasociar: vi.fn() }));
 
 vi.mock("../../composition/container", () => ({
   container: {
@@ -11,6 +11,11 @@ vi.mock("../../composition/container", () => ({
       obtenerTransportistas: { execute: mocks.obtener },
       crearTransportista: { execute: vi.fn() },
       cambiarEstadoActivoTransportista: { execute: vi.fn() },
+    },
+    asociaciones: {
+      obtenerFlotaAsociada: { execute: mocks.flota },
+      asociarCamion: { execute: mocks.asociar },
+      desasociarCamion: { execute: mocks.desasociar },
     },
   },
 }));
@@ -27,8 +32,18 @@ const activo: Transportista = {
   puedeSolicitarTurnos: true,
 };
 
+const flotaInicial = {
+  porTransportista: { d1: [{ asociacionId: "a1", camionId: "c1", patente: "AF123BC" }] },
+  libres: [{ id: "c2", patente: "AG888AA", tipoFlota: "TERCEROS", activo: true }],
+};
+
 describe("TransportistasView", () => {
-  beforeEach(() => { mocks.obtener.mockReset(); });
+  beforeEach(() => {
+    mocks.obtener.mockReset();
+    mocks.asociar.mockReset();
+    mocks.desasociar.mockReset();
+    mocks.flota.mockReset().mockResolvedValue(flotaInicial);
+  });
   afterEach(cleanup);
 
   it("muestra lo que devuelve la API, sin columnas fuera del contrato", async () => {
@@ -114,5 +129,71 @@ describe("TransportistasView", () => {
     await act(async () => resolverAnterior([activo]));
     expect(screen.getByText("Transportista actualizado")).toBeTruthy();
     expect(screen.queryByText(activo.nombre)).toBeNull();
+  });
+
+  it("asocia un camión libre y relee transportistas y flota", async () => {
+    const sinCamion = { ...activo, id: "d2", nombre: "Transportista Nuevo", patente: null, puedeSolicitarTurnos: false };
+    mocks.obtener.mockResolvedValue([sinCamion]);
+    mocks.asociar.mockResolvedValue(undefined);
+    render(<TransportistasView />);
+    await screen.findByText("Transportista Nuevo");
+
+    fireEvent.click(await screen.findByRole("button", { name: "Asociar camión" }));
+    fireEvent.change(screen.getByLabelText("Camión para Transportista Nuevo"), { target: { value: "c2" } });
+    mocks.flota.mockResolvedValue({ porTransportista: { d2: [{ asociacionId: "a2", camionId: "c2", patente: "AG888AA" }] }, libres: [] });
+    mocks.obtener.mockResolvedValue([{ ...sinCamion, patente: "AG888AA", puedeSolicitarTurnos: true }]);
+    fireEvent.click(screen.getByRole("button", { name: "Asociar" }));
+
+    expect(await screen.findByText("AG888AA")).toBeTruthy();
+    expect(mocks.asociar).toHaveBeenCalledWith("d2", "c2");
+    await waitFor(() => expect(screen.queryByText(/sin camión asociado/)).toBeNull());
+  });
+
+  it("muestra el rechazo del backend si el camión ya tiene transportista", async () => {
+    mocks.obtener.mockResolvedValue([activo]);
+    mocks.asociar.mockRejectedValue(new Error("El camión ya tiene un transportista activo"));
+    render(<TransportistasView />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Asociar camión" }));
+    fireEvent.change(screen.getByLabelText("Camión para Transportista Sintético"), { target: { value: "c2" } });
+    fireEvent.click(screen.getByRole("button", { name: "Asociar" }));
+
+    expect(await screen.findByText("El camión ya tiene un transportista activo")).toBeTruthy();
+    expect(screen.getByText("AF123BC")).toBeTruthy();
+  });
+
+  it("desasocia sólo después de confirmar", async () => {
+    mocks.obtener.mockResolvedValue([activo]);
+    mocks.desasociar.mockResolvedValue(undefined);
+    const confirmar = vi.spyOn(window, "confirm").mockReturnValueOnce(false).mockReturnValueOnce(true);
+    render(<TransportistasView />);
+
+    const boton = await screen.findByRole("button", { name: "Desasociar AF123BC" });
+    fireEvent.click(boton);
+    expect(mocks.desasociar).not.toHaveBeenCalled();
+
+    mocks.flota.mockResolvedValue({ porTransportista: {}, libres: [] });
+    fireEvent.click(boton);
+    await waitFor(() => expect(mocks.desasociar).toHaveBeenCalledWith("a1"));
+    await waitFor(() => expect(screen.queryByText("AF123BC")).toBeNull());
+    confirmar.mockRestore();
+  });
+
+  it("no ofrece asociar a un transportista inhabilitado", async () => {
+    mocks.obtener.mockResolvedValue([{ ...activo, activo: false, puedeSolicitarTurnos: false }]);
+    render(<TransportistasView />);
+
+    await screen.findByText("Transportista Sintético");
+    expect(screen.queryByRole("button", { name: "Asociar camión" })).toBeNull();
+  });
+
+  it("si falla la flota conserva las patentes del listado y avisa", async () => {
+    mocks.obtener.mockResolvedValue([activo]);
+    mocks.flota.mockRejectedValue(new Error("Camiones no disponibles."));
+    render(<TransportistasView />);
+
+    expect(await screen.findByText("Camiones no disponibles.")).toBeTruthy();
+    expect(screen.getByText("AF123BC")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Asociar camión" })).toBeNull();
   });
 });

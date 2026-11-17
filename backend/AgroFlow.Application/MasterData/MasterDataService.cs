@@ -158,6 +158,13 @@ public sealed class MasterDataService(IMasterDataUnitOfWork unitOfWork, ITenantC
         if (driver is null || truck is null || !driver.IsActive || !truck.IsActive) throw NotFound();
         if (await unitOfWork.FindActiveAssociationForTruck(tenant.IngenioId, truck.Id, ct) is not null)
             throw Conflict("duplicate_association", "The truck already has an active transportista association.");
+        // A pair is unique even when inactive: re-associating it reactivates the historical row.
+        var previous = await unitOfWork.FindAssociation(tenant.IngenioId, driver.Id, truck.Id, activeOnly: false, ct);
+        if (previous is not null)
+        {
+            previous.Reactivate();
+            return AssociationItemOf(previous);
+        }
         var entity = new TransportistaCamion(driver, truck);
         unitOfWork.Add(entity);
         return AssociationItemOf(entity);

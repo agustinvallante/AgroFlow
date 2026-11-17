@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { useTransportistas } from "../hooks/useTransportistas";
+import { useFlotaAsociada } from "../hooks/useFlotaAsociada";
+import { CamionesAsociados } from "../components/transportistas/CamionesAsociados";
 import { MetricCard } from "../components/common/MetricCard";
 import { EmptyState, ErrorState, LoadingState } from "../components/common/StatusStates";
 
@@ -24,6 +26,7 @@ export function TransportistasView() {
     crear,
     cambiarEstado,
   } = useTransportistas();
+  const { flota, errorFlota, recargarFlota, asociar, desasociar } = useFlotaAsociada(recargar);
 
   const [mostrarForm, setMostrarForm] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -69,7 +72,7 @@ export function TransportistasView() {
           <div className="zafra">Transportistas registrados · AgroFlow API</div>
         </div>
         <div className="row-actions">
-          <button className="btn-mini" onClick={recargar}>Actualizar</button>
+          <button className="btn-mini" onClick={() => { recargar(); recargarFlota(); }}>Actualizar</button>
           <button className="btn-primary" onClick={() => setMostrarForm((v) => !v)}>
             + Nuevo transportista
           </button>
@@ -122,6 +125,13 @@ export function TransportistasView() {
       </div>
 
       {accionError && <ErrorState message={accionError} />}
+      {errorFlota && (
+        <div role="alert">
+          <strong>No se pudieron cargar los camiones.</strong>
+          <ErrorState message={errorFlota} />
+          <p>Se muestran las patentes informadas por el listado. Usá Actualizar para reintentar la asociación.</p>
+        </div>
+      )}
       {errorRefresco && (
         <div role="alert">
           <strong>Datos desactualizados.</strong>
@@ -152,7 +162,16 @@ export function TransportistasView() {
                   <td style={{ fontFamily: "'IBM Plex Mono',monospace" }}>{t.dni}</td>
                   <td style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 12.5 }}>{t.telefono}</td>
                   <td>
-                    {t.patente ?? "—"}
+                    {errorFlota ? (t.patente ?? "—") : (
+                      <CamionesAsociados
+                        nombreTransportista={t.nombre}
+                        activo={t.activo}
+                        asociados={flota.porTransportista[t.id] ?? []}
+                        libres={flota.libres}
+                        onAsociar={(camionId) => asociar(t.id, camionId)}
+                        onDesasociar={desasociar}
+                      />
+                    )}
                     {!t.puedeSolicitarTurnos && (
                       <span className="fuente-demo">
                         {t.activo ? "sin camión asociado · no puede solicitar turnos" : "inhabilitado"}
