@@ -18,6 +18,7 @@ import {
 import {
   CambiarEstadoActivoTransportista,
   CrearTransportista,
+  EditarTransportista,
   ObtenerTransportistas,
 } from "../application/usecases/transportistas/TransportistaUseCases";
 import {
@@ -71,6 +72,7 @@ function crearContainer() {
     transportistas: {
       obtenerTransportistas: new ObtenerTransportistas(transportistaRepository),
       crearTransportista: new CrearTransportista(transportistaRepository),
+      editarTransportista: new EditarTransportista(transportistaRepository),
       cambiarEstadoActivoTransportista: new CambiarEstadoActivoTransportista(transportistaRepository),
     },
     fincas: {
