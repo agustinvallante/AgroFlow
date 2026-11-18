@@ -169,6 +169,13 @@ Prueba automatizada equivalente, con base y claves temporales (no toca la base d
 
 Para usar WhatsApp real hace falta n8n y Evolution en Docker con las credenciales de la [guía de la demo](local-demo.md#importar-el-workflow-y-vincular-credenciales); ese recorrido no se verificó con este cambio.
 
+### Chat largo: verificar paginación
+
+Como parte del ensayo, abrir una conversación ficticia con más de 50 mensajes.
+La segunda petición de historial debe reutilizar nextCursor y responder 200,
+sin `Cursor inválido`. Seguir la [guía de paginación y regresión de #122](conversation-pagination.md).
+La corrección conserva el historial existente y no requiere reinicializar la base.
+
 ## Franjas y cupos del panel
 
 Con la misma clave del dashboard, **Panel general → Cola del día** muestra
