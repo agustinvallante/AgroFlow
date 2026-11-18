@@ -57,7 +57,7 @@ npx --yes @fission-ai/openspec@1.13.1 validate --all --strict --no-interactive
 
 ## 4. Elegir una tarea
 
-- Elegir un issue en [AgroFlow — Backend](https://github.com/users/agustinvallante/projects/2) o [AgroFlow — Frontend](https://github.com/users/agustinvallante/projects/1). Son dos tableros del mismo repositorio.
+- Elegir un issue en [ZafraFlow — Backend](https://github.com/users/agustinvallante/projects/2) o [ZafraFlow — Frontend](https://github.com/users/agustinvallante/projects/1). Son dos tableros del mismo repositorio.
 - Confirmar capacidad y criterios de aceptación.
 - Revisar dependencias y decisiones abiertas.
 - Para el backend, comenzar por [B00 y las decisiones del recorrido MVP](https://github.com/agustinvallante/AgroFlow/issues/7); reutilizar las rutas de turnos ya publicadas en OpenAPI y no suponer vigentes las rutas históricas de títulos de issues.

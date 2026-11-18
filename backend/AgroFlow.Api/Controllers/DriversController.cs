@@ -11,8 +11,9 @@ namespace AgroFlow.Api.Controllers;
 /// <summary>
 /// Gestión de transportistas del ingenio sobre <see cref="MasterDataService"/>
 /// (PR #47), sin un CRUD paralelo. Sólo se publican las operaciones de
-/// transportistas; camiones y asociaciones siguen sin ruta, y de las fincas
-/// sólo existe la consulta de <see cref="FarmsController"/>. Las
+/// transportistas; los camiones se listan en <see cref="TrucksController"/>,
+/// las asociaciones se gestionan en <see cref="AssociationsController"/> y de
+/// las fincas sólo existe la consulta de <see cref="FarmsController"/>. Las
 /// mutaciones exigen `Idempotency-Key` y el WhatsApp en formato E.164, que es
 /// el valor que reconoce al remitente del canal.
 /// </summary>

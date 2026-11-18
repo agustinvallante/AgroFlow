@@ -1,8 +1,23 @@
-# Auditoría funcional para la presentación de AgroFlow
+# Auditoría funcional para la presentación de ZafraFlow
+
+## Estado al 18 de noviembre de 2026
+
+Corte revisado [`ae376c4`](https://github.com/agustinvallante/AgroFlow/tree/ae376c4196a53bfd5e934dd2c317f8af9478738a). La marca visible pasó a **ZafraFlow** en [#128](https://github.com/agustinvallante/AgroFlow/pull/128). El repositorio y los identificadores técnicos de configuración conservan sus nombres. Los hallazgos y capturas de abajo corresponden al corte del 14 de noviembre y se preservan como evidencia histórica.
+
+| Hallazgo | Estado en main |
+|---|---|
+| A01 y A02 | #115 confirma la creación, selecciona la fecha asignada y muestra camiones en curso de cualquier fecha. #119 y #120 conectan franjas y cupos persistidos al panel. |
+| A03 | #124 habilita la asociación explícita de camiones en LocalDemo. [#125](https://github.com/agustinvallante/AgroFlow/pull/125) prepara el ensayo. Falta registrar dos recorridos con un teléfono real y el SHA elegido, en #110. |
+| A04 | #121 integra el guion y respaldo; #105 integra el mapa simulado con catálogo de fincas, reloj y detalle; #127 conecta selectores, edición de transportistas y transcripción a la API. Falta que otro integrante haga el ensayo final de navegador en la máquina de presentación y registre evidencias en #111. |
+| A05 y A06 | #116 devuelve validación 400 ante patente no válida. #118 recupera la carga inicial de Chatbot y Transportistas. #123 corrige la paginación de mensajes. |
+
+**Verificación del corte actualizado.** Pasó la [CI de main](https://github.com/agustinvallante/AgroFlow/actions/runs/44361493228). En Windows pasaron 197 pruebas del frontend, 106 del workflow y del validador de integraciones, el ensayo de #121 (22 comprobaciones, dos pasadas y reinicios) y la aceptación del respaldo con canal simulado. En Chrome, con API real y SQLite temporal, se verificaron la marca, el alta y la asociación de un transportista, su edición, los selectores de turno, la confirmación, EN_CAMINO, la cancelación con cupo liberado, la transcripción simulada y Mapa desde una finca del catálogo hasta la llegada a x60 y la recarga. La ejecución de Chrome no acredita el ensayo del equipo en su ambiente ni el uso de WhatsApp real.
+
+Para el ensayo actual, usar la [guía de arranque](../development/local-demo.md), el [runbook](../development/local-demo-runbook.md) y el [guion del mapa](../development/mapa-simulado-presentacion.md). El mapa usa fincas de la API y guarda sus viajes ficticios por navegador y origen. En la presentación, recorrer Panel general, Cola, Transportistas, Chatbot y Mapa. Reportes, configuración, indicadores sin endpoint y el selector de sesión/ingenio quedan fuera del recorrido.
 
 Fecha del corte 2026-11-14, zona America/Buenos_Aires. La revisión comprende código, contratos, persistencia y ejecución local. Prioriza el recorrido de exposición acordado con el equipo. Es evidencia de auditoría y planificación, subordinada a OpenSpec.
 
-## Alcance acordado
+## Alcance acordado el 14 de noviembre
 
 El recorrido principal será WhatsApp real → solicitud de turno → asignación automática → consulta → aviso EN_CAMINO → visualización en el dashboard → estados operativos → finalización. Un segundo recorrido mostrará cancelación y reutilización del cupo. Habrá una simulación del canal como respaldo. El mapa puede usar viajes ficticios claramente identificados.
 

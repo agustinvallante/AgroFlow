@@ -191,6 +191,11 @@ public static class ConversationHttpMapper
 /// </summary>
 public static class PageCursorCodec
 {
+    // DateTime.MaxValue.Ticks: 19 dígitos, un punto y Guid "N": 32 caracteres.
+    // Base64url sin padding ocupa ceil(bytes * 8 / 6): 52 bytes -> 70 caracteres.
+    private const int MaxRawLength = 19 + 1 + 32;
+    public const int MaxEncodedLength = (MaxRawLength * 8 + 5) / 6;
+
     public static string Encode(PageCursor cursor)
     {
         var raw = Encoding.ASCII.GetBytes(
@@ -201,7 +206,7 @@ public static class PageCursorCodec
     public static bool TryDecode(string? value, out PageCursor? cursor)
     {
         cursor = null;
-        if (string.IsNullOrEmpty(value) || value.Length > 64)
+        if (string.IsNullOrEmpty(value) || value.Length > MaxEncodedLength)
             return false;
 
         var base64 = value.Replace('-', '+').Replace('_', '/');

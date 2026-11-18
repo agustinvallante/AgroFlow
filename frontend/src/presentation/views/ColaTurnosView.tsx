@@ -1,13 +1,14 @@
 import { useState } from "react";
 import { container } from "../../composition/container";
 import { useColaTurnos } from "../hooks/useColaTurnos";
+import { useOpcionesTurno } from "../hooks/useOpcionesTurno";
 import { MetricCard } from "../components/common/MetricCard";
 import { EstadoBadge } from "../components/common/Badges";
 import { EmptyState, ErrorState, LoadingState } from "../components/common/StatusStates";
 import { CambioEstadoSelect } from "../components/common/CambioEstadoSelect";
 import { ESTADOS_SELECCIONABLES } from "../components/common/estadosSeleccionables";
 import type { Turno } from "../../domain/entities/Turno";
-import { datetimeLocalARfc3339, fechaHoraDeRfc3339 } from "../../shared/utils/date";
+import { datetimeLocalARfc3339, fechaHoraDeRfc3339, ventanaDeRfc3339 } from "../../shared/utils/date";
 
 const ESTADO_OPCIONES: { value: string; label: string }[] = [
   { value: "todos", label: "Todos los estados" },
@@ -51,23 +52,45 @@ export function ColaTurnosView() {
   const [formError, setFormError] = useState<string | null>(null);
   const [guardando, setGuardando] = useState(false);
   const [form, setForm] = useState(FORM_VACIO);
+  const [creado, setCreado] = useState<Turno | null>(null);
+  const { opciones, error: errorOpciones, reintentar: reintentarOpciones } = useOpcionesTurno(mostrarForm);
+  const elegido = opciones?.transportistas.find((t) => t.telefono === form.telefono);
 
   const actualizarCampo = (campo: keyof typeof form, valor: string) => {
     setForm((prev) => ({ ...prev, [campo]: valor }));
   };
 
+  /** La patente depende del transportista: con un solo camión queda elegida. */
+  const elegirTransportista = (telefono: string) => {
+    const patentes = opciones?.transportistas.find((t) => t.telefono === telefono)?.patentes ?? [];
+    setForm((prev) => ({ ...prev, telefono, patente: patentes.length === 1 ? patentes[0] : "" }));
+  };
+
+  const cambiarFiltro = (actualizar: () => void) => {
+    setCreado(null);
+    actualizar();
+  };
+
   const guardarTurno = async () => {
     setFormError(null);
+    setCreado(null);
+    // Un campo vacío no se envía como 0: la API lo rechazaría sin señalar qué faltó.
+    const cargaTon = Number(form.cargaTon);
+    if (!(cargaTon > 0)) {
+      setFormError("Ingresá la carga estimada en toneladas, mayor que cero.");
+      return;
+    }
     setGuardando(true);
     try {
-      await crearTurno({
+      const confirmado = await crearTurno({
         telefono: form.telefono,
         patente: form.patente,
         codigoFinca: form.codigoFinca,
         // datetime-local no trae zona: se envía con el desplazamiento explícito.
         corteEn: datetimeLocalARfc3339(form.corteEn),
-        cargaTon: Number(form.cargaTon) || 0,
+        cargaTon,
       });
+      setCreado(confirmado);
       setForm(FORM_VACIO);
       setMostrarForm(false);
     } catch (e) {
@@ -100,7 +123,7 @@ export function ColaTurnosView() {
         <div>
           <h1>Cola de turnos</h1>
           <div className="zafra">
-            Turnos programados · AgroFlow API ({container.apiUrl})
+            Turnos programados · ZafraFlow API ({container.apiUrl})
           </div>
         </div>
         <button className="btn-primary" onClick={() => setMostrarForm((v) => !v)}>
@@ -118,20 +141,41 @@ export function ColaTurnosView() {
       {mostrarForm && (
         <div className="alert-card" style={{ marginBottom: 22, maxWidth: 640 }}>
           <h3>Cargar turno manual</h3>
-          <p>La API asigna la primera ventana futura con cupo. Usá datos existentes en el seed.</p>
+          <p>La API asigna la primera ventana futura con cupo. Sólo aparecen transportistas habilitados y fincas activas.</p>
           {formError && <ErrorState message={formError} />}
+          {errorOpciones && (
+            <div style={{ marginBottom: 12 }}>
+              <ErrorState message={errorOpciones} />
+              <button className="btn-mini" onClick={reintentarOpciones}>Reintentar</button>
+            </div>
+          )}
           <div className="form-grid">
             <div className="form-field">
-              <label>Teléfono del transportista</label>
-              <input value={form.telefono} onChange={(e) => actualizarCampo("telefono", e.target.value)} placeholder="+5493815550101" />
+              <label htmlFor="turno-transportista">Transportista</label>
+              <select id="turno-transportista" value={form.telefono} disabled={!opciones} onChange={(e) => elegirTransportista(e.target.value)}>
+                <option value="">{opciones ? "Elegí un transportista" : "Cargando..."}</option>
+                {opciones?.transportistas.map((t) => (
+                  <option key={t.id} value={t.telefono}>{t.nombre} · {t.telefono}</option>
+                ))}
+              </select>
             </div>
             <div className="form-field">
-              <label>Patente</label>
-              <input value={form.patente} onChange={(e) => actualizarCampo("patente", e.target.value)} placeholder="AF123BC" />
+              <label htmlFor="turno-patente">Patente</label>
+              <select id="turno-patente" value={form.patente} disabled={!elegido} onChange={(e) => actualizarCampo("patente", e.target.value)}>
+                <option value="">Elegí un camión</option>
+                {elegido?.patentes.map((p) => (
+                  <option key={p} value={p}>{p}</option>
+                ))}
+              </select>
             </div>
             <div className="form-field">
-              <label>Código de finca</label>
-              <input value={form.codigoFinca} onChange={(e) => actualizarCampo("codigoFinca", e.target.value)} placeholder="FINCA-NORTE" />
+              <label htmlFor="turno-finca">Finca</label>
+              <select id="turno-finca" value={form.codigoFinca} disabled={!opciones} onChange={(e) => actualizarCampo("codigoFinca", e.target.value)}>
+                <option value="">{opciones ? "Elegí una finca" : "Cargando..."}</option>
+                {opciones?.fincas.map((f) => (
+                  <option key={f.id} value={f.codigo}>{f.nombre}</option>
+                ))}
+              </select>
             </div>
             <div className="form-field">
               <label>Momento de corte</label>
@@ -148,6 +192,15 @@ export function ColaTurnosView() {
             </button>
             <button className="btn-mini" onClick={() => setMostrarForm(false)}>Cancelar</button>
           </div>
+        </div>
+      )}
+
+      {creado && (
+        <div className="alert-card" role="status" style={{ marginBottom: 22 }}>
+          <strong>Turno creado para {creado.patente}.</strong>
+          <p>Ventana asignada: {ventanaDeRfc3339(creado.ventana.inicio, creado.ventana.fin)}.</p>
+          <p>Seleccionamos la fecha asignada y limpiamos los filtros de estado, patente, teléfono y búsqueda para mostrar el turno.</p>
+          <button className="btn-mini" onClick={() => setCreado(null)}>Cerrar confirmación</button>
         </div>
       )}
 
@@ -168,7 +221,7 @@ export function ColaTurnosView() {
                 <dt>Estado</dt>
                 <dd><EstadoBadge estado={detalle.estado} /></dd>
                 <dt>Ventana</dt>
-                <dd>{detalle.hora}{detalle.ventanaFin ? ` – ${detalle.ventanaFin}` : ""}</dd>
+                <dd>{ventanaDeRfc3339(detalle.ventana.inicio, detalle.ventana.fin)}</dd>
                 <dt>Patente</dt>
                 <dd>{detalle.patente}</dd>
                 <dt>Transportista</dt>
@@ -196,16 +249,16 @@ export function ColaTurnosView() {
           type="text"
           placeholder="Buscar por patente, chofer o finca..."
           value={filtros.busqueda}
-          onChange={(e) => setBusqueda(e.target.value)}
+          onChange={(e) => cambiarFiltro(() => setBusqueda(e.target.value))}
         />
-        <select value={filtros.filtroEstado} onChange={(e) => setFiltroEstado(e.target.value as typeof filtros.filtroEstado)}>
+        <select aria-label="Filtrar por estado" value={filtros.filtroEstado} onChange={(e) => cambiarFiltro(() => setFiltroEstado(e.target.value as typeof filtros.filtroEstado))}>
           {ESTADO_OPCIONES.map((o) => (
             <option key={o.value} value={o.value}>{o.label}</option>
           ))}
         </select>
-        <input type="date" value={filtros.fecha} onChange={(e) => setFecha(e.target.value)} title="Fecha de la ventana (vacío = hoy)" />
-        <input type="text" placeholder="Patente exacta" value={filtros.patente} onChange={(e) => setPatente(e.target.value)} />
-        <input type="text" placeholder="Teléfono +549..." value={filtros.telefono} onChange={(e) => setTelefono(e.target.value)} />
+        <input type="date" value={filtros.fecha} onChange={(e) => cambiarFiltro(() => setFecha(e.target.value))} title="Fecha de la ventana (vacío = hoy)" />
+        <input type="text" placeholder="Patente exacta" value={filtros.patente} onChange={(e) => cambiarFiltro(() => setPatente(e.target.value))} />
+        <input type="text" placeholder="Teléfono +549..." value={filtros.telefono} onChange={(e) => cambiarFiltro(() => setTelefono(e.target.value))} />
       </div>
 
       {filtrosIncompletos.length > 0 ? (
@@ -254,7 +307,9 @@ export function ColaTurnosView() {
                   className={`fila-seleccionable ${t.id === detalleId ? "activa" : ""}`}
                   onClick={() => abrirDetalle(t.id)}
                 >
-                  <td style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 12.5 }}>{t.hora}</td>
+                  <td style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 12.5 }}>
+                    {ventanaDeRfc3339(t.ventana.inicio, t.ventana.fin)}
+                  </td>
                   <td style={{ fontFamily: "'IBM Plex Mono',monospace" }}>{t.patente}</td>
                   <td>{t.chofer}</td>
                   <td>{t.finca}</td>

@@ -2,6 +2,8 @@
 
 > **Estado: inventario de trabajo, no normativo.** No aprueba rutas, DTO ni decisiones; lo que falta requiere su cambio OpenSpec y contrato. **Corte:** 2026-11-07.
 
+**Actualización del 2026-11-14.** La [PR #105](https://github.com/agustinvallante/AgroFlow/pull/105) incorpora el [mapa simulado para la presentación](../development/mapa-simulado-presentacion.md), pendiente de revisión e integración. Su [cambio OpenSpec](../../openspec/changes/mapa-simulado-presentacion/proposal.md) autoriza datos manuales para el viaje finca → ingenio y conserva la independencia de los turnos de la API. Las filas históricas siguientes describen el corte anterior.
+
 ## Base analizada
 
 | Fuente | Referencia | Estado |
@@ -31,7 +33,7 @@ El frontend todavía no cubre el MVP. El mayor bloqueo es **acceso y sesión**.
 |---|---|---|
 | Acceso y sesión | ❌ | No existe; sin esto no se puede usar fuera de la demo |
 | Cola de turnos | 🟡 | El recorrido funciona; faltan seguridad, listado completo y paginación |
-| Transportistas | 🟡 | Lista, alta y baja funcionan; faltan edición y asociación con camión |
+| Transportistas | 🟡 | Lista, alta, baja y asociación con camión funcionan; falta edición |
 | Camiones | ❌ | Sin rutas ni vista |
 | Fincas | 🟡 | La API permite leerlas; sin vista ni gestión |
 | Panel general | 🟡 | Solo camiones en curso; indicadores y franjas sin datos |
@@ -89,7 +91,7 @@ El frontend todavía no cubre el MVP. El mayor bloqueo es **acceso y sesión**.
 | Ver camión asociado y si puede pedir turnos | ✅ | Solo lectura |
 | Editar | 🟡 | `PUT /api/v1/drivers/{id}` existe; falta formulario y método en el repositorio |
 | Reintentar tras un error | 🟡 | Hoy el error reemplaza toda la vista |
-| Asociar con un camión | ❌ | Tarea 2.4 del #97, bloqueada por OD-002, OD-007 y OD-013. **Sin esto, un transportista nuevo no puede pedir turnos** |
+| Asociar con un camión | ✅ | Asociar un camión libre y desasociar con confirmación, según [gestionar-asociaciones-transportista-camion](../../openspec/changes/gestionar-asociaciones-transportista-camion/proposal.md) |
 | Reactivar | ❌ | Sin ruta; decisión en OD-013 |
 | Historial | ❌ | Sin ruta |
 | Finca habitual, flota, turnos del mes | ❌ | El contrato no los incluye. Decidir si hacen falta |
@@ -252,7 +254,7 @@ El proxy bloquea estas rutas para el navegador. El #97 también cambia `chatbot/
 | Custodia de la sesión web | Acceso y sesión |
 | B00 (rutas, DTO, paginación) | Todo lo que necesita contrato nuevo |
 | OD-007 (roles y permisos) | Sesión, catálogos, interrupciones |
-| OD-002, OD-013 (asociaciones, campos de camiones/fincas, reactivación) | Transportistas, camiones, fincas |
+| OD-013 (campos de camiones/fincas, reactivación) | Transportistas, camiones, fincas |
 | OD-012 (indicadores y cola) | Panel, intervalo de actualización |
 | OD-010 (notificaciones no conversacionales, fuera de lo resuelto parcialmente en `LocalDemo`) | Interrupciones, avisos proactivos |
 | OD-009, OD-011 (retención definitiva y operación fuera de `LocalDemo`) | Cierre productivo del historial del chatbot |
@@ -263,6 +265,6 @@ El proxy bloquea estas rutas para el navegador. El #97 también cambia `chatbot/
 2. Hacer la sección 3.2, que no bloquea a nadie.
 3. Cerrar B00 con backend: contrato y decisiones del primer recorrido autenticado.
 4. Implementar acceso y sesión (F01) y luego el listado de turnos (F06).
-5. Completar catálogos y asociación, para que un transportista nuevo pueda pedir turnos.
+5. Completar catálogos (la asociación con camión ya está en `LocalDemo`).
 6. Conectar panel e interrupciones (F07, F08).
 7. Decidir qué pasa con reportes, configuración y mapa, y reunir la evidencia final (F09).

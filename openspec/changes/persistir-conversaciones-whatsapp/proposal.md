@@ -5,7 +5,7 @@
 ## Objetivo
 
 1. Permitir que el ingenio registre y consulte transportistas con su número de WhatsApp, de modo que el canal conversacional los identifique automáticamente sin editar el seed ni versionar números reales.
-2. Persistir en el backend de AgroFlow las conversaciones y los mensajes de WhatsApp, entrantes y salientes, para que la API los recupere y el dashboard los muestre.
+2. Persistir en el backend de ZafraFlow las conversaciones y los mensajes de WhatsApp, entrantes y salientes, para que la API los recupere y el dashboard los muestre.
 3. Evitar que un mismo mensaje entrante produzca filas repetidas, procesamientos concurrentes o respuestas duplicadas.
 
 ## Motivación

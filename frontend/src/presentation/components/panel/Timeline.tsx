@@ -1,41 +1,22 @@
-import type { FrancoTimeline } from "../../../domain/entities/MetricasPanel";
+import type { VentanaRecepcion } from "../../../domain/entities/VentanaRecepcion";
+import { ventanaDeRfc3339 } from "../../../shared/utils/date";
 
-export function Timeline({ slots }: { slots: FrancoTimeline[] }) {
+export function Timeline({ slots }: { slots: VentanaRecepcion[] }) {
   return (
-    <div className="timeline-wrap">
-      <div className="timeline">
-        {slots.map((slot) => (
-          <div className="slot" key={slot.hora}>
-            <div className="slot-label">{slot.hora}</div>
-            <div className="trucks">
-              {Array.from({ length: slot.camionesPropia }).map((_, i) => (
-                <div className="truck-tick propia" key={`p-${i}`} />
-              ))}
-              {Array.from({ length: slot.camionesTercero }).map((_, i) => (
-                <div className="truck-tick tercero" key={`t-${i}`} />
-              ))}
-              {Array.from({ length: slot.camionesDemorados }).map((_, i) => (
-                <div className="truck-tick demorado" key={`d-${i}`} />
-              ))}
-            </div>
-            {slot.esActual && <div className="now-line" />}
-          </div>
-        ))}
-      </div>
-      <div className="legend">
-        <span>
-          <i style={{ background: "var(--azucar)" }} />
-          Flota propia
-        </span>
-        <span>
-          <i style={{ background: "var(--tinta-suave)" }} />
-          Flota tercerizada
-        </span>
-        <span>
-          <i style={{ background: "var(--alerta)" }} />
-          Demorado
-        </span>
-      </div>
-    </div>
+    <ul className="timeline" aria-label="Franjas y cupos">
+      {slots.map((slot) => (
+        <li className="slot" key={slot.id} aria-label={ventanaDeRfc3339(slot.startAt, slot.endAt)}>
+          <div className="slot-label">{ventanaDeRfc3339(slot.startAt, slot.endAt)}</div>
+          <span className={slot.available === 0 ? "slot-lleno" : "slot-disponible"}>
+            {slot.available === 0 ? "Sin cupos" : "Con cupos"}
+          </span>
+          <dl className="slot-cupos">
+            <div><dt>Capacidad</dt><dd>{slot.capacity}</dd></div>
+            <div><dt>Ocupados</dt><dd>{slot.occupied}</dd></div>
+            <div><dt>Disponibles</dt><dd>{slot.available}</dd></div>
+          </dl>
+        </li>
+      ))}
+    </ul>
   );
 }

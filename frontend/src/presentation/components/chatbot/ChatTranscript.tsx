@@ -87,7 +87,7 @@ export function ChatTranscript({ conversacion, seleccion = 0, cargando = false, 
               )}
               <div className={`msg ${m.autor === "transportista" ? "in" : "out"}`}>
                 <span className="who">
-                  {m.autor === "transportista" ? "Transportista" : "Bot AgroFlow"}
+                  {m.autor === "transportista" ? "Transportista" : "Bot ZafraFlow"}
                   {m.hora ? ` · ${m.hora}` : ""}
                 </span>
                 {m.texto}

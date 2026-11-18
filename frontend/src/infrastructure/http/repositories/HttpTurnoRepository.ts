@@ -18,7 +18,7 @@ import {
 const BASE = "/api/v1/appointments";
 
 /**
- * Implementa TurnoRepository contra AgroFlow API (docs/contracts/openapi.yaml).
+ * Implementa TurnoRepository contra ZafraFlow API (docs/contracts/openapi.yaml).
  * Es la única fuente de turnos del dashboard.
  */
 export class HttpTurnoRepository implements TurnoRepository {
@@ -36,7 +36,14 @@ export class HttpTurnoRepository implements TurnoRepository {
   async obtenerTurnosDelDia(filtros?: FiltrosTurno): Promise<Turno[]> {
     const query = toListQuery(filtros);
     if (!query) return [];
+    return this.listar(query);
+  }
 
+  async obtenerTurnosActivos(): Promise<Turno[]> {
+    return this.listar({ active: "true" });
+  }
+
+  private async listar(query: Record<string, string | undefined>): Promise<Turno[]> {
     const resumenes = await this.api.get<AppointmentSummaryDto[]>(BASE, query);
     const turnos = await Promise.all(
       resumenes.map(async (resumen) => {

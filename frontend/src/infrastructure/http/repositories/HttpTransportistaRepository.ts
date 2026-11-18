@@ -7,7 +7,7 @@ import { mapDriver, toDriverInput } from "../mappers/driverMapper";
 const BASE = "/api/v1/drivers";
 
 /**
- * Transportistas de AgroFlow API. Cada mutación lleva una Idempotency-Key
+ * Transportistas de ZafraFlow API. Cada mutación lleva una Idempotency-Key
  * nueva; la API responde un recibo y el transportista se relee para mostrar
  * lo persistido.
  */
@@ -29,6 +29,13 @@ export class HttpTransportistaRepository implements TransportistaRepository {
       "Idempotency-Key": this.nuevaClave(),
     });
     return this.obtener(recibo.resourceId);
+  }
+
+  async actualizar(id: string, datos: NuevoTransportista): Promise<Transportista> {
+    await this.api.put<MutationReceiptDto>(`${BASE}/${encodeURIComponent(id)}`, toDriverInput(datos), {
+      "Idempotency-Key": this.nuevaClave(),
+    });
+    return this.obtener(id);
   }
 
   async cambiarEstadoActivo(id: string): Promise<Transportista> {

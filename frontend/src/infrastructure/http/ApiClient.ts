@@ -4,7 +4,7 @@
  * que se puede mostrar tal cual al operador.
  *
  * Turnos no tienen autenticación en la demo local. Conversaciones y
- * transportistas exigen la clave del dashboard, que agrega el proxy de Vite
+ * transportistas y ventanas exigen la clave del dashboard, que agrega el proxy de Vite
  * del lado servidor (server/dashboardProxy.ts): el navegador nunca la conoce.
  */
 

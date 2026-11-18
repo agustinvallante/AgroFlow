@@ -29,8 +29,8 @@ public sealed class AppointmentService : IAppointmentService
         var errors = new Dictionary<string, string[]>();
         if (!IsValidPhone(command.CarrierPhone))
             errors["carrierPhone"] = ["Debe ser un teléfono E.164 válido."];
-        if (string.IsNullOrWhiteSpace(command.TruckPlate) || command.TruckPlate.Length is < 6 or > 10)
-            errors["truckPlate"] = ["Debe tener entre 6 y 10 caracteres."];
+        if (!IsValidTruckPlate(command.TruckPlate))
+            errors["truckPlate"] = [TruckPlateError];
         if (string.IsNullOrEmpty(command.FarmCode) || command.FarmCode.Length > 50 ||
             !FarmCodePattern.IsMatch(command.FarmCode))
             errors["farmCode"] = ["Debe ser un código de finca válido de hasta 50 caracteres."];
@@ -98,8 +98,8 @@ public sealed class AppointmentService : IAppointmentService
         var errors = new Dictionary<string, string[]>();
         if (query.Status is { } status && !Enum.IsDefined(status))
             errors["status"] = ["Debe ser un estado válido."];
-        if (query.TruckPlate is { } plate && (string.IsNullOrWhiteSpace(plate) || plate.Length is < 6 or > 10))
-            errors["truckPlate"] = ["Debe tener entre 6 y 10 caracteres."];
+        if (query.TruckPlate is { } plate && !IsValidTruckPlate(plate))
+            errors["truckPlate"] = [TruckPlateError];
         if (query.Phone is { } phone && !IsValidPhone(phone))
             errors["phone"] = ["Debe ser un teléfono E.164 válido."];
 
@@ -162,6 +162,17 @@ public sealed class AppointmentService : IAppointmentService
             _ => throw new InvalidOperationException("El adaptador devolvió una transición incompleta.")
         };
     }
+
+    /// <summary>Mensaje único para una patente que no cumple <see cref="IsValidTruckPlate"/>.</summary>
+    public const string TruckPlateError = "Debe tener entre 6 y 10 caracteres y al menos una letra o dígito.";
+
+    /// <summary>
+    /// Regla de entrada de la patente: 6 a 10 caracteres y al menos una letra o
+    /// dígito, para que la normalización (sin separadores, en mayúsculas) nunca
+    /// quede vacía.
+    /// </summary>
+    public static bool IsValidTruckPlate(string? plate) =>
+        !string.IsNullOrWhiteSpace(plate) && plate.Length is >= 6 and <= 10 && plate.Any(char.IsLetterOrDigit);
 
     private static bool IsValidPhone(string? phone) =>
         phone is not null && PhonePattern.IsMatch(phone);

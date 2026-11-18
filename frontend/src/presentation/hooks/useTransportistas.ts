@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { container } from "../../composition/container";
 import type { NuevoTransportista, Transportista } from "../../domain/entities/Transportista";
 
@@ -8,26 +8,41 @@ export function useTransportistas() {
   const [transportistas, setTransportistas] = useState<Transportista[]>([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [errorRefresco, setErrorRefresco] = useState<string | null>(null);
+  const cargaValida = useRef(false);
+  const ultimaConsulta = useRef(0);
+  const invalidarConsulta = useCallback(() => { ultimaConsulta.current++; }, []);
 
   const [busqueda, setBusqueda] = useState("");
   const [filtroEstado, setFiltroEstado] = useState<FiltroEstadoTp>("todos");
 
   const cargar = useCallback(async () => {
-    setCargando(true);
-    setError(null);
+    const consulta = ++ultimaConsulta.current;
+    if (!cargaValida.current) {
+      setCargando(true);
+      setError(null);
+    }
     try {
       const data = await container.transportistas.obtenerTransportistas.execute();
+      if (consulta !== ultimaConsulta.current) return;
+      cargaValida.current = true;
       setTransportistas(data);
+      setError(null);
+      setErrorRefresco(null);
     } catch (e) {
-      setError(e instanceof Error && e.message ? e.message : "No se pudo cargar el listado de transportistas.");
+      if (consulta !== ultimaConsulta.current) return;
+      const mensaje = e instanceof Error && e.message ? e.message : "No se pudo cargar el listado de transportistas.";
+      if (cargaValida.current) setErrorRefresco(mensaje);
+      else setError(mensaje);
     } finally {
-      setCargando(false);
+      if (consulta === ultimaConsulta.current) setCargando(false);
     }
   }, []);
 
   useEffect(() => {
     cargar();
-  }, [cargar]);
+    return invalidarConsulta;
+  }, [cargar, invalidarConsulta]);
 
   const listaFiltrada = useMemo(() => {
     const texto = busqueda.toLowerCase().trim();
@@ -55,6 +70,11 @@ export function useTransportistas() {
     setTransportistas((prev) => [nuevo, ...prev]);
   }, []);
 
+  const editar = useCallback(async (id: string, datos: NuevoTransportista) => {
+    const actualizado = await container.transportistas.editarTransportista.execute(id, datos);
+    setTransportistas((prev) => prev.map((t) => (t.id === id ? actualizado : t)));
+  }, []);
+
   const cambiarEstado = useCallback(async (id: string) => {
     const actualizado = await container.transportistas.cambiarEstadoActivoTransportista.execute(id);
     setTransportistas((prev) => prev.map((t) => (t.id === id ? actualizado : t)));
@@ -65,10 +85,12 @@ export function useTransportistas() {
     resumen,
     cargando,
     error,
+    errorRefresco,
     filtros: { busqueda, filtroEstado },
     setBusqueda,
     setFiltroEstado,
     crear,
+    editar,
     cambiarEstado,
     recargar: cargar,
   };

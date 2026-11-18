@@ -1,8 +1,8 @@
 ## MODIFIED Requirements
 
-### Requirement: Superficie HTTP exclusiva del dominio AgroFlow
+### Requirement: Superficie HTTP exclusiva del dominio ZafraFlow
 
-La API de AgroFlow MUST NOT publicar operaciones ni contratos de productos, pedidos o clientes del comercio electrónico de origen. El retiro de esas rutas SHALL preservar los recorridos de turnos y salud vigentes en el perfil de demo local.
+La API de ZafraFlow MUST NOT publicar operaciones ni contratos de productos, pedidos o clientes del comercio electrónico de origen. El retiro de esas rutas SHALL preservar los recorridos de turnos y salud vigentes en el perfil de demo local.
 
 #### Scenario: Rutas heredadas ausentes
 

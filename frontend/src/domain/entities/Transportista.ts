@@ -1,10 +1,12 @@
-/** Lo que publica el contrato de transportistas de AgroFlow API. */
+/** Lo que publica el contrato de transportistas de ZafraFlow API. */
 export interface Transportista {
   id: string;
   nombre: string;
   dni: string;
   /** Patentes de los camiones asociados; null si no tiene ninguno. */
   patente: string | null;
+  /** Camiones activos asociados; con ellos puede pedir turnos. */
+  patentes: string[];
   telefono: string;
   activo: boolean;
   puedeSolicitarTurnos: boolean;

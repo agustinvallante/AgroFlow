@@ -5,8 +5,9 @@ import type { ProxyOptions } from "vite";
  * Intermediario local del dashboard (perfil LocalDemo). La clave del
  * dashboard vive sólo en el proceso de Node de Vite (`AGROFLOW_DASHBOARD_KEY`,
  * sin prefijo VITE_): nunca llega al bundle, al navegador ni a su
- * almacenamiento. El proxy la agrega únicamente a las rutas de conversaciones
- * y transportistas, y sólo para solicitudes locales del mismo origen.
+ * almacenamiento. El proxy la agrega únicamente a las rutas de conversaciones,
+ * transportistas y asociaciones, y a la lectura de ventanas y camiones, sólo
+ * para solicitudes locales del mismo origen.
  *
  * Limitación: cualquier proceso o pestaña local que pueda hablar con el
  * servidor de Vite actúa como el dashboard. Es una medida de demo en
@@ -18,11 +19,17 @@ export const DASHBOARD_KEY_HEADER = "x-agroflow-dashboard-key";
 const AGROFLOW_HEADERS = [DASHBOARD_KEY_HEADER, "x-agroflow-service-key"];
 
 /** Rutas que el dashboard puede consultar con la clave. */
-export const DASHBOARD_ROUTES = ["/api/v1/conversations", "/api/v1/drivers"];
+const WINDOWS_ROUTE = "/api/v1/windows";
+const TRUCKS_ROUTE = "/api/v1/trucks";
+/** Catálogo de fincas: el backend lo comparte entre el dashboard y n8n. */
+const FARMS_ROUTE = "/api/v1/farms";
+/** Rutas de sólo lectura: únicamente GET sobre la colección, sin subrutas. */
+const READ_ONLY_ROUTES = [WINDOWS_ROUTE, TRUCKS_ROUTE, FARMS_ROUTE];
+export const DASHBOARD_ROUTES = ["/api/v1/conversations", "/api/v1/drivers", "/api/v1/associations", ...READ_ONLY_ROUTES];
 /** Rutas de n8n: el navegador nunca las alcanza a través del proxy. */
 export const CHANNEL_ROUTES = ["/api/v1/conversation-events", "/api/v1/conversation-reply-intents"];
 
-type ProxyRequest = Pick<IncomingMessage, "headers" | "url"> & { socket: { remoteAddress?: string } };
+type ProxyRequest = Pick<IncomingMessage, "headers" | "url" | "method"> & { socket: { remoteAddress?: string } };
 
 export function isLoopbackAddress(address: string | undefined): boolean {
   if (!address) return false;
@@ -46,9 +53,10 @@ export function isAllowedDashboardRequest(req: ProxyRequest): boolean {
   if (!isLoopbackAddress(req.socket.remoteAddress) || !isLocalHost(host)) return false;
   const url = req.url ?? "";
   if (/\.\.|%2e|%2f|%5c|\\/i.test(url)) return false;
-  if (!DASHBOARD_ROUTES.some((route) => url === route || url.startsWith(`${route}/`) || url.startsWith(`${route}?`))) {
-    return false;
-  }
+  const route = DASHBOARD_ROUTES.find((candidate) =>
+    url === candidate || url.startsWith(`${candidate}?`) || (!READ_ONLY_ROUTES.includes(candidate) && url.startsWith(`${candidate}/`)));
+  if (!route) return false;
+  if (READ_ONLY_ROUTES.includes(route) && (req.method ?? "GET") !== "GET") return false;
   const fetchSite = req.headers["sec-fetch-site"];
   if (fetchSite && fetchSite !== "same-origin" && fetchSite !== "none") return false;
   const origin = req.headers.origin;

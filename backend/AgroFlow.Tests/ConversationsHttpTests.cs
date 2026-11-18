@@ -3,10 +3,19 @@ using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using AgroFlow.Api;
+using AgroFlow.Api.Contracts.Conversations;
 using AgroFlow.Api.Security;
+using AgroFlow.Application.Conversations;
+using AgroFlow.Data.Appointments;
+using AgroFlow.Domain.Entities;
+using AgroFlow.Domain.Interfaces;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Xunit;
 
 namespace AgroFlow.Tests;
@@ -24,6 +33,165 @@ public sealed class ConversationsHttpTests : IDisposable
 
     private readonly string _dbPath = Path.Combine(Path.GetTempPath(), $"agroflow-conversations-http-{Guid.NewGuid():N}.db");
     private readonly List<IDisposable> _factories = [];
+
+    [Theory]
+    [InlineData(51, 50)]
+    [InlineData(5, 2)]
+    public async Task Message_pages_reuse_the_returned_cursor_without_missing_new_arrivals(int initialCount, int limit)
+    {
+        using var client = CreateClient();
+        var expected = new List<Guid>();
+        Guid conversationId = default;
+        for (var i = 0; i < initialCount; i++)
+        {
+            var registration = await RegisterMessage(client, $"page-in-{i:D3}");
+            conversationId = registration.ConversationId;
+            expected.Add(registration.MessageId);
+        }
+
+        var seen = new List<Guid>();
+        var times = new List<DateTimeOffset>();
+        string? cursor = null;
+        var pages = 0;
+        do
+        {
+            var query = $"?limit={limit}" + (cursor is null ? "" : $"&cursor={Uri.EscapeDataString(cursor)}");
+            using var response = await Dashboard(client, HttpMethod.Get, $"/api/v1/conversations/{conversationId}/messages{query}");
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+            var items = body.RootElement.GetProperty("items").EnumerateArray().ToArray();
+            Assert.InRange(items.Length, 1, limit);
+            seen.AddRange(items.Select(item => item.GetProperty("id").GetGuid()));
+            times.AddRange(items.Select(item => item.GetProperty("persistedAt").GetDateTimeOffset()));
+            cursor = body.RootElement.GetProperty("nextCursor").GetString();
+            if (cursor is not null)
+                Assert.InRange(cursor.Length, 1, PageCursorCodec.MaxEncodedLength);
+            Assert.True(++pages <= initialCount + 2, "El recorrido debe terminar.");
+
+            if (pages == 1)
+            {
+                Assert.Equal(Math.Min(initialCount, limit), items.Length);
+                Assert.NotNull(cursor);
+                for (var i = 0; i < 2; i++)
+                    expected.Add((await RegisterMessage(client, $"page-late-{i}")).MessageId);
+            }
+        } while (cursor is not null);
+
+        Assert.Equal(expected, seen);
+        Assert.Equal(seen.Count, seen.Distinct().Count());
+        Assert.Equal(times.Order(), times);
+        Assert.True(pages >= (initialCount == 51 ? 2 : 3));
+    }
+
+    [Fact]
+    public async Task Conversation_pages_reuse_the_returned_cursor_in_activity_order()
+    {
+        using var client = CreateClient();
+        var registered = new List<Guid>();
+        foreach (var suffix in new[] { "101", "102", "103" })
+            registered.Add((await RegisterMessage(client, $"conv-{suffix}", address: $"5493815550{suffix}@s.whatsapp.net")).ConversationId);
+
+        var seen = new List<Guid>();
+        var activity = new List<DateTimeOffset>();
+        string? cursor = null;
+        do
+        {
+            var query = "?limit=1" + (cursor is null ? "" : $"&cursor={Uri.EscapeDataString(cursor)}");
+            using var response = await Dashboard(client, HttpMethod.Get, $"/api/v1/conversations{query}");
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+            var item = Assert.Single(body.RootElement.GetProperty("items").EnumerateArray());
+            seen.Add(item.GetProperty("id").GetGuid());
+            activity.Add(item.GetProperty("lastMessageAt").GetDateTimeOffset());
+            cursor = body.RootElement.GetProperty("nextCursor").GetString();
+            Assert.True(seen.Count <= registered.Count, "El recorrido debe terminar.");
+        } while (cursor is not null);
+
+        Assert.Equal(registered.Order(), seen.Order());
+        Assert.Equal(3, seen.Distinct().Count());
+        Assert.Equal(activity.OrderDescending(), activity);
+    }
+
+    [Fact]
+    public async Task Decodable_cursors_do_not_bypass_conversation_or_ingenio_scope()
+    {
+        // LocalDemo exige un único ingenio; sólo esta fixture fija el ámbito
+        // del dashboard para probar el store con dos ingenios por HTTP.
+        using var client = CreateClient(fixedFixtureTenant: true);
+        var own = await RegisterMessage(client, "own-1");
+        await RegisterMessage(client, "own-2");
+        var another = await RegisterMessage(client, "another-1", address: "5493815550102@s.whatsapp.net");
+        await RegisterMessage(client, "another-2", address: "5493815550102@s.whatsapp.net");
+        using var first = await Dashboard(client, HttpMethod.Get, $"/api/v1/conversations/{own.ConversationId}/messages?limit=1");
+        Assert.Equal(HttpStatusCode.OK, first.StatusCode);
+        using var firstBody = JsonDocument.Parse(await first.Content.ReadAsStringAsync());
+        var ownCursor = firstBody.RootElement.GetProperty("nextCursor").GetString()!;
+        Assert.True(PageCursorCodec.TryDecode(ownCursor, out _));
+        using var wrongConversation = await Dashboard(client, HttpMethod.Get,
+            $"/api/v1/conversations/{another.ConversationId}/messages?cursor={Uri.EscapeDataString(ownCursor)}");
+        Assert.Equal(HttpStatusCode.BadRequest, wrongConversation.StatusCode);
+        Assert.Equal("VALIDATION_ERROR", await CodeOf(wrongConversation));
+
+        // Segundo ingenio real en esta SQLite efímera; el dashboard sigue en el primero.
+        await using var db = new AgroFlowDbContext(new DbContextOptionsBuilder<AgroFlowDbContext>()
+            .UseSqlite($"Data Source={_dbPath};Default Timeout=5").Options);
+        var foreignMill = new Ingenio("Ingenio Fixture Ajeno", "America/Argentina/Tucuman");
+        db.Ingenios.Add(foreignMill);
+        db.ChannelInstances.Add(new ChannelInstance(foreignMill.Id, ChannelInstance.ProviderEvolution, "fixture-instance-B"));
+        await db.SaveChangesAsync();
+        var foreign = await RegisterMessage(client, "foreign-1", instance: "fixture-instance-B");
+        var anchor = await db.ConversationMessages.AsNoTracking().SingleAsync(message => message.Id == foreign.MessageId);
+        var foreignCursor = PageCursorCodec.Encode(new PageCursor(anchor.PersistedAtUtc, anchor.Id));
+        Assert.True(PageCursorCodec.TryDecode(foreignCursor, out _));
+        using var wrongAnchor = await Dashboard(client, HttpMethod.Get,
+            $"/api/v1/conversations/{own.ConversationId}/messages?cursor={Uri.EscapeDataString(foreignCursor)}");
+        Assert.Equal(HttpStatusCode.BadRequest, wrongAnchor.StatusCode);
+        using var hidden = await Dashboard(client, HttpMethod.Get,
+            $"/api/v1/conversations/{foreign.ConversationId}/messages?cursor={Uri.EscapeDataString(ownCursor)}");
+        Assert.Equal(HttpStatusCode.NotFound, hidden.StatusCode);
+        Assert.Equal("CONVERSATION_NOT_FOUND", await CodeOf(hidden));
+        using var list = await Dashboard(client, HttpMethod.Get,
+            $"/api/v1/conversations?cursor={Uri.EscapeDataString(foreignCursor)}");
+        Assert.Equal(HttpStatusCode.OK, list.StatusCode);
+        using var listed = JsonDocument.Parse(await list.Content.ReadAsStringAsync());
+        Assert.All(listed.RootElement.GetProperty("items").EnumerateArray(),
+            item => Assert.Contains(item.GetProperty("id").GetGuid(), new[] { own.ConversationId, another.ConversationId }));
+    }
+
+    [Theory]
+    [InlineData("padding")]
+    [InlineData("whitespace")]
+    [InlineData("too-long")]
+    public async Task Invalid_cursor_encodings_are_rejected_on_both_routes(string variant)
+    {
+        using var client = CreateClient();
+        var registration = await RegisterMessage(client, "invalid-cursor-in");
+        var valid = PageCursorCodec.Encode(new PageCursor(DateTime.UnixEpoch, Guid.NewGuid()));
+        var invalid = variant switch
+        {
+            "padding" => valid + "=",
+            "whitespace" => valid.Insert(10, " "),
+            _ => new string('a', PageCursorCodec.MaxEncodedLength + 1),
+        };
+        foreach (var path in new[] { "/api/v1/conversations", $"/api/v1/conversations/{registration.ConversationId}/messages" })
+        {
+            using var response = await Dashboard(client, HttpMethod.Get, $"{path}?cursor={Uri.EscapeDataString(invalid)}");
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+            Assert.Equal("VALIDATION_ERROR", await CodeOf(response));
+            using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+            Assert.True(body.RootElement.GetProperty("errors").TryGetProperty("cursor", out _));
+        }
+    }
+
+    private static async Task<(Guid ConversationId, Guid MessageId)> RegisterMessage(
+        HttpClient client, string id, string address = SeededJid, string instance = Instance)
+    {
+        using var response = await Channel(client, HttpMethod.Post, "/api/v1/conversation-events",
+            EventBody(id, instance: instance, remoteAddress: address));
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        return (body.RootElement.GetProperty("conversationId").GetGuid(), body.RootElement.GetProperty("messageId").GetGuid());
+    }
 
     [Fact]
     public async Task Channel_and_dashboard_routes_require_their_own_key()
@@ -289,7 +457,11 @@ public sealed class ConversationsHttpTests : IDisposable
         Assert.Contains("/api/v1/conversation-reply-intents", paths);
         Assert.Contains("/api/v1/conversations", paths);
         Assert.Contains("/api/v1/drivers", paths);
-        Assert.DoesNotContain(paths, path => path.Contains("/trucks", StringComparison.Ordinal));
+        // De camiones sólo se publica el listado (B15, #19): sin alta, edición,
+        // inhabilitación ni asociaciones.
+        Assert.Equal(["/api/v1/trucks"], paths.Where(path => path.Contains("/trucks", StringComparison.Ordinal)));
+        var trucks = document.RootElement.GetProperty("paths").GetProperty("/api/v1/trucks");
+        Assert.Equal(["get"], trucks.EnumerateObject().Select(operation => operation.Name));
         // De fincas sólo se publica la consulta del catálogo.
         Assert.Equal(["/api/v1/farms"], paths.Where(path => path.Contains("/farms", StringComparison.Ordinal)));
     }
@@ -310,7 +482,8 @@ public sealed class ConversationsHttpTests : IDisposable
             text
         };
 
-    private HttpClient CreateClient(string? channelKey = ChannelKey, string? dashboardKey = DashboardKey)
+    private HttpClient CreateClient(
+        string? channelKey = ChannelKey, string? dashboardKey = DashboardKey, bool fixedFixtureTenant = false)
     {
         var factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
         {
@@ -322,9 +495,24 @@ public sealed class ConversationsHttpTests : IDisposable
             builder.UseSetting("ConnectionStrings:AgroFlowDb", $"Data Source={_dbPath};Default Timeout=5");
             builder.UseSetting(ApiKeySchemes.ChannelKeySetting, channelKey ?? string.Empty);
             builder.UseSetting(ApiKeySchemes.DashboardKeySetting, dashboardKey ?? string.Empty);
+            if (fixedFixtureTenant)
+            {
+                builder.ConfigureTestServices(services =>
+                {
+                    services.RemoveAll<ITenantContext>();
+                    services.AddScoped<ITenantContext>(provider => new FixtureTenantContext(
+                        provider.GetRequiredService<AgroFlowDbContext>().ChannelInstances.AsNoTracking()
+                            .Single(instance => instance.InstanceName == Instance).IngenioId));
+                });
+            }
         });
         _factories.Add(factory);
         return factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+    }
+
+    private sealed record FixtureTenantContext(Guid IngenioId) : ITenantContext
+    {
+        public string ActorIdentity => "fixture-dashboard";
     }
 
     private static Task<HttpResponseMessage> Channel(HttpClient client, HttpMethod method, string path, object? body) =>
