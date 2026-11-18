@@ -7,15 +7,14 @@
 
 ## Implementación actual
 
-`frontend/` contiene una aplicación React/Vite. La cola de turnos puede operar
+`frontend/` contiene una aplicación React/Vite. La cola de turnos opera
 contra HTTP mediante `ApiClient`, DTOs/mappers y `HttpTurnoRepository`; existen
-casos de uso, hooks, vistas y pruebas. Solo turnos consume HTTP. Panel general,
-chatbot, transportistas, reportes y configuración permanecen en mock. El
+casos de uso, hooks, vistas y pruebas. Turnos, transportistas y conversaciones
+consumen HTTP; lo demás conserva su diseño, sin datos. El
 [README del frontend](../../../frontend/README.md) describe el alcance presente.
 
 Esta base se conserva; no hay requerimiento de sustituirla ni de implementar
-ahora todas las pantallas. Los datos simulados deben distinguirse y nunca
-presentarse como estado operativo aceptado.
+ahora todas las pantallas. El dashboard no presenta datos simulados.
 
 ## Límites vigentes
 

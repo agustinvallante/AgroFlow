@@ -4,7 +4,7 @@
 
 ### Requirement: La demo local no redefine el MVP
 
-AgroFlow SHALL tratar la demo local de turnos básicos como un incremento de integración y MUST NOT usar su aprobación como evidencia de aceptación del MVP completo. Las capacidades excluidas de la demo conservan íntegramente su obligatoriedad en la especificación vigente.
+ZafraFlow SHALL tratar la demo local de turnos básicos como un incremento de integración y MUST NOT usar su aprobación como evidencia de aceptación del MVP completo. Las capacidades excluidas de la demo conservan íntegramente su obligatoriedad en la especificación vigente.
 
 #### Scenario: Demo local aprobada
 

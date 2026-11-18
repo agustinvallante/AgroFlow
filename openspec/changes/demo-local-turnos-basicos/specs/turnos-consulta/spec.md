@@ -4,7 +4,7 @@
 
 ### Requirement: Listado local y filtros canónicos (CU-003, CU-004)
 
-La demo local SHALL listar turnos del único ingenio sembrado y SHALL admitir los filtros opcionales `date`, `status`, `truckPlate` y `phone` definidos en OpenAPI. Cuando no se informa `date`, la API SHALL usar la fecha local actual del ingenio sembrado, también si se informan otros filtros. Todos los filtros SHALL combinarse con AND y el resultado SHALL ordenarse por inicio de ventana ascendente; sin coincidencias SHALL devolver una colección vacía. El filtro `phone` SHALL permitir que el chatbot consulte por el número del remitente sin resolver previamente un UUID de transportista. La consulta MUST NOT modificar datos.
+La demo local SHALL listar turnos del único ingenio sembrado y SHALL admitir los filtros opcionales `date`, `status`, `truckPlate` y `phone` definidos en OpenAPI. Cuando no se informa `date`, la API SHALL usar la fecha local actual del ingenio sembrado, también si se informan otros filtros, salvo con el filtro `active=true` definido en [`ajustar-consultas-chatbot-whatsapp`](../../../ajustar-consultas-chatbot-whatsapp/specs/turnos-consulta/spec.md). Todos los filtros SHALL combinarse con AND y el resultado SHALL ordenarse por inicio de ventana ascendente; sin coincidencias SHALL devolver una colección vacía. El filtro `phone` SHALL permitir que el chatbot consulte por el número del remitente sin resolver previamente un UUID de transportista. La consulta MUST NOT modificar datos.
 
 #### Scenario: Listado por defecto
 

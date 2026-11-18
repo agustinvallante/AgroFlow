@@ -12,7 +12,7 @@ public sealed class MasterDataServiceTests
     {
         var store = new FakeMasterDataUnitOfWork();
         var service = Service(store, Guid.NewGuid(), "actor-1");
-        var request = new DriverData("Driver One", "DNI 123", "+54 11 1234");
+        var request = new DriverData("Driver One", "DNI 123", "+5491110001234");
 
         var first = await service.CreateDriver(request, "request-1", CancellationToken.None);
         var replay = await service.CreateDriver(request, "request-1", CancellationToken.None);
@@ -30,11 +30,11 @@ public sealed class MasterDataServiceTests
     {
         var store = new FakeMasterDataUnitOfWork();
         var service = Service(store, Guid.NewGuid(), "actor-1");
-        var request = new DriverData("Driver One", "DNI 123", "+54 11 1234");
+        var request = new DriverData("Driver One", "DNI 123", "+5491110001234");
 
         var originalReceipt = await service.CreateDriver(request, "request-1", CancellationToken.None);
         await service.UpdateDriver(originalReceipt.ResourceId,
-            new DriverData("Updated Driver", "DNI 456", "+54 11 5678"), "request-2", CancellationToken.None);
+            new DriverData("Updated Driver", "DNI 456", "+5491110005678"), "request-2", CancellationToken.None);
         var replay = await service.CreateDriver(request, "request-1", CancellationToken.None);
 
         Assert.Equal(originalReceipt, replay);
@@ -47,13 +47,13 @@ public sealed class MasterDataServiceTests
     {
         var store = new FakeMasterDataUnitOfWork();
         var service = Service(store, Guid.NewGuid(), "actor-1");
-        await service.CreateDriver(new DriverData("Private Driver", "DNI 998877", "+54 11 998877"), "private-key", CancellationToken.None);
+        await service.CreateDriver(new DriverData("Private Driver", "DNI 998877", "+5491110998877"), "private-key", CancellationToken.None);
 
         var serializedRecord = System.Text.Json.JsonSerializer.Serialize(store.IdempotencyRecords.Single());
 
         Assert.DoesNotContain("Private Driver", serializedRecord);
         Assert.DoesNotContain("DNI 998877", serializedRecord);
-        Assert.DoesNotContain("+54 11 998877", serializedRecord);
+        Assert.DoesNotContain("+5491110998877", serializedRecord);
         Assert.Equal("created", store.IdempotencyRecords.Single().ResultCode);
         Assert.Equal(store.Transportistas.Single().Id.ToString("D"), store.IdempotencyRecords.Single().ResultReference);
     }
@@ -63,10 +63,10 @@ public sealed class MasterDataServiceTests
     {
         var store = new FakeMasterDataUnitOfWork();
         var service = Service(store, Guid.NewGuid(), "actor-1");
-        await service.CreateDriver(new DriverData("Driver One", "DNI 123", "+54 11 1234"), "request-1", CancellationToken.None);
+        await service.CreateDriver(new DriverData("Driver One", "DNI 123", "+5491110001234"), "request-1", CancellationToken.None);
 
         var exception = await Assert.ThrowsAsync<MasterDataConflictException>(() =>
-            service.CreateDriver(new DriverData("Driver Two", "DNI 456", "+54 11 5678"), "request-1", CancellationToken.None));
+            service.CreateDriver(new DriverData("Driver Two", "DNI 456", "+5491110005678"), "request-1", CancellationToken.None));
 
         Assert.Equal("idempotency_key_reused", exception.Code);
         Assert.Single(store.Transportistas);
@@ -82,11 +82,11 @@ public sealed class MasterDataServiceTests
         var firstTenant = Guid.NewGuid();
         var secondTenant = Guid.NewGuid();
         Service(store, firstTenant, "actor-1");
-        store.Add(new Transportista(firstTenant, "Private Driver", "DNI 123", "+54 11 1234"));
+        store.Add(new Transportista(firstTenant, "Private Driver", "DNI 123", "+5491110001234"));
         var service = Service(store, secondTenant, "actor-2");
 
         var exception = await Assert.ThrowsAsync<MasterDataConflictException>(() =>
-            service.CreateDriver(new DriverData("Another Driver", "DNI123", "+54 11 9999"), "request-2", CancellationToken.None));
+            service.CreateDriver(new DriverData("Another Driver", "DNI123", "+5491110009999"), "request-2", CancellationToken.None));
 
         Assert.Equal("duplicate_identifier", exception.Code);
         Assert.Equal("An identifier is already in use.", exception.Message);
@@ -98,11 +98,11 @@ public sealed class MasterDataServiceTests
     {
         var store = new FakeMasterDataUnitOfWork();
         var ingenioId = Guid.NewGuid();
-        store.Add(new Transportista(ingenioId, "Existing Driver", "DNI 123", "+54 11 1234"));
+        store.Add(new Transportista(ingenioId, "Existing Driver", "DNI 123", "+5491110001234"));
         var service = Service(store, ingenioId, "actor-1");
 
         var exception = await Assert.ThrowsAsync<MasterDataConflictException>(() =>
-            service.CreateDriver(new DriverData("New Driver", "DNI123", "+54 11 9999"), "request-2", CancellationToken.None));
+            service.CreateDriver(new DriverData("New Driver", "DNI123", "+5491110009999"), "request-2", CancellationToken.None));
 
         Assert.Equal("duplicate_dni", exception.Code);
         Assert.Single(store.Transportistas);
@@ -127,13 +127,13 @@ public sealed class MasterDataServiceTests
     {
         var store = new FakeMasterDataUnitOfWork();
         var firstTenant = Guid.NewGuid();
-        var driver = new Transportista(firstTenant, "Private Driver", "DNI 123", "+54 11 1234");
+        var driver = new Transportista(firstTenant, "Private Driver", "DNI 123", "+5491110001234");
         store.Add(driver);
         var service = Service(store, Guid.NewGuid(), "actor-2");
 
         await Assert.ThrowsAsync<KeyNotFoundException>(() => service.GetDriver(driver.Id, CancellationToken.None));
         await Assert.ThrowsAsync<KeyNotFoundException>(() => service.UpdateDriver(driver.Id,
-            new DriverData("Changed", "DNI 123", "+54 11 1234"), "request-3", CancellationToken.None));
+            new DriverData("Changed", "DNI 123", "+5491110001234"), "request-3", CancellationToken.None));
         Assert.Equal("Private Driver", driver.Name);
     }
 
@@ -142,7 +142,7 @@ public sealed class MasterDataServiceTests
     {
         var store = new FakeMasterDataUnitOfWork();
         var currentTenant = Guid.NewGuid();
-        store.Add(new Transportista(Guid.NewGuid(), "Other Driver", "DNI 123", "+54 11 1234"));
+        store.Add(new Transportista(Guid.NewGuid(), "Other Driver", "DNI 123", "+5491110001234"));
         store.Add(new Camion(Guid.NewGuid(), "ABC123", Camion.FleetTypePropia));
         var service = Service(store, currentTenant, "actor-1");
 

@@ -20,15 +20,18 @@ public sealed record CreateAppointmentCommand(
     double EstimatedLoadTons);
 
 /// <summary>
-/// Una fecha nula siempre significa el día local actual del ingenio sembrado,
-/// incluso cuando se informan otros filtros. El adaptador de persistencia
-/// determina esa fecha y compara contra la fecha local de inicio de ventana.
+/// Una fecha nula significa el día local actual del ingenio sembrado, incluso
+/// cuando se informan otros filtros, salvo con ActiveOnly: entonces sólo se
+/// devuelven turnos no terminales y, sin fecha, de cualquier día (incluidos los
+/// futuros). El adaptador de persistencia determina la fecha local actual y
+/// compara contra la fecha local de inicio de ventana.
 /// </summary>
 public sealed record AppointmentQuery(
     DateOnly? Date,
     AppointmentStatus? Status,
     string? TruckPlate,
-    string? Phone);
+    string? Phone,
+    bool ActiveOnly = false);
 
 public sealed record AppointmentReference(Guid Id, string Name);
 

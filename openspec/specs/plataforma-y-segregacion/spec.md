@@ -2,13 +2,13 @@
 
 ## Purpose
 
-Define garantías transversales para que las capacidades de AgroFlow mantengan aislamiento, consistencia y una única fuente operativa de verdad.
+Define garantías transversales para que las capacidades de ZafraFlow mantengan aislamiento, consistencia y una única fuente operativa de verdad.
 
 ## Requirements
 
-### Requirement: Superficie HTTP exclusiva del dominio AgroFlow
+### Requirement: Superficie HTTP exclusiva del dominio ZafraFlow
 
-La API de AgroFlow MUST NOT publicar operaciones ni contratos de productos, pedidos o clientes del comercio electrónico de origen. El retiro de esas rutas SHALL preservar los recorridos de turnos y salud vigentes en el perfil de demo local.
+La API de ZafraFlow MUST NOT publicar operaciones ni contratos de productos, pedidos o clientes del comercio electrónico de origen. El retiro de esas rutas SHALL preservar los recorridos de turnos y salud vigentes en el perfil de demo local.
 
 #### Scenario: Rutas heredadas ausentes
 
@@ -52,11 +52,11 @@ El backend MUST validar la pertenencia al ingenio en cada operación con datos o
 
 - **GIVEN** un usuario autenticado y un recurso existente perteneciente a otro ingenio
 - **WHEN** el usuario intenta consultarlo o modificarlo mediante su identificador
-- **THEN** AgroFlow rechaza la operación sin revelar ni alterar el recurso
+- **THEN** ZafraFlow rechaza la operación sin revelar ni alterar el recurso
 
 ### Requirement: Una única fuente operativa de verdad
 
-AgroFlow SHALL considerar al backend y su estado persistido como autoridad operativa; el frontend y n8n MUST NOT mantener decisiones alternativas de prioridad, capacidad, permisos o transiciones.
+ZafraFlow SHALL considerar al backend y su estado persistido como autoridad operativa; el frontend y n8n MUST NOT mantener decisiones alternativas de prioridad, capacidad, permisos o transiciones.
 
 #### Scenario: Diferencia entre una vista y el backend
 
@@ -66,7 +66,7 @@ AgroFlow SHALL considerar al backend y su estado persistido como autoridad opera
 
 ### Requirement: Confirmación posterior a persistencia
 
-AgroFlow MUST confirmar una mutación únicamente después de que su estado haya sido persistido correctamente.
+ZafraFlow MUST confirmar una mutación únicamente después de que su estado haya sido persistido correctamente.
 
 #### Scenario: Persistencia fallida
 
@@ -76,7 +76,7 @@ AgroFlow MUST confirmar una mutación únicamente después de que su estado haya
 
 ### Requirement: Errores sin información sensible
 
-AgroFlow MUST devolver errores suficientes para que los consumidores actúen sin exponer credenciales, secretos, datos internos innecesarios ni la existencia de recursos no autorizados.
+ZafraFlow MUST devolver errores suficientes para que los consumidores actúen sin exponer credenciales, secretos, datos internos innecesarios ni la existencia de recursos no autorizados.
 
 #### Scenario: Error de autorización o validación
 

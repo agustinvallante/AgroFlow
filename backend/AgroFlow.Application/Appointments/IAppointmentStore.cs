@@ -74,8 +74,10 @@ public interface IAppointmentStore
 
     /// <summary>
     /// Filtra por conjunción y ordena por inicio de ventana. Si Date es null,
-    /// siempre usa la fecha local actual del ingenio sembrado, aunque haya otros
-    /// filtros; Date corresponde a la fecha local de inicio de la ventana. Phone
+    /// usa la fecha local actual del ingenio sembrado, aunque haya otros
+    /// filtros, salvo que ActiveOnly sea true: entonces no restringe la fecha y
+    /// excluye FINALIZADO y CANCELADO. Date corresponde a la fecha local de
+    /// inicio de la ventana. Phone
     /// se compara exactamente en E.164, TruckPlate ignora mayúsculas y separadores.
     /// La falta de coincidencias devuelve una lista vacía. La consulta no muta datos.
     /// </summary>

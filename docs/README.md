@@ -1,4 +1,4 @@
-# Documentación de AgroFlow
+# Documentación de ZafraFlow
 
 Este directorio es la entrada humana a la documentación. Los requisitos normativos y escenarios verificables viven en [`../openspec/specs/`](../openspec/specs/); aquí se conserva el contexto necesario para entenderlos y aplicarlos.
 
@@ -25,6 +25,10 @@ Las políticas de prioridad, ventanas, asociaciones, alcance de catálogos y col
 - [Generación del PDF de la ERS](development/generating-ers-pdf.md): guía para generar el artefacto revisable en CI.
 
 La revisión académica sigue pendiente. La ERS permanece subordinada a OpenSpec y no reemplaza ni amplía la aceptación del MVP.
+
+## Demostración del mapa
+
+- [Mapa simulado para la presentación](development/mapa-simulado-presentacion.md) con su alcance, datos ficticios, guion y cobertura.
 
 ## Contenido
 

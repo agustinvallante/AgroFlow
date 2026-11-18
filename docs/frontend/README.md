@@ -9,18 +9,17 @@ qué sigue siendo planificación.
 ## Estado comprobado en el repositorio
 
 - El flujo de turnos ofrece alta, listado y filtros, detalle, transiciones y
-  cancelación contra el contrato de demo `/api/v1/appointments` cuando se usa
-  `VITE_DATA_SOURCE=http`.
-- Panel general, chatbot, transportistas, reportes y configuración permanecen
-  conectados a repositorios mock; esos datos deben presentarse como demostración.
+  cancelación contra el contrato de demo `/api/v1/appointments`.
+- El dashboard muestra solo datos de la API: turnos, transportistas y conversaciones.
+  Lo que no tiene operaciones en el contrato (indicadores, métricas y plantillas del
+  chatbot, reportes y configuración) conserva su diseño, sin datos ni acciones.
 - La integración de turnos no acredita autenticación, aislamiento MVP entre
   ingenios, CRUD maestro ejecutable ni aceptación completa del MVP.
 - No se exige conectar todas las pantallas en esta etapa. Cada ampliación espera
   el comportamiento y contrato aprobados de su capacidad propietaria.
 
 El frontend presenta respuestas confirmadas; el backend decide estado operativo,
-permisos, aislamiento, capacidad y reglas. Los mocks pueden servir para desarrollo
-claramente identificado, pero no sustituyen recorridos reales de aceptación.
+permisos, aislamiento, capacidad y reglas.
 
 ## Arquitectura y propuestas
 

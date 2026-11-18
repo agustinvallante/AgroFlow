@@ -5,7 +5,6 @@
  * es `any` y TypeScript no avisa si escribís mal el nombre.
  */
 interface ImportMetaEnv {
-  readonly VITE_DATA_SOURCE?: "mock" | "http";
   readonly VITE_API_URL?: string;
 }
 

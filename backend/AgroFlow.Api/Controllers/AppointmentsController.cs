@@ -34,7 +34,7 @@ public sealed class AppointmentsController : ControllerBase
         TimeSpan.FromSeconds(1));
 
     private static readonly HashSet<string> SupportedQueryKeys =
-        new(["date", "status", "truckPlate", "phone"], StringComparer.Ordinal);
+        new(["date", "status", "truckPlate", "phone", "active"], StringComparer.Ordinal);
 
     private static readonly HashSet<string> CreateBodyKeys =
         new(["carrierPhone", "truckPlate", "farmCode", "cutAt", "estimatedLoadTons"], StringComparer.Ordinal);
@@ -79,10 +79,9 @@ public sealed class AppointmentsController : ControllerBase
             errors["carrierPhone"] = ["Debe ser un teléfono completo en formato E.164."];
         }
 
-        if (string.IsNullOrWhiteSpace(request.TruckPlate) ||
-            request.TruckPlate.Length is < 6 or > 10)
+        if (!AppointmentService.IsValidTruckPlate(request.TruckPlate))
         {
-            errors["truckPlate"] = ["Debe contener entre 6 y 10 caracteres."];
+            errors["truckPlate"] = [AppointmentService.TruckPlateError];
         }
 
         if (string.IsNullOrWhiteSpace(request.FarmCode) ||
@@ -149,6 +148,14 @@ public sealed class AppointmentsController : ControllerBase
         var statusText = GetQueryValue("status", errors);
         var plate = GetQueryValue("truckPlate", errors);
         var phone = GetQueryValue("phone", errors);
+        var activeText = GetQueryValue("active", errors);
+
+        // Sólo `true`: "no activos" no tiene un recorrido acordado y, sin fecha
+        // por defecto, devolvería todo el historial terminal.
+        if (activeText is not null && activeText != "true")
+        {
+            errors["active"] = ["Sólo admite el valor true."];
+        }
 
         DateOnly? date = null;
         if (dateText is not null)
@@ -181,9 +188,9 @@ public sealed class AppointmentsController : ControllerBase
             }
         }
 
-        if (plate is not null && (plate.Length is < 6 or > 10))
+        if (plate is not null && !AppointmentService.IsValidTruckPlate(plate))
         {
-            errors["truckPlate"] = ["Debe contener entre 6 y 10 caracteres."];
+            errors["truckPlate"] = [AppointmentService.TruckPlateError];
         }
 
         if (phone is not null && !PhonePattern.IsMatch(phone))
@@ -199,7 +206,7 @@ public sealed class AppointmentsController : ControllerBase
         return await ExecuteAsync(async () =>
         {
             var result = await _service.ListAsync(
-                new AppointmentQuery(date, status, plate, phone),
+                new AppointmentQuery(date, status, plate, phone, ActiveOnly: activeText == "true"),
                 cancellationToken);
             return Ok(result.Select(AppointmentHttpMapper.ToResponse).ToArray());
         });
@@ -257,21 +264,8 @@ public sealed class AppointmentsController : ControllerBase
         });
     }
 
-    private string? GetQueryValue(string key, Dictionary<string, string[]> errors)
-    {
-        if (!Request.Query.TryGetValue(key, out var values))
-        {
-            return null;
-        }
-
-        if (values.Count != 1 || string.IsNullOrWhiteSpace(values[0]))
-        {
-            errors[key] = ["Debe indicarse exactamente un valor no vacío."];
-            return null;
-        }
-
-        return values[0];
-    }
+    private string? GetQueryValue(string key, Dictionary<string, string[]> errors) =>
+        AppointmentQueryParameters.ReadSingle(Request.Query, key, errors);
 
     private async Task<(T? Request, IActionResult? Failure)> ReadRequestBodyAsync<T>(
         IReadOnlySet<string> allowedKeys,
@@ -386,31 +380,6 @@ public sealed class AppointmentsController : ControllerBase
     private ObjectResult ProblemResult(
         int status,
         string code,
-        IReadOnlyDictionary<string, string[]>? errors = null)
-    {
-        var title = code switch
-        {
-            AppointmentErrorCodes.ValidationError => "Solicitud inválida",
-            AppointmentErrorCodes.ReferenceNotFound => "Referencia inexistente",
-            AppointmentErrorCodes.AppointmentNotFound => "Turno inexistente",
-            AppointmentErrorCodes.ActiveAppointmentExists => "El camión ya posee un turno activo",
-            AppointmentErrorCodes.NoCapacity => "No hay capacidad disponible",
-            AppointmentErrorCodes.InvalidTransition => "Transición inválida",
-            _ => "Error interno"
-        };
-
-        var result = new ObjectResult(new AppointmentProblemDetails
-        {
-            Title = title,
-            Status = status,
-            Code = code,
-            TraceId = HttpContext.TraceIdentifier,
-            Errors = errors
-        })
-        {
-            StatusCode = status
-        };
-        result.ContentTypes.Add("application/problem+json");
-        return result;
-    }
+        IReadOnlyDictionary<string, string[]>? errors = null) =>
+        AppointmentProblems.Result(HttpContext, status, code, errors);
 }

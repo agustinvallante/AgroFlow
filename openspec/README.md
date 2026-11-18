@@ -1,4 +1,4 @@
-# OpenSpec en AgroFlow
+# OpenSpec en ZafraFlow
 
 Este directorio contiene el comportamiento normativo compartido por frontend, backend e integraciones. No reemplaza las carpetas de código: evita que cada área mantenga una versión distinta de las mismas reglas.
 

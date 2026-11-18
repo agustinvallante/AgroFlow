@@ -4,7 +4,9 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using AgroFlow.Api.Controllers;
 using AgroFlow.Application.Services;
-using AgroFlow.Data;
+using AgroFlow.Data.Appointments;
+using AgroFlow.Data.Identity;
+using AgroFlow.Domain.Entities;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
@@ -19,6 +21,7 @@ namespace AgroFlow.Tests;
 
 public sealed class AgroFlowLoginHttpTests
 {
+    private static readonly Ingenio Ingenio = new("Ingenio de prueba", "America/Argentina/Tucuman");
     private const string Password = "Synthetic-Test-Password-47!";
     private const string InvalidCredentialsResponse = "Credenciales inválidas.";
 
@@ -37,10 +40,11 @@ public sealed class AgroFlowLoginHttpTests
         Assert.False(string.IsNullOrWhiteSpace(tokenText));
         Assert.DoesNotContain("customerId", root.GetRawText(), StringComparison.OrdinalIgnoreCase);
         var token = new JwtSecurityTokenHandler().ReadJwtToken(tokenText);
-        Assert.Equal(username, token.Subject);
+        Assert.Equal(expectedIdentityId, token.Subject);
         Assert.Contains(token.Claims, claim => claim.Type == System.Security.Claims.ClaimTypes.Role && claim.Value == expectedRole);
         Assert.DoesNotContain(token.Claims, claim => claim.Type == "customerId");
-        Assert.DoesNotContain(token.Claims, claim => claim.Type == JwtTokenService.IngenioIdClaimType);
+        Assert.Contains(token.Claims, claim => claim.Type == JwtTokenService.IngenioIdClaimType
+            && claim.Value == Ingenio.Id.ToString("D"));
         var userInfo = root.GetProperty("userInfo");
         Assert.Equal(expectedIdentityId, userInfo.GetProperty("identityId").GetString());
         Assert.Equal(expectedRole, userInfo.GetProperty("role").GetString());
@@ -55,6 +59,7 @@ public sealed class AgroFlowLoginHttpTests
     [InlineData("legacy-user-role", "Synthetic-Test-Password-47!")]
     [InlineData("legacy-admin-role", "Synthetic-Test-Password-47!")]
     [InlineData("multiple-roles-user", "Synthetic-Test-Password-47!")]
+    [InlineData("inactive-user", "Synthetic-Test-Password-47!")]
     public async Task Login_rejects_invalid_or_ambiguous_roles_with_generic_response(string username, string password)
     {
         await using var app = await LoginTestServer.CreateAsync();
@@ -106,10 +111,10 @@ public sealed class AgroFlowLoginHttpTests
                 .ConfigureServices(services =>
                 {
                     services.AddSingleton<IConfiguration>(configuration);
-                    services.AddDbContext<AuthenticateContext>(options => options.UseSqlite(connection));
-                    services.AddIdentityCore<IdentityUser>()
+                    services.AddDbContext<AgroFlowDbContext>(options => options.UseSqlite(connection));
+                    services.AddIdentityCore<AgroFlowUser>()
                         .AddRoles<IdentityRole>()
-                        .AddEntityFrameworkStores<AuthenticateContext>()
+                        .AddEntityFrameworkStores<AgroFlowDbContext>()
                         .AddSignInManager();
                     services.AddSingleton<JwtTokenService>();
                     services.AddControllers().AddApplicationPart(typeof(AuthenticateController).Assembly);
@@ -125,8 +130,10 @@ public sealed class AgroFlowLoginHttpTests
                 var testServer = new LoginTestServer(connection, server);
                 await using (var scope = server.Services.CreateAsyncScope())
                 {
-                    var db = scope.ServiceProvider.GetRequiredService<AuthenticateContext>();
+                    var db = scope.ServiceProvider.GetRequiredService<AgroFlowDbContext>();
                     await db.Database.EnsureCreatedAsync();
+                    db.Ingenios.Add(new Ingenio(Ingenio.Name, Ingenio.TimeZoneId) { Id = Ingenio.Id });
+                    await db.SaveChangesAsync();
                     await SeedAsync(scope.ServiceProvider);
                 }
                 return testServer;
@@ -146,18 +153,23 @@ public sealed class AgroFlowLoginHttpTests
                 var result = await roles.CreateAsync(new IdentityRole(role));
                 Assert.True(result.Succeeded, string.Join("; ", result.Errors.Select(error => error.Description)));
             }
-            var users = services.GetRequiredService<UserManager<IdentityUser>>();
+            var users = services.GetRequiredService<UserManager<AgroFlowUser>>();
             await CreateUserAsync(users, "operator-a", "OPERATOR-A-ID", "OPERADOR");
             await CreateUserAsync(users, "supervisor-a", "SUPERVISOR-A-ID", "SUPERVISOR");
             await CreateUserAsync(users, "no-role-user", "NO-ROLE-ID");
             await CreateUserAsync(users, "legacy-user-role", "LEGACY-USER-ID", "User");
             await CreateUserAsync(users, "legacy-admin-role", "LEGACY-ADMIN-ID", "Admin");
             await CreateUserAsync(users, "multiple-roles-user", "MULTI-ROLE-ID", "OPERADOR", "SUPERVISOR");
+            await CreateUserAsync(users, "inactive-user", "INACTIVE-ID", "OPERADOR");
         }
 
-        private static async Task CreateUserAsync(UserManager<IdentityUser> users, string username, string id, params string[] assignedRoles)
+        private static async Task CreateUserAsync(UserManager<AgroFlowUser> users, string username, string id, params string[] assignedRoles)
         {
-            var user = new IdentityUser { Id = id, UserName = username, Email = $"{username}@example.test" };
+            var user = new AgroFlowUser
+            {
+                Id = id, UserName = username, Email = $"{username}@example.test",
+                IngenioId = Ingenio.Id, IsActive = id != "INACTIVE-ID"
+            };
             var created = await users.CreateAsync(user, Password);
             Assert.True(created.Succeeded, string.Join("; ", created.Errors.Select(error => error.Description)));
             if (assignedRoles.Length == 0) return;

@@ -1,0 +1,328 @@
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { Conversacion, MensajeChat } from "../../domain/entities/Conversacion";
+
+const mocks = vi.hoisted(() => ({
+  obtenerConversaciones: vi.fn(),
+  obtenerMensajes: vi.fn(),
+}));
+
+vi.mock("../../composition/container", () => ({
+  container: {
+    apiUrl: "http://localhost:5000",
+    conversaciones: {
+      obtenerConversaciones: { execute: mocks.obtenerConversaciones },
+      obtenerMensajesConversacion: { execute: mocks.obtenerMensajes },
+    },
+  },
+}));
+
+import { ChatbotView } from "./ChatbotView";
+
+const reconocida: Conversacion = {
+  id: "c1",
+  nombre: "Transportista Sintético",
+  hora: "12:00",
+  preview: "[SINTÉTICO] Respuesta",
+  estado: "bot",
+  mensajes: [],
+  remitenteReconocido: true,
+  direccion: "+54•••••••0155",
+};
+
+const noRegistrada: Conversacion = {
+  id: "c2",
+  nombre: "Remitente no registrado · +54•••••••0199",
+  hora: "11:00",
+  preview: "[SINTÉTICO] Hola",
+  estado: "revision",
+  mensajes: [],
+  remitenteReconocido: false,
+  direccion: "+54•••••••0199",
+};
+
+const mensajes: Record<string, MensajeChat[]> = {
+  c1: [
+    { id: "m1", autor: "transportista", texto: "[SINTÉTICO] Quiero mi turno", hora: "11:59", procesamiento: "completado" },
+    { id: "m2", autor: "bot", texto: "[SINTÉTICO] Respuesta", hora: "12:00", estadoEnvio: "aceptado" },
+  ],
+  c2: [
+    { id: "m3", autor: "transportista", texto: "[SINTÉTICO] Hola", hora: "11:00", procesamiento: "en-curso" },
+    { id: "m4", autor: "bot", texto: "[SINTÉTICO] No registrado", hora: "11:00", estadoEnvio: "incierto" },
+  ],
+};
+
+describe("ChatbotView con ZafraFlow API", () => {
+  beforeEach(() => {
+    mocks.obtenerConversaciones.mockReset().mockResolvedValue([reconocida, noRegistrada]);
+    mocks.obtenerMensajes.mockReset().mockImplementation(async (id: string) => mensajes[id]);
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.restoreAllMocks();
+  });
+
+  it("muestra las conversaciones persistidas y los mensajes de la seleccionada", async () => {
+    render(<ChatbotView />);
+
+    expect(await screen.findByText("[SINTÉTICO] Quiero mi turno")).toBeTruthy();
+    expect(screen.getByText("Aceptado por el proveedor")).toBeTruthy();
+    expect(screen.getByText("Historial persistido en ZafraFlow API")).toBeTruthy();
+    expect(screen.getAllByText("Transportista Sintético").length).toBeGreaterThan(0);
+    // La vista nunca afirma una entrega: sólo lo que informa la API.
+    expect(screen.queryByText(/entregado/i)).toBeNull();
+  });
+
+  it("identifica al remitente no registrado y el envío incierto", async () => {
+    render(<ChatbotView />);
+    await screen.findByText("[SINTÉTICO] Quiero mi turno");
+
+    fireEvent.click(screen.getByText("Remitente no registrado · +54•••••••0199", { selector: ".conv-top span" }));
+
+    expect(await screen.findByText("[SINTÉTICO] No registrado")).toBeTruthy();
+    expect(screen.getByText("Envío incierto · requiere revisión")).toBeTruthy();
+    expect(screen.getByText("No registrado")).toBeTruthy();
+    expect(screen.getAllByText("Requiere revisión").length).toBeGreaterThan(0);
+    expect(mocks.obtenerMensajes).toHaveBeenCalledWith("c2");
+  });
+
+  describe("transcript", () => {
+    const cuerpo = () => document.querySelector(".chat-transcript-body") as HTMLElement;
+    const clicEn = (texto: string) => fireEvent.click(screen.getByText(texto, { selector: ".conv-top span" }));
+
+    beforeEach(() => {
+      vi.useFakeTimers({ toFake: ["Date"] });
+      vi.setSystemTime(new Date("2026-11-06T21:00:00Z"));
+      vi.spyOn(HTMLElement.prototype, "scrollHeight", "get").mockReturnValue(900);
+    });
+
+    afterEach(() => vi.useRealTimers());
+
+    it("nombra el día real del último mensaje en el encabezado", async () => {
+      mocks.obtenerConversaciones.mockResolvedValue([{ ...reconocida, ultimoMensajeUtc: "2026-11-05T15:00:00Z" }]);
+
+      render(<ChatbotView />);
+      await screen.findByText("[SINTÉTICO] Quiero mi turno");
+
+      const encabezado = document.querySelector(".chat-transcript-head span")?.textContent;
+      expect(encabezado).toContain("Ayer · 12:00");
+      expect(encabezado).not.toContain("Hoy");
+    });
+
+    it("separa los mensajes por día", async () => {
+      mocks.obtenerMensajes.mockResolvedValue([
+        { id: "a", autor: "transportista", texto: "uno", hora: "12:00", fechaUtc: "2026-11-05T15:00:00Z" },
+        { id: "b", autor: "bot", texto: "dos", hora: "12:01", fechaUtc: "2026-11-05T15:01:00Z" },
+        { id: "c", autor: "transportista", texto: "tres", hora: "12:00", fechaUtc: "2026-11-06T15:00:00Z" },
+      ]);
+
+      render(<ChatbotView />);
+      await screen.findByText("tres");
+
+      const divisiones = Array.from(document.querySelectorAll(".chat-dia")).map((d) => d.textContent);
+      expect(divisiones).toEqual(["Ayer", "Hoy"]);
+    });
+
+    it("va al último mensaje al abrir y en cada clic, aunque la conversación ya esté abierta", async () => {
+      render(<ChatbotView />);
+      await screen.findByText("[SINTÉTICO] Quiero mi turno");
+      expect(cuerpo().scrollTop).toBe(900);
+
+      cuerpo().scrollTop = 0;
+      clicEn("Transportista Sintético");
+      expect(cuerpo().scrollTop).toBe(900);
+
+      cuerpo().scrollTop = 0;
+      clicEn("Remitente no registrado · +54•••••••0199");
+      await screen.findByText("[SINTÉTICO] No registrado");
+      expect(cuerpo().scrollTop).toBe(900);
+    });
+
+    it("no mueve la vista cuando un refresco trae mensajes nuevos", async () => {
+      render(<ChatbotView />);
+      await screen.findByText("[SINTÉTICO] Quiero mi turno");
+      cuerpo().scrollTop = 120;
+      mocks.obtenerMensajes.mockResolvedValue([
+        ...mensajes.c1,
+        { id: "m9", autor: "transportista", texto: "[SINTÉTICO] Mensaje nuevo", hora: "12:05" },
+      ]);
+
+      fireEvent.click(screen.getByRole("button", { name: "Actualizar" }));
+
+      expect(await screen.findByText("[SINTÉTICO] Mensaje nuevo")).toBeTruthy();
+      expect(cuerpo().scrollTop).toBe(120);
+    });
+
+    it("no muestra los mensajes de la conversación anterior mientras carga la nueva", async () => {
+      render(<ChatbotView />);
+      await screen.findByText("[SINTÉTICO] Quiero mi turno");
+      mocks.obtenerMensajes.mockReturnValue(new Promise(() => undefined));
+
+      clicEn("Remitente no registrado · +54•••••••0199");
+
+      expect(screen.queryByText("[SINTÉTICO] Quiero mi turno")).toBeNull();
+      expect(await screen.findByText("Cargando mensajes...")).toBeTruthy();
+    });
+  });
+
+  it("muestra el estado vacío cuando todavía no hay conversaciones", async () => {
+    mocks.obtenerConversaciones.mockResolvedValue([]);
+
+    render(<ChatbotView />);
+
+    expect(await screen.findByText("Todavía no hay conversaciones registradas.")).toBeTruthy();
+  });
+
+  it("conserva métricas y plantillas sin datos ni acciones, porque la API no las expone", async () => {
+    render(<ChatbotView />);
+    await screen.findByText("[SINTÉTICO] Quiero mi turno");
+
+    expect(screen.getByText("Mensajes hoy").parentElement?.textContent).toContain("—");
+    expect(screen.getByText("Sin plantillas.")).toBeTruthy();
+    expect((screen.getByRole("button", { name: "Guardar plantillas" }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it("muestra el error accionable si falta la clave del dashboard", async () => {
+    mocks.obtenerConversaciones.mockRejectedValue(new Error("Falta AGROFLOW_DASHBOARD_KEY"));
+
+    render(<ChatbotView />);
+
+    expect(await screen.findByText("Falta AGROFLOW_DASHBOARD_KEY")).toBeTruthy();
+  });
+
+  describe("recuperación y respuestas fuera de orden", () => {
+    const esperar = (ms = 0) => act(() => vi.advanceTimersByTimeAsync(ms));
+    const seleccionar = (nombre: string) =>
+      fireEvent.click(screen.getByText(nombre, { selector: ".conv-top span" }));
+
+    beforeEach(() => vi.useFakeTimers());
+    afterEach(() => vi.useRealTimers());
+
+    it("se recupera por polling después de una falla inicial sin dejar el error bloqueando la vista", async () => {
+      mocks.obtenerConversaciones.mockRejectedValueOnce(new Error("API no disponible."));
+      render(<ChatbotView />);
+      await esperar();
+      expect(screen.getByRole("alert").textContent).toContain("API no disponible.");
+      expect(screen.getByRole("button", { name: "Reintentar" })).toBeTruthy();
+      expect(screen.queryByText("Todavía no hay conversaciones registradas.")).toBeNull();
+
+      await esperar(15_000);
+      expect(screen.getByText("[SINTÉTICO] Quiero mi turno")).toBeTruthy();
+      expect(screen.queryByText("API no disponible.")).toBeNull();
+      expect(screen.queryByRole("button", { name: "Reintentar" })).toBeNull();
+    });
+
+    it("permite reintentar la carga inicial, incluso si el primer reintento también falla", async () => {
+      mocks.obtenerConversaciones
+        .mockRejectedValueOnce(new Error("Primera falla."))
+        .mockRejectedValueOnce(new Error("Segunda falla."));
+      render(<ChatbotView />);
+      await esperar();
+      fireEvent.click(screen.getByRole("button", { name: "Reintentar" }));
+      await esperar();
+      expect(screen.getByText("Segunda falla.")).toBeTruthy();
+      fireEvent.click(screen.getByRole("button", { name: "Reintentar" }));
+      await esperar();
+      expect(screen.getByText("[SINTÉTICO] Quiero mi turno")).toBeTruthy();
+      expect(screen.queryByRole("alert")).toBeNull();
+    });
+
+    it("conserva historial y selección al fallar un refresco y limpia el aviso al recuperarse", async () => {
+      render(<ChatbotView />);
+      await esperar();
+      seleccionar(noRegistrada.nombre);
+      await esperar();
+      mocks.obtenerConversaciones.mockRejectedValueOnce(new Error("Falló el refresco."));
+      fireEvent.click(screen.getByRole("button", { name: "Actualizar" }));
+      await esperar();
+      expect(screen.getByText("Datos desactualizados.")).toBeTruthy();
+      expect(screen.getByText("[SINTÉTICO] No registrado")).toBeTruthy();
+      expect(screen.queryByText("[SINTÉTICO] Quiero mi turno")).toBeNull();
+
+      fireEvent.click(screen.getByRole("button", { name: "Actualizar" }));
+      await esperar();
+      expect(screen.queryByText("Datos desactualizados.")).toBeNull();
+      expect(screen.getByText("[SINTÉTICO] No registrado")).toBeTruthy();
+    });
+
+    it("una falla al refrescar mensajes conserva el historial de la misma conversación", async () => {
+      render(<ChatbotView />);
+      await esperar();
+      mocks.obtenerMensajes.mockRejectedValueOnce(new Error("No se pudieron actualizar los mensajes."));
+      fireEvent.click(screen.getByRole("button", { name: "Actualizar" }));
+      await esperar();
+      expect(screen.getByText("No se pudieron actualizar los mensajes.")).toBeTruthy();
+      expect(screen.getByText("[SINTÉTICO] Quiero mi turno")).toBeTruthy();
+      fireEvent.click(screen.getByRole("button", { name: "Actualizar" }));
+      await esperar();
+      expect(screen.queryByText("No se pudieron actualizar los mensajes.")).toBeNull();
+    });
+
+    it("una falla tardía de la carga inicial no bloquea una recuperación posterior", async () => {
+      const inicial = diferida<Conversacion[]>();
+      mocks.obtenerConversaciones.mockReturnValueOnce(inicial.promesa);
+      render(<ChatbotView />);
+      await esperar(15_000);
+      expect(screen.getByText("[SINTÉTICO] Quiero mi turno")).toBeTruthy();
+      await act(async () => inicial.rechazar(new Error("Falla inicial atrasada.")));
+      expect(screen.queryByText("Falla inicial atrasada.")).toBeNull();
+      expect(screen.getByText("[SINTÉTICO] Quiero mi turno")).toBeTruthy();
+    });
+
+    it("un listado anterior no pisa la respuesta de un refresco más reciente", async () => {
+      render(<ChatbotView />);
+      await esperar();
+      const anterior = diferida<Conversacion[]>();
+      const reciente = diferida<Conversacion[]>();
+      mocks.obtenerConversaciones.mockReturnValueOnce(anterior.promesa).mockReturnValueOnce(reciente.promesa);
+      fireEvent.click(screen.getByRole("button", { name: "Actualizar" }));
+      fireEvent.click(screen.getByRole("button", { name: "Actualizar" }));
+      await act(async () => reciente.resolver([noRegistrada]));
+      await act(async () => anterior.resolver([reconocida]));
+      await esperar();
+      expect(screen.getByText("[SINTÉTICO] No registrado")).toBeTruthy();
+      expect(screen.queryByText("[SINTÉTICO] Quiero mi turno")).toBeNull();
+    });
+
+    it.each(["respuesta", "error"])("descarta una %s tardía de la conversación anterior", async (tipo) => {
+      render(<ChatbotView />);
+      await esperar();
+      const anterior = diferida<MensajeChat[]>();
+      mocks.obtenerMensajes.mockReturnValueOnce(anterior.promesa);
+      seleccionar(noRegistrada.nombre);
+      await esperar();
+      seleccionar(reconocida.nombre);
+      await esperar();
+      await act(async () => {
+        if (tipo === "respuesta") anterior.resolver(mensajes.c2);
+        else anterior.rechazar(new Error("Error de la conversación anterior."));
+      });
+      expect(screen.getByText("[SINTÉTICO] Quiero mi turno")).toBeTruthy();
+      expect(screen.queryByText("[SINTÉTICO] No registrado")).toBeNull();
+      expect(screen.queryByText("Error de la conversación anterior.")).toBeNull();
+    });
+
+    it("retira la selección si deja de existir y no reutiliza sus mensajes en otra conversación", async () => {
+      render(<ChatbotView />);
+      await esperar();
+      mocks.obtenerConversaciones.mockResolvedValueOnce([]);
+      fireEvent.click(screen.getByRole("button", { name: "Actualizar" }));
+      await esperar();
+      expect(screen.queryByText("[SINTÉTICO] Quiero mi turno")).toBeNull();
+      expect(screen.getByText("Todavía no hay conversaciones registradas.")).toBeTruthy();
+      mocks.obtenerConversaciones.mockResolvedValueOnce([noRegistrada]);
+      fireEvent.click(screen.getByRole("button", { name: "Actualizar" }));
+      await esperar();
+      expect(screen.getByText("[SINTÉTICO] No registrado")).toBeTruthy();
+      expect(screen.queryByText("[SINTÉTICO] Quiero mi turno")).toBeNull();
+    });
+  });
+});
+
+function diferida<T>() {
+  let resolver!: (valor: T) => void;
+  let rechazar!: (error: unknown) => void;
+  const promesa = new Promise<T>((res, rej) => { resolver = res; rechazar = rej; });
+  return { promesa, resolver, rechazar };
+}

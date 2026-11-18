@@ -1,4 +1,3 @@
-using AgroFlow.Data;
 using AgroFlow.Data.Appointments;
 using AgroFlow.Data.Identity;
 using AgroFlow.Domain.Entities;
@@ -11,7 +10,7 @@ namespace AgroFlow.Tests;
 public sealed class EfModelAndMigrationVerificationTests
 {
     [Fact]
-    public void Live_SQLite_model_matches_appointment_schema_and_ignores_unmigrated_audit_foundation()
+    public void Live_SQLite_model_matches_migrated_appointment_master_data_and_channel_schema()
     {
         using var context = new AgroFlowDbContext(new DbContextOptionsBuilder<AgroFlowDbContext>().UseSqlite("Data Source=:memory:").Options);
         var model = context.Model;
@@ -23,23 +22,34 @@ public sealed class EfModelAndMigrationVerificationTests
         Assert.NotNull(finca.FindProperty(nameof(Finca.NormalizedCode)));
         var association = AssertTable(model, typeof(TransportistaCamion), "TransportistaCamiones");
         Assert.Empty(association.GetForeignKeys());
-        Assert.Null(model.FindEntityType(typeof(AuditEvent)));
-        Assert.Null(model.FindEntityType(typeof(IdempotencyRecord)));
+        AssertTable(model, typeof(AuditEvent), "AuditEvents");
+        AssertTable(model, typeof(IdempotencyRecord), "IdempotencyRecords");
+        AssertTable(model, typeof(ChannelInstance), "ChannelInstances");
+        AssertTable(model, typeof(Conversation), "Conversations");
+        AssertTable(model, typeof(ConversationMessage), "ConversationMessages");
+        AssertTable(model, typeof(MessageProcessing), "MessageProcessings");
+        AssertTable(model, typeof(SeedRecord), "SeedRecords");
+        AssertTable(model, typeof(LocalDemoTeamAssignment), "LocalDemoTeamAssignments");
 
         Assert.False(context.Database.HasPendingModelChanges());
 
         var migrations = context.Database.GetMigrations().ToArray();
         Assert.Contains(migrations, migration => migration.Contains("InitialAppointments", StringComparison.Ordinal));
-        Assert.DoesNotContain(migrations, migration => migration.Contains("MasterData", StringComparison.OrdinalIgnoreCase));
+        Assert.EndsWith("_AddMasterDataFoundationTables", migrations[^5], StringComparison.Ordinal);
+        Assert.EndsWith("_AddWhatsAppConversations", migrations[^4], StringComparison.Ordinal);
+        Assert.EndsWith("_AddSeedRecords", migrations[^3], StringComparison.Ordinal);
+        Assert.EndsWith("_AddLocalDemoTeamAssignments", migrations[^2], StringComparison.Ordinal);
+        Assert.EndsWith("_AddMvpIdentityAndAppointmentReadIndex", migrations[^1], StringComparison.Ordinal);
     }
 
     [Fact]
-    public void Main_Identity_context_keeps_existing_identity_user_schema_and_does_not_register_preparatory_user()
+    public void Sqlite_identity_references_ingenio_and_keeps_password_hash()
     {
-        using var context = new AuthenticateContext(new DbContextOptionsBuilder<AuthenticateContext>().UseSqlite("Data Source=:memory:").Options);
-        var identityUser = AssertTable(context.Model, typeof(IdentityUser), "Usuarios");
+        using var context = new AgroFlowDbContext(new DbContextOptionsBuilder<AgroFlowDbContext>().UseSqlite("Data Source=:memory:").Options);
+        var identityUser = AssertTable(context.Model, typeof(AgroFlowUser), "Usuarios");
         Assert.NotNull(identityUser.FindProperty(nameof(IdentityUser.PasswordHash)));
-        Assert.Null(context.Model.FindEntityType(typeof(AgroFlowUser)));
+        Assert.Contains(identityUser.GetForeignKeys(), key =>
+            key.IsRequired && key.PrincipalEntityType.ClrType == typeof(Ingenio));
     }
 
     private static Microsoft.EntityFrameworkCore.Metadata.IEntityType AssertTable(

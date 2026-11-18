@@ -15,6 +15,27 @@ const uuid = /[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}/i;
 // Deliberately accept the exported n8n template format, not arbitrary JavaScript.
 const businessUrl = /^=\{\{\s*\$env\.AGROFLOW_API_URL\s*\}\}\/api\/v1\/appointments(?:\/(?:[a-zA-Z0-9-]+|\{\{(?:(?!\{\{|\}\})[\s\S])+\}\})(?:\/transitions)?)?$/;
 const evolutionUrl = /^=\{\{\s*\$env\.EVOLUTION_INTERNAL_URL\s*\}\}\/message\/sendText\/\{\{\s*\$env\.EVOLUTION_INSTANCE\s*\}\}$/;
+// Persistence routes of the WhatsApp channel: exact templates and methods, only
+// for the ordinary HTTP node (never an agent tool) and only with the service key.
+const apiBase = String.raw`^=\{\{\s*\$env\.AGROFLOW_API_URL\s*\}\}\/api\/v1\/`;
+const dynamicSegment = String.raw`\{\{(?:(?!\{\{|\}\})[\s\S])+\}\}`;
+const channelRoutes = [
+  { method: 'POST', pattern: new RegExp(`${apiBase}conversation-events$`) },
+  { method: 'PATCH', pattern: new RegExp(`${apiBase}conversation-events\/${dynamicSegment}\/processing$`) },
+  { method: 'POST', pattern: new RegExp(`${apiBase}conversation-reply-intents$`) },
+  { method: 'PATCH', pattern: new RegExp(`${apiBase}conversation-reply-intents\/${dynamicSegment}\/send-status$`) },
+];
+const channelPrefix = /\/api\/v1\/conversation-(?:events|reply-intents)(?![a-z])/;
+// Read-only farm catalog (ajustar-consultas-chatbot-whatsapp): the one route an
+// agent tool may call with the service key. Exact template, GET only, no body,
+// no custom headers and only the documented query parameters, so the model can
+// choose the search text but never the destination, the method or the payload.
+const farmCatalogRoute = new RegExp(`${apiBase}farms$`);
+const farmCatalogPrefix = /\/api\/v1\/farms(?![a-z])/;
+const farmCatalogQueryNames = new Set(['active', 'search']);
+const serviceCredential = 'AgroFlow Service Key account';
+const allowedCredentialNames = ['OpenAI account', 'Header Auth account', serviceCredential];
+const agentNodeType = '@n8n/n8n-nodes-langchain.agent';
 const httpNodeTypes = new Set([
   'n8n-nodes-base.httpRequest', 'n8n-nodes-base.httpRequestTool',
   '@n8n/n8n-nodes-langchain.toolHttpRequest',
@@ -25,7 +46,57 @@ function matchesTemplate(pattern, value) {
   return Boolean(match && match[0] === value);
 }
 
+function usesServiceCredential(node) {
+  return Object.values(node.credentials ?? {}).some(credential => credential?.name === serviceCredential);
+}
+
+function isChannelRequest(node) {
+  const parameters = node.parameters ?? {};
+  return node.type === 'n8n-nodes-base.httpRequest' && channelRoutes.some(route =>
+    route.method === parameters.method && matchesTemplate(route.pattern, parameters.url));
+}
+
+function checkChannelRequest(node) {
+  const parameters = node.parameters ?? {};
+  assert.ok(!uuid.test(parameters.url), 'Hardcoded channel resource UUID forbidden');
+  assert.ok(parameters.authentication === 'genericCredentialType' && parameters.genericAuthType === 'httpHeaderAuth',
+    `Channel request ${node.name} must authenticate with the AgroFlow service key credential`);
+  const credentials = Object.entries(node.credentials ?? {});
+  assert.ok(credentials.length === 1 && credentials[0][0] === 'httpHeaderAuth' && credentials[0][1]?.name === serviceCredential,
+    `Channel request ${node.name} must authenticate with the AgroFlow service key credential`);
+}
+
+function isFarmCatalogRead(node) {
+  const parameters = node.parameters ?? {};
+  return ['n8n-nodes-base.httpRequest', 'n8n-nodes-base.httpRequestTool'].includes(node.type)
+    && (parameters.method ?? 'GET') === 'GET' && matchesTemplate(farmCatalogRoute, parameters.url);
+}
+
+function checkFarmCatalogRead(node) {
+  const parameters = node.parameters ?? {};
+  assert.ok(!uuid.test(parameters.url), 'Hardcoded farm UUID forbidden');
+  assert.ok(!parameters.sendBody && !parameters.sendHeaders && parameters.jsonBody === undefined,
+    `Farm catalog read ${node.name} must not send a body or custom headers`);
+  for (const field of ['jsonQuery', 'parametersQuery', 'query']) {
+    assert.ok(parameters[field] === undefined, `Farm catalog read ${node.name} must use documented query parameters only`);
+  }
+  const query = parameters.queryParameters?.parameters ?? [];
+  assert.ok(Array.isArray(query) && query.every(item => farmCatalogQueryNames.has(item?.name)),
+    `Farm catalog read ${node.name} must use documented query parameters only`);
+  assert.ok(parameters.authentication === 'genericCredentialType' && parameters.genericAuthType === 'httpHeaderAuth',
+    `Farm catalog read ${node.name} must authenticate with the AgroFlow service key credential`);
+  const credentials = Object.entries(node.credentials ?? {});
+  assert.ok(credentials.length === 1 && credentials[0][0] === 'httpHeaderAuth' && credentials[0][1]?.name === serviceCredential,
+    `Farm catalog read ${node.name} must authenticate with the AgroFlow service key credential`);
+}
+
 function checkHttpDestination(node) {
+  if (usesServiceCredential(node)) {
+    // The service key may only travel to the channel persistence routes and
+    // to the read-only farm catalog.
+    assert.ok(isChannelRequest(node) || isFarmCatalogRead(node),
+      `The AgroFlow service key credential is only allowed on channel requests and the farm catalog read (${node.name})`);
+  }
   if (!httpNodeTypes.has(node.type)) {
     // A different package/alias must get an explicit policy, not a silent skip.
     assert.ok(!/(?:^|\.)(?:httpRequest(?:Tool)?|toolHttpRequest)$/i.test(node.type), 'Unsupported HTTP node type');
@@ -42,6 +113,20 @@ function checkHttpDestination(node) {
   assert.ok(!Object.hasOwn(options, 'pagination'), 'HTTP pagination requires an explicit destination policy');
 
   const url = parameters.url;
+  if (typeof url === 'string' && channelPrefix.test(url)) {
+    // Agent tools never reach ingestion, reply intents or send status: the
+    // model must not be able to fabricate channel records or results.
+    assert.ok(isChannelRequest(node),
+      `Channel route in ${node.name} must use the ordinary HTTP node with its exact method and template`);
+    checkChannelRequest(node);
+    return;
+  }
+  if (typeof url === 'string' && farmCatalogPrefix.test(url)) {
+    assert.ok(isFarmCatalogRead(node),
+      `Farm route in ${node.name} must be a GET of the exact farm catalog template`);
+    checkFarmCatalogRead(node);
+    return;
+  }
   const business = matchesTemplate(businessUrl, url);
   const evolution = node.type === 'n8n-nodes-base.httpRequest' && parameters.method === 'POST'
     && matchesTemplate(evolutionUrl, url);
@@ -176,7 +261,7 @@ export function validateWorkflow(workflow) {
     ids.add(node.id);
     for (const credential of Object.values(node.credentials ?? {})) {
       assert.deepEqual(Object.keys(credential), ['name'], 'Export credential names only, never IDs or values');
-      assert.ok(['OpenAI account', 'Header Auth account'].includes(credential.name), 'Use generic credential names');
+      assert.ok(allowedCredentialNames.includes(credential.name), 'Use generic credential names');
     }
   }
   assert.ok(workflow.connections && typeof workflow.connections === 'object', 'Connections required');
@@ -197,7 +282,57 @@ export function validateWorkflow(workflow) {
     checkNodeReferences(node.parameters ?? {}, names);
     checkHttpDestination(node);
   }
+  checkConversationOrdering(workflow);
   checkSecrets(workflow);
+}
+
+function reachableWithout(workflow, blocked) {
+  const starts = workflow.nodes.filter(node => node.type === 'n8n-nodes-base.webhook').map(node => node.name);
+  const seen = new Set();
+  const pending = starts.filter(name => !blocked.has(name));
+  while (pending.length) {
+    const name = pending.pop();
+    if (seen.has(name)) continue;
+    seen.add(name);
+    for (const group of workflow.connections[name]?.main ?? []) {
+      for (const edge of group ?? []) {
+        if (!blocked.has(edge.node)) pending.push(edge.node);
+      }
+    }
+  }
+  return seen;
+}
+
+/**
+ * In a conversational workflow (one with an AI agent) the agent must be
+ * reachable only through the inbound persistence request, and the Evolution
+ * send only through a registered reply intent. Static graph check over main
+ * connections; it does not evaluate expressions or runtime branches.
+ */
+function checkConversationOrdering(workflow) {
+  const agents = workflow.nodes.filter(node => node.type === agentNodeType);
+  if (!agents.length) return;
+  // Successful executions would keep message text and phone numbers in n8n;
+  // AgroFlow API holds the authoritative history.
+  const settings = workflow.settings ?? {};
+  assert.ok(settings.saveDataSuccessExecution === 'none' && settings.saveManualExecutions === false
+    && settings.saveExecutionProgress === false,
+  'Conversational workflows must not retain successful, manual or in-progress execution data');
+  const channelNodes = route => new Set(workflow.nodes.filter(node => isChannelRequest(node)
+    && matchesTemplate(channelRoutes[route].pattern, node.parameters.url)).map(node => node.name));
+  const ingest = channelNodes(0);
+  const intents = channelNodes(2);
+  const sends = workflow.nodes.filter(node => node.type === 'n8n-nodes-base.httpRequest'
+    && matchesTemplate(evolutionUrl, node.parameters?.url)).map(node => node.name);
+
+  const beforeIngest = reachableWithout(workflow, ingest);
+  for (const name of [...agents.map(node => node.name), ...sends]) {
+    assert.ok(!beforeIngest.has(name), `${name} must only run after the inbound message is persisted`);
+  }
+  const beforeIntent = reachableWithout(workflow, intents);
+  for (const name of sends) {
+    assert.ok(!beforeIntent.has(name), `${name} must only run after the reply intent is registered`);
+  }
 }
 
 export function validateExampleEnvironment(text) {

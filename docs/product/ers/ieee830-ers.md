@@ -1,18 +1,20 @@
-# Especificación de requisitos de software (ERS) — AgroFlow
+# Especificación de requisitos de software (ERS) — ZafraFlow
 
 > **BORRADOR COMPLETO PARA REVISIÓN — No aprobado.** Esta ERS cubre los 17 apartados académicos y describe el corte funcional identificado por el commit `8873a2644b2fd427e571c832b04f5dfa83647a9a` en la rama `main`. La revisión y aceptación académica siguen pendientes; este documento no acredita la aceptación del MVP ni sustituye las especificaciones normativas vigentes. Se distingue entre comportamiento normativo, implementación LocalDemo observada, limitaciones y trabajo futuro.
 
 ## 1. Introducción
 
+La marca vigente es **ZafraFlow** desde #128. El corte funcional citado en R-04 es anterior al cambio de nombre y conserva su evidencia. Como evolución posterior del perfil de presentación, #119 y #120 incorporaron franjas y cupos, #124 incorporó las asociaciones de camiones, #127 actualizó los selectores y otras lecturas del dashboard, y #105 incorporó el mapa de viajes ficticios. #121 dejó un guion local reproducible. Estas incorporaciones se describen en las [guías de la demo](../../development/local-demo.md) y quedan fuera del corte de los RF y de sus pruebas citadas en esta ERS.
+
 ### 1.1. Propósito del documento
 
-Esta Especificación de Requisitos de Software (ERS) documenta, con fines académicos y para revisión, el sistema AgroFlow y el alcance funcional observado en un corte identificado del repositorio. Su propósito es ofrecer una descripción organizada y trazable del producto, sus actores, contexto, límites y requisitos específicos que se incorporarán en el capítulo 3.
+Esta Especificación de Requisitos de Software (ERS) documenta, con fines académicos y para revisión, el sistema ZafraFlow y el alcance funcional observado en un corte identificado del repositorio. Su propósito es ofrecer una descripción organizada y trazable del producto, sus actores, contexto, límites y requisitos específicos que se incorporarán en el capítulo 3.
 
 La audiencia prevista comprende personas que revisan la documentación académica y quienes analizan o mantienen el producto. El documento debe permitir distinguir lo que está especificado como comportamiento vigente, lo que se observó implementado en el corte citado y lo que permanece parcial, no implementado, no verificado o abierto. No propone desarrollar un sistema nuevo, no sustituye las especificaciones normativas del proyecto y no constituye aceptación formal del MVP ni aprobación de requisitos.
 
 ### 1.2. Alcance del sistema
 
-AgroFlow es un producto B2B orientado a coordinar la recepción de camiones en ingenios durante la zafra. Su alcance previsto comprende una aplicación web para la operación interna, una API backend que centraliza las reglas y el estado operativo, y un canal conversacional de WhatsApp mediado por n8n. Entre las capacidades definidas para el MVP están la gestión de datos maestros, solicitud, asignación, consulta y ciclo de vida de turnos, aislamiento por ingenio, monitoreo operativo e integración conversacional. La inclusión de una capacidad en este alcance previsto no significa que esté completa o implementada en el corte revisado.
+ZafraFlow es un producto B2B orientado a coordinar la recepción de camiones en ingenios durante la zafra. Su alcance previsto comprende una aplicación web para la operación interna, una API backend que centraliza las reglas y el estado operativo, y un canal conversacional de WhatsApp mediado por n8n. Entre las capacidades definidas para el MVP están la gestión de datos maestros, solicitud, asignación, consulta y ciclo de vida de turnos, aislamiento por ingenio, monitoreo operativo e integración conversacional. La inclusión de una capacidad en este alcance previsto no significa que esté completa o implementada en el corte revisado.
 
 En el corte funcional identificado en este documento, la superficie web observada está conectada a la API para consultar, filtrar, crear, transicionar y cancelar turnos; listar, registrar e inhabilitar transportistas; y presentar conversaciones e historial persistidos. La API ofrece además lectura del catálogo de fincas. La edición de transportistas desde la API no equivale a una función disponible en la interfaz web. El panel muestra camiones en curso derivados de turnos, pero sus métricas, cola visual, feed, molienda y avisos carecen de datos API; las secciones de reportes y configuración son presentaciones sin datos operativos ni acciones habilitadas. Estas diferencias limitan lo que puede afirmarse sobre el producto realizado y no reducen ni amplían por sí solas el alcance normativo aprobado.
 
@@ -24,8 +26,8 @@ Los objetivos de producto —como reducir tiempos de espera o alcanzar una dispo
 
 | Término | Definición en esta ERS |
 |---|---|
-| **AgroFlow** | Sistema B2B para coordinar operaciones de recepción de camiones en ingenios. |
-| **API** | Interfaz HTTP del backend mediante la que los consumidores consultan o solicitan operaciones de AgroFlow. |
+| **ZafraFlow** | Sistema B2B para coordinar operaciones de recepción de camiones en ingenios. |
+| **API** | Interfaz HTTP del backend mediante la que los consumidores consultan o solicitan operaciones de ZafraFlow. |
 | **Camión** | Vehículo identificado por una patente normalizada y clasificado por tipo de flota. |
 | **ERS** | Especificación de Requisitos de Software. |
 | **Finca** | Origen o procedencia de la carga; en el alcance del MVP es una referencia descriptiva, sin polígonos geográficos. |
@@ -48,9 +50,9 @@ Las referencias se identifican mediante códigos estables para usarlos en los re
 | ID | Fuente | Autoridad y uso en esta ERS |
 |---|---|---|
 | **R-01** | Consigna académica «Documentación de requerimientos de software», Trabajo Final Integrador, edición 2026. Material privado de la asignatura. | Define las 17 subsecciones solicitadas, el mínimo de diez RF y que la ERS describa el sistema realizado. Fuente académica del encargo; no es especificación del producto. |
-| **R-02** | Ejemplo académico de ERS con estructura IEEE 830, material de referencia privado. | Referencia ilustrativa de organización y nivel de detalle. Corresponde a otro sistema y no aporta requisitos de AgroFlow. |
-| **R-03** | Plantilla académica genérica de ERS, material de referencia privado. | Referencia ilustrativa subordinada a R-01; no define requisitos de AgroFlow. |
-| **R-04** | [Corte funcional de AgroFlow: commit `8873a2644b2fd427e571c832b04f5dfa83647a9a`](https://github.com/agustinvallante/AgroFlow/tree/8873a2644b2fd427e571c832b04f5dfa83647a9a). | Fuente del código y documentación del sistema observado; la inspección estática no equivale a una prueba de ejecución. |
+| **R-02** | Ejemplo académico de ERS con estructura IEEE 830, material de referencia privado. | Referencia ilustrativa de organización y nivel de detalle. Corresponde a otro sistema y no aporta requisitos de ZafraFlow. |
+| **R-03** | Plantilla académica genérica de ERS, material de referencia privado. | Referencia ilustrativa subordinada a R-01; no define requisitos de ZafraFlow. |
+| **R-04** | [Corte funcional de ZafraFlow: commit `8873a2644b2fd427e571c832b04f5dfa83647a9a`](https://github.com/agustinvallante/AgroFlow/tree/8873a2644b2fd427e571c832b04f5dfa83647a9a). | Fuente del código y documentación del sistema observado; la inspección estática no equivale a una prueba de ejecución. |
 | **R-05** | [Especificaciones vigentes de OpenSpec](https://github.com/agustinvallante/AgroFlow/tree/8873a2644b2fd427e571c832b04f5dfa83647a9a/openspec/specs). | Fuente normativa del comportamiento aprobado. En particular: acceso y autorización, datos maestros, integración WhatsApp/n8n, interrupciones operativas, monitoreo, plataforma y segregación, y capacidades de turnos. |
 | **R-06** | [Contrato OpenAPI](https://github.com/agustinvallante/AgroFlow/blob/8873a2644b2fd427e571c832b04f5dfa83647a9a/docs/contracts/openapi.yaml). | Define la superficie y los esquemas HTTP publicados en el corte; no demuestra por sí solo disponibilidad ni uso desde cada vista. |
 | **R-07** | [ADR-002: Jerarquía documental y OpenSpec](https://github.com/agustinvallante/AgroFlow/blob/8873a2644b2fd427e571c832b04f5dfa83647a9a/docs/architecture/decisions/ADR-002-jerarquia-documental-y-openspec.md). | Establece autoridad de las fuentes y resolución de contradicciones. |
@@ -73,11 +75,11 @@ Este documento es un borrador completo para revisión académica, no una aprobac
 
 ### 2.1. Perspectiva del producto
 
-AgroFlow se compone conceptualmente de una aplicación web para operación interna, una API backend y un flujo conversacional integrado. La API y su estado persistido son la autoridad operativa: frontend y n8n consumen sus resultados y no deben mantener reglas alternativas de prioridad, capacidad, autorización o transición. Este principio es normativo (R-05) y no implica que todos los controles del MVP estén implementados en el perfil LocalDemo.
+ZafraFlow se compone conceptualmente de una aplicación web para operación interna, una API backend y un flujo conversacional integrado. La API y su estado persistido son la autoridad operativa: frontend y n8n consumen sus resultados y no deben mantener reglas alternativas de prioridad, capacidad, autorización o transición. Este principio es normativo (R-05) y no implica que todos los controles del MVP estén implementados en el perfil LocalDemo.
 
 En el corte observado, el backend está desarrollado sobre .NET 8 y la interfaz web con React, TypeScript y Vite. Los datos de negocio del perfil LocalDemo se persisten en SQLite. PostgreSQL y Redis son componentes auxiliares del canal y no deben confundirse con la base operativa de negocio descrita para ese perfil. La continuidad de React/Vite y las decisiones de persistencia se documentan en R-12 y R-13; esta descripción tecnológica registra el corte, no impone una nueva restricción ni afirma preparación para producción.
 
-La interfaz web consume la API HTTP a través de rutas del mismo origen. El canal de mensajería conecta Evolution API con n8n y, desde allí, con la API de AgroFlow; n8n adapta mensajes y comunica respuestas, mientras el backend determina identidad, estado y resultado operativo. Hay componentes implementados de esta integración, pero su presencia no acredita que se haya verificado una conversación completa con WhatsApp y proveedores externos reales. Los detalles de las rutas, los mensajes y las condiciones de integración se especificarán en el capítulo 3 a partir de las fuentes citadas.
+La interfaz web consume la API HTTP a través de rutas del mismo origen. El canal de mensajería conecta Evolution API con n8n y, desde allí, con la API de ZafraFlow; n8n adapta mensajes y comunica respuestas, mientras el backend determina identidad, estado y resultado operativo. Hay componentes implementados de esta integración, pero su presencia no acredita que se haya verificado una conversación completa con WhatsApp y proveedores externos reales. Los detalles de las rutas, los mensajes y las condiciones de integración se especificarán en el capítulo 3 a partir de las fuentes citadas.
 
 El alcance documentado es un único ingenio en el LocalDemo observado. La segregación por ingenio forma parte del comportamiento requerido para el MVP, pero no debe confundirse con una autenticación web individual ni con una demostración de aislamiento productivo en este corte. Las claves estáticas usadas por consumidores técnicos identifican integraciones, no usuarios humanos.
 
@@ -317,11 +319,11 @@ La API expone recursos JSON versionados bajo `/api/v1/`, con métodos, parámetr
 
 #### IU-03 — Integración conversacional
 
-El flujo previsto conecta WhatsApp con Evolution API, n8n y la API AgroFlow. El contrato de integración comprende eventos entrantes, tokens de autorización de procesamiento, intenciones de respuesta y reporte de estado de envío (RF-011–RF-014). La identidad, las reglas de negocio y el estado operativo pertenecen al backend; n8n adapta mensajes y comunica únicamente resultados confirmados por la API. El corte contiene componentes de esta integración, pero no se afirma entrega real de WhatsApp, recepción completa con proveedor externo ni confirmación de lectura. Una aceptación del proveedor no es evidencia de entrega.
+El flujo previsto conecta WhatsApp con Evolution API, n8n y la API ZafraFlow. El contrato de integración comprende eventos entrantes, tokens de autorización de procesamiento, intenciones de respuesta y reporte de estado de envío (RF-011–RF-014). La identidad, las reglas de negocio y el estado operativo pertenecen al backend; n8n adapta mensajes y comunica únicamente resultados confirmados por la API. El corte contiene componentes de esta integración, pero no se afirma entrega real de WhatsApp, recepción completa con proveedor externo ni confirmación de lectura. Una aceptación del proveedor no es evidencia de entrega.
 
 #### IU-04 — Persistencia
 
-En LocalDemo, el backend persiste el estado AgroFlow en SQLite y expone los resultados mediante la API. La base es un detalle interno, no una interfaz directa para la web o n8n. ADR-006 identifica PostgreSQL como destino antes de operar con un cliente real, sujeto a migración y validación; no se afirma que tal transición haya ocurrido. La ERS no define formatos de archivo, respaldo/retención operativos ni acceso directo de usuarios a la base.
+En LocalDemo, el backend persiste el estado ZafraFlow en SQLite y expone los resultados mediante la API. La base es un detalle interno, no una interfaz directa para la web o n8n. ADR-006 identifica PostgreSQL como destino antes de operar con un cliente real, sujeto a migración y validación; no se afirma que tal transición haya ocurrido. La ERS no define formatos de archivo, respaldo/retención operativos ni acceso directo de usuarios a la base.
 
 ### 3.3. Requisitos de rendimiento
 
@@ -337,7 +339,7 @@ Las consultas de turnos, catálogo y conversaciones no deben alterar los datos c
 
 #### RNF-003 — Límites de concurrencia y rendimiento no cuantificados
 
-La decisión de SQLite identifica un único escritor simultáneo y limita el perfil académico a un host/archivo local; WAL no se considera activado sin validación. Estas son restricciones del motor y de la decisión arquitectónica, no pruebas de rendimiento de AgroFlow. La carga concurrente sostenible, latencia bajo carga y escalabilidad no están medidas. Antes de una operación real deben validarse conforme a ADR-006 y definirse objetivos con el entorno y la carga esperada (R-13).
+La decisión de SQLite identifica un único escritor simultáneo y limita el perfil académico a un host/archivo local; WAL no se considera activado sin validación. Estas son restricciones del motor y de la decisión arquitectónica, no pruebas de rendimiento de ZafraFlow. La carga concurrente sostenible, latencia bajo carga y escalabilidad no están medidas. Antes de una operación real deben validarse conforme a ADR-006 y definirse objetivos con el entorno y la carga esperada (R-13).
 
 **Pendiente de decisión y medición:** acordar objetivos de tiempo de respuesta, volumen y concurrencia, disponibilidad, recuperación y condiciones de medición antes de tratarlos como criterios de aceptación. No hay SLA comprometido en esta ERS.
 

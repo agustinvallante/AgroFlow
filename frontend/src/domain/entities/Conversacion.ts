@@ -1,17 +1,40 @@
-export type EstadoConversacion = "resuelto" | "bot" | "escalado";
+/** "revision": la API informa un procesamiento fallido o vencido, o un envío incierto. */
+export type EstadoConversacion = "resuelto" | "bot" | "escalado" | "revision";
+
+/**
+ * Resultado de envío de una respuesta según la API. "aceptado" significa que
+ * el proveedor aceptó el mensaje, no que haya sido entregado o leído.
+ */
+export type EstadoEnvio = "pendiente" | "aceptado" | "fallido" | "incierto";
+
+/** Procesamiento de un mensaje entrante; "vencido" no se reprocesa solo. */
+export type EstadoProcesamiento = "en-curso" | "completado" | "fallido" | "vencido";
 
 export interface MensajeChat {
+  id?: string;
   autor: "transportista" | "bot";
   texto: string;
+  hora?: string;
+  /** Instante del mensaje, para agruparlo por día. */
+  fechaUtc?: string;
+  estadoEnvio?: EstadoEnvio;
+  procesamiento?: EstadoProcesamiento;
 }
 
 export interface Conversacion {
   id: string;
   nombre: string;
   hora: string;
+  /** Instante del último mensaje, para nombrar su día en el encabezado. */
+  ultimoMensajeUtc?: string;
   preview: string;
   estado: EstadoConversacion;
+  /** En la fuente http se cargan aparte, al abrir la conversación. */
   mensajes: MensajeChat[];
+  /** `false` para un número no registrado o una dirección sin teléfono. */
+  remitenteReconocido?: boolean;
+  /** Dirección remota enmascarada por la API; nunca la completa. */
+  direccion?: string;
 }
 
 export interface PasoFlujoBot {

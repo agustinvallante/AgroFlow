@@ -97,6 +97,37 @@ public sealed class AppointmentsHttpTests
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Null(service.LastQuery?.Date);
         Assert.Equal("+5493815550101", service.LastQuery?.Phone);
+        Assert.False(service.LastQuery?.ActiveOnly);
+    }
+
+    [Fact]
+    public async Task Get_list_with_active_true_requests_active_turnos_without_a_date()
+    {
+        var service = new FakeAppointmentService();
+        using var app = await TestApp.StartAsync(service);
+
+        using var response = await app.Client.GetAsync(
+            "/api/v1/appointments?phone=%2B5493815550101&active=true");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Null(service.LastQuery?.Date);
+        Assert.True(service.LastQuery?.ActiveOnly);
+        Assert.Equal("+5493815550101", service.LastQuery?.Phone);
+    }
+
+    [Fact]
+    public async Task Get_list_distinguishes_an_empty_result_from_an_error()
+    {
+        var service = new FakeAppointmentService { ListResult = [] };
+        using var app = await TestApp.StartAsync(service);
+
+        using var empty = await app.Client.GetAsync("/api/v1/appointments?phone=%2B5493815550102&active=true");
+        service.ListError = new InvalidOperationException("store unavailable");
+        using var failed = await app.Client.GetAsync("/api/v1/appointments?phone=%2B5493815550102&active=true");
+
+        Assert.Equal(HttpStatusCode.OK, empty.StatusCode);
+        Assert.Equal("[]", await empty.Content.ReadAsStringAsync());
+        await AssertProblemAsync(failed, HttpStatusCode.InternalServerError, "INTERNAL_ERROR");
     }
 
     [Fact]
@@ -138,6 +169,10 @@ public sealed class AppointmentsHttpTests
     [InlineData("/api/v1/appointments?status=")]
     [InlineData("/api/v1/appointments?phone=%2B5493815550101&phone=%2B5493815550101")]
     [InlineData("/api/v1/appointments?cacheBust=123")]
+    [InlineData("/api/v1/appointments?active=false")]
+    [InlineData("/api/v1/appointments?active=TRUE")]
+    [InlineData("/api/v1/appointments?active=")]
+    [InlineData("/api/v1/appointments?active=true&active=true")]
     [InlineData("/api/v1/appointments/not-a-uuid")]
     public async Task Invalid_query_or_route_uses_canonical_validation_problem(string url)
     {
@@ -167,6 +202,70 @@ public sealed class AppointmentsHttpTests
         using var body = await AssertProblemAsync(response, HttpStatusCode.BadRequest,
             AppointmentErrorCodes.ValidationError);
         Assert.Equal(JsonValueKind.Object, body.RootElement.GetProperty("errors").ValueKind);
+    }
+
+    // #112: una patente sin letras ni dígitos quedaba vacía al normalizarse y respondía 500.
+    [Theory]
+    [InlineData("------")]
+    [InlineData("--  --  --")]
+    [InlineData("..////..")]
+    [InlineData("      ")]
+    [InlineData("AF1")]
+    [InlineData("AF123BC12345")]
+    public async Task Truck_plate_without_letters_or_digits_is_a_field_validation_error_when_listing(string plate)
+    {
+        var service = new FakeAppointmentService();
+        using var app = await TestApp.StartAsync(service);
+
+        using var response = await app.Client.GetAsync(
+            $"/api/v1/appointments?truckPlate={Uri.EscapeDataString(plate)}");
+
+        using var body = await AssertProblemAsync(response, HttpStatusCode.BadRequest,
+            AppointmentErrorCodes.ValidationError);
+        Assert.True(body.RootElement.GetProperty("errors").TryGetProperty("truckPlate", out _));
+        Assert.Null(service.LastQuery);
+    }
+
+    [Theory]
+    [InlineData("------")]
+    [InlineData("--  --  --")]
+    [InlineData("      ")]
+    [InlineData("AF1")]
+    public async Task Truck_plate_without_letters_or_digits_is_a_field_validation_error_when_creating(string plate)
+    {
+        var service = new FakeAppointmentService();
+        using var app = await TestApp.StartAsync(service);
+
+        using var response = await app.Client.PostAsJsonAsync("/api/v1/appointments", new
+        {
+            carrierPhone = "+5493815550101",
+            truckPlate = plate,
+            farmCode = "FINCA-NORTE",
+            cutAt = "2026-09-28T05:30:00-03:00",
+            estimatedLoadTons = 28.5
+        });
+
+        using var body = await AssertProblemAsync(response, HttpStatusCode.BadRequest,
+            AppointmentErrorCodes.ValidationError);
+        var errors = body.RootElement.GetProperty("errors");
+        Assert.True(errors.TryGetProperty("truckPlate", out _));
+        Assert.False(errors.TryGetProperty("carrierPhone", out _));
+        Assert.Null(service.LastCreate);
+    }
+
+    [Theory]
+    [InlineData("AF123BC")]
+    [InlineData("af-123 bc")]
+    public async Task Truck_plate_with_separators_keeps_reaching_the_service(string plate)
+    {
+        var service = new FakeAppointmentService();
+        using var app = await TestApp.StartAsync(service);
+
+        using var response = await app.Client.GetAsync(
+            $"/api/v1/appointments?date=2026-09-28&truckPlate={Uri.EscapeDataString(plate)}");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(plate, service.LastQuery?.TruckPlate);
     }
 
     [Theory]
@@ -366,7 +465,8 @@ public sealed class AppointmentsHttpTests
                     .UseTestServer()
                     .ConfigureServices(services =>
                     {
-                        services.AddControllers()
+                        services.AddControllers(options =>
+                                options.Conventions.Add(new LocalDemoAppointmentsConvention(isLocalDemo: true)))
                             .AddApplicationPart(typeof(AppointmentsController).Assembly);
                         services.AddSingleton<IAppointmentService>(service);
                         // Este host prueba el contrato HTTP de la demo local,
@@ -412,6 +512,8 @@ public sealed class AppointmentsHttpTests
         public Guid? LastGetId { get; private set; }
         public (Guid Id, AppointmentStatus Status)? LastTransition { get; private set; }
         public Exception? CreateError { get; set; }
+        public IReadOnlyList<AppointmentSummary>? ListResult { get; set; }
+        public Exception? ListError { get; set; }
         public AppointmentServiceException? GetError { get; set; }
         public AppointmentServiceException? TransitionError { get; set; }
 
@@ -425,7 +527,8 @@ public sealed class AppointmentsHttpTests
         public Task<IReadOnlyList<AppointmentSummary>> ListAsync(AppointmentQuery query, CancellationToken cancellationToken = default)
         {
             LastQuery = query;
-            IReadOnlyList<AppointmentSummary> appointments =
+            if (ListError is not null) throw ListError;
+            IReadOnlyList<AppointmentSummary> appointments = ListResult ??
                 [new AppointmentSummary(Appointment.Id, Appointment.Truck, Appointment.Window, Appointment.Status)];
             return Task.FromResult(appointments);
         }

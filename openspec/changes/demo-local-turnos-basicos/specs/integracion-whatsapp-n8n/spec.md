@@ -4,7 +4,7 @@
 
 ### Requirement: Chatbot local limitado a la API canónica
 
-Para la demo local, n8n SHALL permitir solicitar un turno, consultar turnos e informar `EN_CAMINO` usando exclusivamente las operaciones de OpenAPI. Para el alta SHALL enviar el teléfono del remitente como `carrierPhone` junto con `truckPlate` y `farmCode`; para CU-003 MAY consultar con el filtro `phone`. n8n MUST NOT consultar endpoints de datos maestros, fijar UUIDs en el workflow, asignar ventanas, decidir transiciones, conservar un estado paralelo ni comunicar éxito antes de recibir la respuesta confirmada del backend.
+Para la demo local, n8n SHALL permitir solicitar un turno, consultar turnos e informar `EN_CAMINO` usando exclusivamente las operaciones de OpenAPI. Para el alta SHALL enviar el teléfono del remitente como `carrierPhone` junto con `truckPlate` y `farmCode`; para CU-003 MAY consultar con el filtro `phone`. n8n MUST NOT consultar endpoints de datos maestros, salvo la lectura del catálogo de fincas definida en [`ajustar-consultas-chatbot-whatsapp`](../../../ajustar-consultas-chatbot-whatsapp/specs/integracion-whatsapp-n8n/spec.md), fijar UUIDs en el workflow, asignar ventanas, decidir transiciones, conservar un estado paralelo ni comunicar éxito antes de recibir la respuesta confirmada del backend.
 
 #### Scenario: Solicitud desde el chatbot local
 

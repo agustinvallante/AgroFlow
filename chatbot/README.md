@@ -1,6 +1,6 @@
-# Chatbot de AgroFlow
+# Chatbot de ZafraFlow
 
-Workflow de n8n para conversar por WhatsApp mediante Evolution API: reúne datos y consume la API; no asigna turnos ni mantiene estado operativo propio. El [contrato HTTP canónico](../docs/contracts/openapi.yaml) y la [especificación de integración](../openspec/specs/integracion-whatsapp-n8n/spec.md) son la referencia.
+Workflow de n8n para conversar por WhatsApp mediante Evolution API: registra cada mensaje en ZafraFlow API, reúne datos y consume la API; no asigna turnos, no decide identidad ni deduplica, y no mantiene estado operativo propio. El [contrato HTTP canónico](../docs/contracts/openapi.yaml) y la [especificación de integración](../openspec/specs/integracion-whatsapp-n8n/spec.md) son la referencia.
 
 ## Ejecutar e importar
 
@@ -8,13 +8,50 @@ Seguir la [guía central de demo local](../docs/development/local-demo.md) desde
 
 - `OpenAI Chat Model`: credencial OpenAI (`OpenAI account`).
 - `Send WhatsApp reply`: Header Auth (`Header Auth account`), encabezado `apikey` con la clave local de Evolution.
+- Nodos del canal (`Register Inbound Message`, `Register Reply Intent`, `Update Send Status`, `Report Agent Failure`, `Report Reply Failure`) y herramienta `Lookup Farms`: Header Auth (`AgroFlow Service Key account`), encabezado `X-AgroFlow-Service-Key` con el valor de `ChannelIntegration__ServiceKey` de la API. Nunca reutilizar la credencial de Evolution.
 
 El archivo conserva referencias por nombre, sin IDs ni valores de credenciales; los nombres no garantizan la vinculación automática. Reasignar ambos nodos, guardar y publicar el workflow. Se importa inactivo, sin datos fijados ni historial de ejecuciones.
 
 Requiere compatibilidad con **AI Agent 3.1**, **OpenAI Chat Model 1.3** y acceso al modelo **gpt-5.4-mini**. La versión fijada de n8n está en [`infra/env.example`](../infra/env.example). No sustituir el agente por el antiguo 2.1.
 
+## Recorrido
+
+```text
+Webhook → Is Supported Text Message ──no──→ Acknowledge Ignored Event (200 ignored)
+  └─sí→ Edit Fields → Register Inbound Message ──error/4xx/5xx──→ Reject Unpersisted Event (503)
+          └→ Is New Message To Process ──no──→ Is Duplicate Message → Acknowledge Duplicate (200) · fin
+               └─sí→ Respond to Webhook (200 accepted) → Is Registered Transportista
+                       ├─sí→ AI Agent1 (+ herramientas de turnos) → Prepare Agent Reply ─┐
+                       │        └─error→ Report Agent Failure (AGENT_ERROR)               │
+                       └─no→ Prepare Unregistered Reply (plantilla fija, sin agente) ─────┤
+                                                                                          ↓
+                 Register Reply Intent → Can Send Reply ──no──→ Report Reply Failure (REPLY_NOT_SENT)
+                   └─sí→ Send WhatsApp reply → Classify Send Result / Mark Send Unknown → Update Send Status
+```
+
+- **Persistir antes de todo**: el acuse al webhook sale sólo después de que la API registró el mensaje; si la API no responde o lo rechaza, el webhook recibe `503` y no se invoca al agente (OD-011, fail-closed).
+- **Duplicados**: la API decide; ante `duplicate_stop` el workflow se detiene y no hay agente ni envío, aunque la autorización anterior haya vencido.
+- **Remitentes**: el agente y sus herramientas sólo corren para transportistas registrados; el resto recibe una plantilla fija (DD-3, recomendación pendiente de aprobación).
+- **Respuesta**: se envía exactamente el texto y destinatario de la intención registrada, sólo si está `PENDING_SEND` y su instancia coincide con `EVOLUTION_INSTANCE`.
+- **Resultado**: `2xx` → `accepted` (con el identificador del proveedor sólo si Evolution lo devuelve en `key.id`), `4xx` → `failed`, `5xx` o timeout (10 s) → `unknown`. Nada se informa como entregado.
+- **Datos mínimos**: no se envía `pushName`, el evento completo de Evolution ni metadatos de mensajes citados. El workflow no guarda datos de ejecuciones exitosas (`settings`), y Compose aplica la misma política a la instancia.
+- **Mensajes admitidos**: texto simple (`conversation`) y texto extendido (`extendedTextMessage`: respuestas citadas o con vista previa de enlace), sólo de chats 1:1 `<dígitos>@s.whatsapp.net` o `<dígitos>@lid`. Se ignoran grupos, difusiones, estados, mensajes propios y multimedia.
+- **LID**: un remitente `@lid` se registra sin teléfono y como no identificado, aunque Evolution adjunte un número alternativo (`remoteJidAlt`, `senderPn`): ese dato no viaja a la API ni vincula al transportista. Recibe la plantilla, que no afirma que el número no esté registrado.
+- **Turnos**: el agente sólo corre para transportistas reconocidos, pero la API crea turnos sólo si además tienen una asociación activa con un camión; un transportista recién registrado sin asociación recibe `REFERENCE_NOT_FOUND`.
+- **Consulta de turnos**: `Lookup Appointments By Phone` envía `phone` y `active=true`, sin fecha, y activa `fullResponse: true` (`{ statusCode, body }`) para que `ToolsAgent V3` / `HttpRequestV3` en n8n conserve `200 []` sin colapsar arreglos vacíos en `""`: la API devuelve los turnos no terminales de cualquier día, incluido uno asignado para mañana; `statusCode` 200 con `body: []` significa "sin turnos activos" (incluso tras una cancelación desde el panel), mientras que `statusCode >= 400` es un error. Además, el prompt prohíbe rechazar altas nuevas a partir de la memoria conversacional sin consultar ni invocar a la API.
+- **Fincas**: `Lookup Farms` (`GET /api/v1/farms?active=true&search=…`, con la clave de servicio y `fullResponse: true`) recibe las palabras del transportista sin normalizar; la API decide la coincidencia. `statusCode` 200 con una finca → su `code` va al alta tras confirmarla; varias → el agente pregunta; `body: []` o `statusCode >= 400` → no hay alta. El workflow no contiene códigos de finca, y CI sólo admite la clave de servicio en esa lectura exacta.
+
+## Pruebas sin servicios en vivo
+
+- `node --test chatbot/tests/workflow.test.mjs` (CI): ejecuta el JSON exportado con un [simulador](tests/n8n-simulator.mjs) y [fixtures sintéticos](tests/fixtures/) de Evolution, con API, Evolution y agente en memoria. El doble del agente puede invocar las herramientas HTTP con los argumentos que elegiría el modelo; el modelo en sí no se simula.
+- `node chatbot/tests/acceptance.mjs`: aceptación local contra la API real con SQLite temporal y el proxy del frontend (requiere `dotnet build` y `npm ci`; no corre en CI).
+- `node chatbot/tests/demo-rehearsal.mjs`: ensayo reproducible del guion de la presentación (turno hasta `FINALIZADO`, cancelación con cupo reutilizado, `GET /api/v1/windows` y reinicio con la misma SQLite, dos ejecuciones). Canal y agente simulados; ver el [guion](../docs/development/local-demo-runbook.md#guion-de-presentación-reproducible-dos-actores-persistencia-y-respaldo-111). No corre en CI.
+- `node chatbot/tests/simulate-message.mjs --from +549… --text "…"`: simula un mensaje contra una API levantada para la demo.
+
+El simulador interpreta sólo los nodos y expresiones de este workflow; no reemplaza una prueba en n8n. Falta confirmar en vivo el envío de respuestas a direcciones `@lid` y la forma real de `extendedTextMessage` en la versión fijada de Evolution. El webhook Evolution → n8n no está autenticado: ver mitigaciones en la [guía de la demo](../docs/development/local-demo.md#webhook-evolution--n8n-sin-autenticación).
+
 ## Procedencia y alcance verificado
 
-La infraestructura local y el workflow previo provienen de `agroflow-chatbot`, commit `e7f7fe7`. Este workflow incorpora además la actualización local probada y aportada por el usuario (Agent 3.1 / GPT-5.4-mini), que **no pertenece a ese commit**. Se retiraron el agente antiguo desconectado y los metadatos de instancia; se conservaron prompts, memoria, herramientas, conexiones activas y webhook.
+La infraestructura local y el workflow previo provienen de `agroflow-chatbot`, commit `e7f7fe7`. Este workflow incorpora además la actualización probada con **AI Agent 3.1 / gpt-5.4-mini**. Se retiraron el agente antiguo desconectado y los metadatos de instancia; se conservaron prompts, memoria, herramientas, conexiones activas y webhook.
 
-Sólo se confirmó una respuesta al saludo. Las herramientas de alta, consulta y aviso `EN_CAMINO`, y el E2E de turnos, siguen pendientes de prueba; el remitente real usado no está registrado en el seed ficticio de la API.
+En `LocalDemo` se verificaron en vivo por WhatsApp el saludo, la resolución de fincas por código/nombre, el alta de turnos, la consulta tras cancelación operativa desde el panel (`200 []`) y la nueva solicitud de turno para la misma patente sin bloqueo por memoria conversacional; la transición `EN_CAMINO` por WhatsApp en vivo queda pendiente de validación adicional.

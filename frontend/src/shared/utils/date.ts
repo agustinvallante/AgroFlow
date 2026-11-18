@@ -1,9 +1,3 @@
-export function horaConOffset(offsetMin: number): string {
-  const d = new Date();
-  d.setMinutes(d.getMinutes() + offsetMin);
-  return d.toTimeString().slice(0, 5);
-}
-
 export function horaActual(): string {
   return new Date().toTimeString().slice(0, 8);
 }
@@ -14,10 +8,6 @@ export function fechaLarga(): string {
     day: "numeric",
     month: "long",
   });
-}
-
-export function generarId(prefijo: string): string {
-  return `${prefijo}-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
 }
 
 /*
@@ -70,4 +60,93 @@ export function datetimeLocalARfc3339(valor: string): string {
   const abs = Math.abs(minutos);
   const desplazamiento = `${signo}${String(Math.floor(abs / 60)).padStart(2, "0")}:${String(abs % 60).padStart(2, "0")}`;
   return `${conSegundos}${desplazamiento}`;
+}
+
+/** Ventana con fecha y zona del ingenio, incluso si cruza la medianoche. */
+export function ventanaDeRfc3339(inicio: string, fin: string): string {
+  const desde = leerFechaRfc3339(inicio);
+  const hasta = leerFechaRfc3339(fin);
+  if (!desde || !hasta) return "—";
+  if (desde.fecha === hasta.fecha && desde.desplazamiento === hasta.desplazamiento) {
+    return `${desde.fecha} ${desde.hora} – ${hasta.hora} (UTC${desde.desplazamiento})`;
+  }
+  return `${fechaHoraDeRfc3339(inicio)} – ${fechaHoraDeRfc3339(fin)}`;
+}
+
+/** Zona del ingenio sembrado en la demo local. */
+export const ZONA_INGENIO = "America/Argentina/Tucuman";
+
+const FORMATO_HORA_INGENIO = new Intl.DateTimeFormat("es-AR", {
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+  timeZone: ZONA_INGENIO,
+});
+
+/**
+ * Las fechas del canal de WhatsApp llegan en UTC ("…Z"); se muestran en la
+ * hora del ingenio, no en la del navegador: "2026-01-01T15:00:00Z" → "12:00".
+ */
+export function horaEnZonaIngenio(valorUtc: string | undefined | null): string {
+  if (!valorUtc) return "—";
+  const fecha = new Date(valorUtc);
+  return Number.isNaN(fecha.getTime()) ? "—" : FORMATO_HORA_INGENIO.format(fecha);
+}
+
+const FORMATO_DIA_INGENIO = new Intl.DateTimeFormat("es-AR", {
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+  timeZone: ZONA_INGENIO,
+});
+
+/**
+ * Hora del ingenio, con el día cuando no es hoy (en la zona del ingenio) para
+ * que un mensaje de otro día no parezca de hoy: hoy → "12:00", otro día →
+ * "30/10 12:00".
+ */
+export function fechaHoraEnZonaIngenio(
+  valorUtc: string | undefined | null,
+  ahora: Date = new Date(),
+): string {
+  const hora = horaEnZonaIngenio(valorUtc);
+  if (hora === "—") return hora;
+  const fecha = new Date(valorUtc as string);
+  const dia = FORMATO_DIA_INGENIO.format(fecha);
+  if (dia === FORMATO_DIA_INGENIO.format(ahora)) return hora;
+  return `${dia.slice(0, 5)} ${hora}`;
+}
+
+const FORMATO_DIA_SEMANA_INGENIO = new Intl.DateTimeFormat("es-AR", {
+  weekday: "long",
+  timeZone: ZONA_INGENIO,
+});
+
+const MS_POR_DIA = 86_400_000;
+
+/** Días enteros del calendario en la zona del ingenio, para restar fechas. */
+function numeroDeDiaEnZonaIngenio(fecha: Date): number {
+  const [dia, mes, anio] = FORMATO_DIA_INGENIO.format(fecha).split("/").map(Number);
+  return Date.UTC(anio, mes - 1, dia) / MS_POR_DIA;
+}
+
+/**
+ * Nombre del día como en WhatsApp, en la zona del ingenio: "Hoy", "Ayer", el
+ * día de la semana dentro de la última semana y, antes, "30/10/2026".
+ */
+export function etiquetaDiaEnZonaIngenio(
+  valorUtc: string | undefined | null,
+  ahora: Date = new Date(),
+): string {
+  if (!valorUtc) return "—";
+  const fecha = new Date(valorUtc);
+  if (Number.isNaN(fecha.getTime())) return "—";
+  const diasAtras = numeroDeDiaEnZonaIngenio(ahora) - numeroDeDiaEnZonaIngenio(fecha);
+  if (diasAtras === 0) return "Hoy";
+  if (diasAtras === 1) return "Ayer";
+  if (diasAtras > 1 && diasAtras < 7) {
+    const nombre = FORMATO_DIA_SEMANA_INGENIO.format(fecha);
+    return nombre.charAt(0).toUpperCase() + nombre.slice(1);
+  }
+  return FORMATO_DIA_INGENIO.format(fecha);
 }

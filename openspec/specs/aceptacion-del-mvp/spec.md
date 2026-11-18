@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Define el umbral mínimo, observable y verificable para declarar que AgroFlow posee un MVP funcional. Esta capacidad integra los resultados de las demás especificaciones sin redefinir sus reglas de negocio.
+Define el umbral mínimo, observable y verificable para declarar que ZafraFlow posee un MVP funcional. Esta capacidad integra los resultados de las demás especificaciones sin redefinir sus reglas de negocio.
 
 La aceptación del MVP demuestra una solución funcional y reproducible; no acredita por sí sola preparación para producción ni el cumplimiento de objetivos que requieren medición en operación real.
 
@@ -60,7 +60,7 @@ El MVP SHALL ofrecer un procedimiento documentado y repetible para iniciar sus c
 
 Los datos de aceptación MUST incluir los ingenios, actores, estados y relaciones necesarios para comprobar los recorridos obligatorios y el aislamiento entre ingenios.
 
-La configuración inicial del ingenio de demostración SHALL definir ventanas de 30 minutos con cupo de dos camiones por ventana; esos valores MUST NOT tratarse como constantes globales de AgroFlow. La preparación SHALL permitir configurar otros valores por ingenio sin editar reglas de negocio.
+La configuración inicial del ingenio de demostración SHALL definir ventanas de 30 minutos con cupo de dos camiones por ventana; esos valores MUST NOT tratarse como constantes globales de ZafraFlow. La preparación SHALL permitir configurar otros valores por ingenio sin editar reglas de negocio.
 
 #### Scenario: Preparación desde una instalación limpia
 

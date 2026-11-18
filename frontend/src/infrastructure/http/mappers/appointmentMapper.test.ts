@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { mapAppointment } from "./appointmentMapper";
+import { combinarResumenYDetalle, mapAppointment } from "./appointmentMapper";
 import type { AppointmentDto } from "../dto/AppointmentDto";
 
 const dto: AppointmentDto = {
@@ -23,6 +23,7 @@ describe("mapAppointment", () => {
     const turno = mapAppointment(dto);
     expect(turno.hora).toBe("23:30");
     expect(turno.ventanaFin).toBe("00:00");
+    expect(turno.ventana).toEqual({ inicio: dto.window.startAt, fin: dto.window.endAt });
   });
 
   it("no depende de la zona horaria del navegador", () => {
@@ -40,9 +41,15 @@ describe("mapAppointment", () => {
   it("no inventa datos que la API no informa", () => {
     const turno = mapAppointment(dto);
     expect(turno.estado).toBe("ingresado");
-    expect(turno.prioridad).toBeNull();
-    expect(turno.flota).toBeNull();
-    expect(turno.canal).toBeNull();
-    expect(turno.esperaMin).toBeNull();
+    for (const campo of ["prioridad", "flota", "canal", "esperaMin"]) {
+      expect(turno).not.toHaveProperty(campo);
+    }
+  });
+
+  it("conserva la fecha y ventana más reciente del resumen sobre el detalle cacheado", () => {
+    const window = { startAt: "2026-09-30T08:00:00-03:00", endAt: "2026-09-30T08:30:00-03:00" };
+    const turno = combinarResumenYDetalle({ id: dto.id, truck: dto.truck, window, status: "EN_CAMINO" }, dto);
+    expect(turno.ventana).toEqual({ inicio: window.startAt, fin: window.endAt });
+    expect(turno.estado).toBe("viaje");
   });
 });

@@ -1,6 +1,6 @@
 # Operación
 
-Este directorio contendrá las guías necesarias para desplegar y sostener AgroFlow:
+Este directorio contendrá las guías necesarias para desplegar y sostener ZafraFlow:
 
 - ambientes y configuración segura;
 - observabilidad y alertas;

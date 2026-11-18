@@ -10,7 +10,7 @@
 
 La PR propone servicios de aplicación, contratos de repositorio, validación y
 persistencia basada en EF Core/SQLite para los catálogos. Estos patrones pueden
-revisarse como base técnica si se compatibilizan con el modelo AgroFlow, el
+revisarse como base técnica si se compatibilizan con el modelo ZafraFlow, el
 `AgroFlowDbContext` operativo existente, Identity/JWT de main y sus migraciones.
 No deben crear una segunda base de catálogo ni asumir que el esquema de demo
 resuelve la persistencia MVP.

@@ -2,9 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { container } from "../../composition/container";
 import type { EstadoTurno, FiltrosTurno, NuevoTurnoManual, Turno } from "../../domain/entities/Turno";
 
-export type FiltroFlota = "todas" | "propia" | "tercero";
 export type FiltroEstado = "todos" | Turno["estado"];
-export type OrdenCola = "turno" | "prioridad" | "espera";
 
 /**
  * - "cargando": todavía no hubo respuesta para los filtros actuales.
@@ -50,21 +48,20 @@ interface ResultadoConsulta {
   ultimaActualizacion: Date | null;
 }
 
-export function useColaTurnos() {
+export function useColaTurnos(modo: "dia" | "activos" = "dia") {
   const [resultado, setResultado] = useState<ResultadoConsulta | null>(null);
   const [errorAccion, setErrorAccion] = useState<string | null>(null);
   const [enCurso, setEnCurso] = useState<string | null>(null);
+  const [revisionLista, setRevisionLista] = useState(0);
 
-  // Filtros que resuelve la fuente de datos (API o mock).
+  // Filtros que resuelve la API.
   const [filtroEstado, setFiltroEstado] = useState<FiltroEstado>("todos");
   const [fecha, setFecha] = useState("");
   const [patente, setPatente] = useState("");
   const [telefono, setTelefono] = useState("");
 
-  // Filtros y orden locales sobre lo ya recibido.
+  // Búsqueda local sobre lo ya recibido.
   const [busqueda, setBusqueda] = useState("");
-  const [filtroFlota, setFiltroFlota] = useState<FiltroFlota>("todas");
-  const [orden, setOrden] = useState<OrdenCola>("turno");
 
   const [detalleId, setDetalleId] = useState<string | null>(null);
   const [detalle, setDetalle] = useState<Turno | null>(null);
@@ -82,7 +79,7 @@ export function useColaTurnos() {
     };
   }, [fecha, filtroEstado, patente, telefono, filtrosIncompletos]);
 
-  const clave = JSON.stringify(filtrosApi);
+  const clave = JSON.stringify([modo, modo === "dia" ? filtrosApi : null]);
 
   // Un resultado de otros filtros no corresponde a lo que se ve: se trata
   // como si todavía no hubiera respuesta.
@@ -95,9 +92,11 @@ export function useColaTurnos() {
 
   const cargar = useCallback(async () => {
     const consulta = ++ultimaConsulta.current;
-    if (!filtrosApi) return;
+    if (modo === "dia" && !filtrosApi) return;
     try {
-      const data = await container.turnos.obtenerTurnosDelDia.execute(filtrosApi);
+      const data = modo === "activos"
+        ? await container.turnos.obtenerTurnosActivos.execute()
+        : await container.turnos.obtenerTurnosDelDia.execute(filtrosApi!);
       if (consulta !== ultimaConsulta.current) return;
       setResultado({ clave, turnos: data, estado: "ok", error: null, ultimaActualizacion: new Date() });
     } catch (e) {
@@ -111,7 +110,7 @@ export function useColaTurnos() {
           : { clave, turnos: [], estado: "error", error, ultimaActualizacion: null }
       );
     }
-  }, [filtrosApi, clave]);
+  }, [modo, filtrosApi, clave]);
 
   // Turno seleccionado y último pedido de detalle emitido. Una respuesta
   // (o un error) de un pedido anterior se descarta: puede llegar después de
@@ -136,12 +135,15 @@ export function useColaTurnos() {
 
   useEffect(() => {
     cargar();
-    const id = setInterval(() => {
-      cargar();
-      if (detalleId) cargarDetalle(detalleId);
-    }, INTERVALO_POLLING_MS);
+    const id = setInterval(cargar, INTERVALO_POLLING_MS);
     return () => clearInterval(id);
-  }, [cargar, cargarDetalle, detalleId]);
+  }, [cargar, revisionLista]);
+
+  useEffect(() => {
+    if (!detalleId) return;
+    const id = setInterval(() => cargarDetalle(detalleId), INTERVALO_POLLING_MS);
+    return () => clearInterval(id);
+  }, [cargarDetalle, detalleId]);
 
   const abrirDetalle = useCallback(
     (id: string) => {
@@ -161,7 +163,7 @@ export function useColaTurnos() {
   }, []);
 
   /**
-   * Una acción solo se considera exitosa cuando responde la fuente de datos.
+   * Una acción solo se considera exitosa cuando responde la API.
    * Ante cualquier error (p. ej. 409) se conserva lo visible, se informa y
    * se recarga para mostrar el estado vigente.
    */
@@ -202,39 +204,41 @@ export function useColaTurnos() {
     [ejecutarAccion]
   );
 
-  const reasignar = useCallback(
-    (id: string, nuevaHora: string) =>
-      ejecutarAccion(id, () => container.turnos.reasignarHorarioTurno.execute(id, nuevaHora)),
-    [ejecutarAccion]
-  );
-
-  const crearTurno = useCallback(
-    async (datos: NuevoTurnoManual) => {
-      // El error se propaga para que el formulario lo muestre.
-      await container.turnos.crearTurnoManual.execute(datos);
-      await cargar();
-    },
-    [cargar]
-  );
+  const crearTurno = useCallback(async (datos: NuevoTurnoManual): Promise<Turno> => {
+    // El error se propaga al formulario. Solo cambiamos la vista tras el POST confirmado.
+    const creado = await container.turnos.crearTurnoManual.execute(datos);
+    ultimaConsulta.current++;
+    ultimoDetalle.current++;
+    setErrorAccion(null);
+    setResultado(null);
+    // El día pertenece al desplazamiento emitido por la API, no al navegador.
+    setFecha(creado.ventana.inicio.slice(0, 10));
+    setFiltroEstado("todos");
+    setPatente("");
+    setTelefono("");
+    setBusqueda("");
+    seleccionado.current = creado.id;
+    setDetalleId(creado.id);
+    setDetalle(creado);
+    // Invalida explícitamente la lista aun si los filtros ya coincidían.
+    // El efecto usa los filtros del próximo render, sin depender de detalleId
+    // ni reutilizar cargar() con los valores anteriores al alta.
+    setRevisionLista((revision) => revision + 1);
+    return creado;
+  }, []);
 
   const turnosFiltrados = useMemo(() => {
     const texto = busqueda.toLowerCase().trim();
-    const lista = turnos.filter((t) => {
-      const coincideTexto =
+    const lista = turnos.filter(
+      (t) =>
         !texto ||
         t.patente.toLowerCase().includes(texto) ||
         t.chofer.toLowerCase().includes(texto) ||
-        t.finca.toLowerCase().includes(texto);
-      const coincideFlota = filtroFlota === "todas" || t.flota === filtroFlota;
-      return coincideTexto && coincideFlota;
-    });
+        t.finca.toLowerCase().includes(texto)
+    );
 
-    return [...lista].sort((a, b) => {
-      if (orden === "prioridad") return b.horasDesdeCorte - a.horasDesdeCorte;
-      if (orden === "espera") return (b.esperaMin ?? 0) - (a.esperaMin ?? 0);
-      return a.offsetMin - b.offsetMin;
-    });
-  }, [turnos, busqueda, filtroFlota, orden]);
+    return [...lista].sort((a, b) => a.offsetMin - b.offsetMin);
+  }, [turnos, busqueda]);
 
   const resumen = useMemo(
     () => ({
@@ -259,11 +263,9 @@ export function useColaTurnos() {
     errorAccion,
     limpiarErrorAccion: () => setErrorAccion(null),
     enCurso,
-    filtros: { busqueda, filtroFlota, filtroEstado, orden, fecha, patente, telefono },
+    filtros: { busqueda, filtroEstado, fecha, patente, telefono },
     setBusqueda,
-    setFiltroFlota,
     setFiltroEstado,
-    setOrden,
     setFecha,
     setPatente,
     setTelefono,
@@ -274,7 +276,6 @@ export function useColaTurnos() {
     crearTurno,
     cambiarEstado,
     cancelar,
-    reasignar,
     recargar: cargar,
   };
 }

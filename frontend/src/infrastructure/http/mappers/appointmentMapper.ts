@@ -18,7 +18,6 @@ const ESTADO_MAP: Record<AppointmentStatusDto, EstadoTurno> = {
   CANCELADO: "cancelado",
 };
 
-// "demorado" no existe en la API: no tiene equivalente.
 const ESTADO_INVERSO: Partial<Record<EstadoTurno, AppointmentStatusDto>> = Object.fromEntries(
   Object.entries(ESTADO_MAP).map(([api, dominio]) => [dominio, api])
 );
@@ -32,6 +31,7 @@ export function toAppointmentStatus(estado: EstadoTurno): AppointmentStatusDto |
 export function mapAppointment(dto: AppointmentDto): Turno {
   return {
     id: dto.id,
+    ventana: { inicio: dto.window.startAt, fin: dto.window.endAt },
     // Hora escrita por la API, en la zona del ingenio (no la del navegador).
     hora: horaDeRfc3339(dto.window.startAt),
     ventanaFin: horaDeRfc3339(dto.window.endAt),
@@ -45,11 +45,6 @@ export function mapAppointment(dto: AppointmentDto): Turno {
     corteEn: dto.cutAt,
     cargaTon: dto.estimatedLoadTons,
     creadoEn: dto.createdAt,
-    // La API de la demo no informa estos datos y el dashboard no los calcula.
-    flota: null,
-    canal: null,
-    esperaMin: null,
-    prioridad: null,
   };
 }
 

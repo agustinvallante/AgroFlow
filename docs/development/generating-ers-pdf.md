@@ -1,6 +1,6 @@
 # Generar el PDF del borrador de ERS
 
-Esta guía describe el generador aislado de `docs/tools/ers-pdf/`. Produce un PDF imprimible desde el Markdown de la ERS, sin cambiar la aplicación AgroFlow.
+Esta guía describe el generador aislado de `docs/tools/ers-pdf/`. Produce un PDF imprimible desde el Markdown de la ERS, sin cambiar la aplicación ZafraFlow.
 
 > **Estado:** el PDF contiene el borrador completo de la ERS para revisión académica. No está aprobado, no es una especificación normativa y no prueba que el MVP esté terminado o aceptado. Cada artefacto debe verificarse en la ejecución de CI correspondiente a su commit.
 
@@ -14,7 +14,7 @@ En el entorno WSL usado para este avance, Chromium no pudo iniciarse por bibliot
 
 ## Evidencia del borrador completo para revisión
 
-El candidato `e7311a9892299d9c63d9dd6d831c64f62c480175` se verificó en [ERS PDF — ejecución 43788016729](https://github.com/agustinvallante/AgroFlow/actions/runs/43788016729): ocho pruebas aprobadas, ninguna fallida u omitida, auditoría sin vulnerabilidades y generación/publicación correctas. [Descargar el PDF de ese candidato (ZIP)](https://github.com/agustinvallante/AgroFlow/actions/runs/43788016729/artifacts/14191515611); su disponibilidad está sujeta a la retención de 14 días.
+El candidato histórico `e7311a9892299d9c63d9dd6d831c64f62c480175` usaba la marca AgroFlow. Se verificó en [ERS PDF — ejecución 43788016729](https://github.com/agustinvallante/AgroFlow/actions/runs/43788016729), con ocho pruebas aprobadas, auditoría sin vulnerabilidades y generación correcta. Para la revisión académica de ZafraFlow, descargá el artefacto que corresponda al SHA actualizado de la PR. La evidencia y las cifras de la tabla siguiente corresponden exclusivamente al candidato histórico.
 
 | Control | Resultado observado |
 |---|---|

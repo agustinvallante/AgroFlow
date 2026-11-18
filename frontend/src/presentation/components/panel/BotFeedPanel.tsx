@@ -4,9 +4,8 @@ export function BotFeedPanel({ mensajes }: { mensajes: MensajeChat[] }) {
   return (
     <div className="bot-panel">
       <div className="bot-panel-head">
-        <span className="status-dot" />
         <strong>Chatbot WhatsApp</strong>
-        <span>conectado</span>
+        <span>sin datos</span>
       </div>
       <div className="bot-log">
         {mensajes.map((m, i) => (
@@ -15,7 +14,7 @@ export function BotFeedPanel({ mensajes }: { mensajes: MensajeChat[] }) {
             key={i}
           >
             <span className="who">
-              {m.autor === "transportista" ? "Transportista" : "Bot AgroFlow"}
+              {m.autor === "transportista" ? "Transportista" : "Bot ZafraFlow"}
             </span>
             {m.texto}
           </div>

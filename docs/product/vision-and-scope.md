@@ -6,7 +6,7 @@ Durante la zafra, la llegada descoordinada de camiones al ingenio genera colas, 
 
 ## Visión
 
-AgroFlow será un sistema B2B para coordinar turnos y operaciones de ingreso de camiones. Proporcionará:
+ZafraFlow será un sistema B2B para coordinar turnos y operaciones de ingreso de camiones. Proporcionará:
 
 - una aplicación web para operadores, supervisores y responsables de gestión;
 - un canal de WhatsApp para transportistas, integrado mediante n8n;

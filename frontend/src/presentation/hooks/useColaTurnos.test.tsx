@@ -2,24 +2,23 @@ import { act, cleanup, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Turno } from "../../domain/entities/Turno";
 
-const { obtenerTurnos, obtenerDetalle, cambiarEstado, cancelar } = vi.hoisted(() => ({
+const { obtenerTurnos, obtenerDetalle, crear, cambiarEstado, cancelar } = vi.hoisted(() => ({
   obtenerTurnos: vi.fn(),
   obtenerDetalle: vi.fn(),
+  crear: vi.fn(),
   cambiarEstado: vi.fn(),
   cancelar: vi.fn(),
 }));
 
 vi.mock("../../composition/container", () => ({
   container: {
-    fuenteDatos: "http",
     apiUrl: "http://localhost:5000",
     turnos: {
       obtenerTurnosDelDia: { execute: obtenerTurnos },
       obtenerDetalleTurno: { execute: obtenerDetalle },
-      crearTurnoManual: { execute: vi.fn() },
+      crearTurnoManual: { execute: crear },
       cambiarEstadoTurno: { execute: cambiarEstado },
       cancelarTurno: { execute: cancelar },
-      reasignarHorarioTurno: { execute: vi.fn() },
     },
   },
 }));
@@ -28,17 +27,14 @@ import { INTERVALO_POLLING_MS, useColaTurnos, validarFiltros } from "./useColaTu
 
 const turno: Turno = {
   id: "t1",
+  ventana: { inicio: "2026-09-28T08:00:00-03:00", fin: "2026-09-28T08:30:00-03:00" },
   hora: "08:00",
   offsetMin: 0,
   patente: "AF123BC",
   chofer: "Juan Pérez",
   finca: "Finca Norte",
-  flota: null,
   horasDesdeCorte: 3,
   estado: "pendiente",
-  canal: null,
-  esperaMin: null,
-  prioridad: null,
 };
 
 const esperar = (ms = 0) => act(() => vi.advanceTimersByTimeAsync(ms));
@@ -124,6 +120,136 @@ function diferida<T>() {
   });
   return { promesa, resolver, rechazar };
 }
+
+describe("useColaTurnos: alta confirmada", () => {
+  const datos = {
+    telefono: "+5493815550101", patente: "AF123BC", codigoFinca: "FINCA-NORTE",
+    corteEn: "2026-09-28T05:00:00-03:00", cargaTon: 28.5,
+  };
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-28T12:00:00Z"));
+    obtenerTurnos.mockReset().mockResolvedValue([]);
+    obtenerDetalle.mockReset();
+    crear.mockReset();
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.useRealTimers();
+  });
+
+  it.each(["2026-09-28", "2026-09-29"])("muestra y selecciona el turno asignado al %s", async (dia) => {
+    const creado: Turno = {
+      ...turno, id: "nuevo",
+      ventana: { inicio: `${dia}T23:30:00-03:00`, fin: `${dia}T23:59:00-03:00` },
+    };
+    crear.mockResolvedValue(creado);
+    const { result } = renderHook(() => useColaTurnos());
+    await esperar();
+    act(() => {
+      result.current.setFecha("2026-09-27");
+      result.current.setFiltroEstado("completado");
+      result.current.setPatente("ZZZ999");
+      result.current.setTelefono("+5493815550199");
+      result.current.setBusqueda("otra finca");
+    });
+    await esperar();
+    obtenerTurnos.mockResolvedValue([creado]);
+    let devuelto: Turno | undefined;
+    await act(async () => { devuelto = await result.current.crearTurno(datos); });
+    await esperar();
+
+    expect(devuelto).toEqual(creado);
+    expect(result.current.filtros).toEqual({
+      fecha: dia, filtroEstado: "todos", patente: "", telefono: "", busqueda: "",
+    });
+    expect(obtenerTurnos).toHaveBeenLastCalledWith({
+      fecha: dia, estado: undefined, patente: undefined, telefono: undefined,
+    });
+    expect(result.current.detalle).toEqual(creado);
+    expect(result.current.detalleId).toBe(creado.id);
+    expect(result.current.turnos).toEqual([creado]);
+  });
+
+  it("recarga después de crear aunque la fecha y los filtros ya coincidían", async () => {
+    const { result } = renderHook(() => useColaTurnos());
+    await esperar();
+    act(() => result.current.setFecha("2026-09-28"));
+    await esperar();
+    const consultasPrevias = obtenerTurnos.mock.calls.length;
+    obtenerTurnos.mockResolvedValue([turno]);
+    crear.mockResolvedValue(turno);
+
+    await act(() => result.current.crearTurno(datos));
+    await esperar();
+
+    expect(obtenerTurnos).toHaveBeenCalledTimes(consultasPrevias + 1);
+    expect(obtenerTurnos).toHaveBeenLastCalledWith({
+      fecha: "2026-09-28", estado: undefined, patente: undefined, telefono: undefined,
+    });
+    expect(result.current.turnos).toEqual([turno]);
+  });
+
+  it("abrir o cerrar un detalle no recarga el listado ni suspende su polling", async () => {
+    obtenerDetalle.mockResolvedValue(turno);
+    const { result } = renderHook(() => useColaTurnos());
+    await esperar();
+    expect(obtenerTurnos).toHaveBeenCalledTimes(1);
+    act(() => result.current.abrirDetalle(turno.id));
+    await esperar();
+    act(() => result.current.cerrarDetalle());
+    await esperar();
+    expect(obtenerTurnos).toHaveBeenCalledTimes(1);
+    await esperar(INTERVALO_POLLING_MS);
+    expect(obtenerTurnos).toHaveBeenCalledTimes(2);
+  });
+
+  it("un alta rechazada conserva los filtros y el detalle anterior", async () => {
+    crear.mockRejectedValue(new Error("El camión ya tiene un turno activo."));
+    const { result } = renderHook(() => useColaTurnos());
+    await esperar();
+    act(() => result.current.setFecha("2026-09-27"));
+    await esperar();
+    await act(async () => {
+      await expect(result.current.crearTurno(datos)).rejects.toThrow("El camión ya tiene un turno activo.");
+    });
+    expect(result.current.filtros.fecha).toBe("2026-09-27");
+    expect(result.current.detalleId).toBeNull();
+  });
+
+  it("una lista o detalle anterior no reemplaza al turno recién creado", async () => {
+    const listaVieja = diferida<Turno[]>();
+    const detalleViejo = diferida<Turno>();
+    const nuevo = { ...turno, id: "nuevo" };
+    obtenerTurnos.mockReturnValueOnce(listaVieja.promesa).mockResolvedValue([nuevo]);
+    obtenerDetalle.mockReturnValueOnce(detalleViejo.promesa);
+    crear.mockResolvedValue(nuevo);
+    const { result } = renderHook(() => useColaTurnos());
+    act(() => result.current.abrirDetalle(turno.id));
+    await act(() => result.current.crearTurno(datos));
+    await act(async () => {
+      listaVieja.resolver([turno]);
+      detalleViejo.resolver(turno);
+    });
+    await esperar();
+    expect(result.current.detalle).toEqual(nuevo);
+    expect(result.current.turnos).toEqual([nuevo]);
+  });
+
+  it("conserva la confirmación aunque falle la recarga del listado", async () => {
+    crear.mockResolvedValue(turno);
+    const { result } = renderHook(() => useColaTurnos());
+    await esperar();
+    obtenerTurnos.mockRejectedValue(new Error("No se pudo conectar con la API."));
+    await act(() => result.current.crearTurno(datos));
+    await esperar();
+    expect(result.current.detalle).toEqual(turno);
+    expect(result.current.estadoCarga).toBe("error");
+    expect(result.current.error).toBe("No se pudo conectar con la API.");
+  });
+});
 
 describe("useColaTurnos con respuestas de detalle fuera de orden", () => {
   const turnoA: Turno = { ...turno, id: "A", patente: "AAA111" };

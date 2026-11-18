@@ -4,19 +4,31 @@ using Microsoft.AspNetCore.Mvc.ApplicationModels;
 namespace AgroFlow.Api.Security;
 
 /// <summary>
-/// La API de turnos sin identidad pertenece exclusivamente al perfil de demo;
-/// el login Identity heredado se conserva sólo fuera de ese perfil hasta B03.
+/// Publica una sola variante de las rutas de turnos para el perfil activo.
 /// </summary>
 public sealed class LocalDemoAppointmentsConvention(bool isLocalDemo) : IApplicationModelConvention
 {
+    private static readonly Type[] LocalDemoOnlyControllers =
+    [
+        typeof(AppointmentsController),
+        typeof(AssociationsController),
+        typeof(ChannelController),
+        typeof(ConversationsController),
+        typeof(DriversController),
+        typeof(FarmsController),
+        typeof(TrucksController),
+        typeof(WindowsController)
+    ];
+
     public void Apply(ApplicationModel application)
     {
-        var excludedType = isLocalDemo
-            ? typeof(AuthenticateController)
-            : typeof(AppointmentsController);
-        var controller = application.Controllers.FirstOrDefault(
-            candidate => candidate.ControllerType.AsType() == excludedType);
-        if (controller is not null)
+        Type[] excludedTypes = isLocalDemo
+            ? [typeof(AuthenticateController), typeof(MvpAppointmentReadsController)]
+            : LocalDemoOnlyControllers;
+        var excluded = application.Controllers
+            .Where(candidate => excludedTypes.Contains(candidate.ControllerType.AsType()))
+            .ToArray();
+        foreach (var controller in excluded)
         {
             application.Controllers.Remove(controller);
         }
