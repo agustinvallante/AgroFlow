@@ -1,0 +1,18 @@
+{
+  "name": "agroflow-ers-pdf",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22 <25"
+  },
+  "scripts": {
+    "setup:browser": "playwright install chromium",
+    "test": "node --test",
+    "build:pdf": "node src/cli.mjs"
+  },
+  "dependencies": {
+    "markdown-it": "14.3.3",
+    "playwright": "1.58.2"
+  }
+}
