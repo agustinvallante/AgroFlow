@@ -91,6 +91,7 @@ describe("driverMapper", () => {
       dni: "20555555555",
       telefono: "+5493815550155",
       patente: null,
+      patentes: [],
       activo: true,
       puedeSolicitarTurnos: false,
     });

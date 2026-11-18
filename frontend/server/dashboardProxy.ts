@@ -21,8 +21,10 @@ const AGROFLOW_HEADERS = [DASHBOARD_KEY_HEADER, "x-agroflow-service-key"];
 /** Rutas que el dashboard puede consultar con la clave. */
 const WINDOWS_ROUTE = "/api/v1/windows";
 const TRUCKS_ROUTE = "/api/v1/trucks";
+/** Catálogo de fincas: el backend lo comparte entre el dashboard y n8n. */
+const FARMS_ROUTE = "/api/v1/farms";
 /** Rutas de sólo lectura: únicamente GET sobre la colección, sin subrutas. */
-const READ_ONLY_ROUTES = [WINDOWS_ROUTE, TRUCKS_ROUTE];
+const READ_ONLY_ROUTES = [WINDOWS_ROUTE, TRUCKS_ROUTE, FARMS_ROUTE];
 export const DASHBOARD_ROUTES = ["/api/v1/conversations", "/api/v1/drivers", "/api/v1/associations", ...READ_ONLY_ROUTES];
 /** Rutas de n8n: el navegador nunca las alcanza a través del proxy. */
 export const CHANNEL_ROUTES = ["/api/v1/conversation-events", "/api/v1/conversation-reply-intents"];

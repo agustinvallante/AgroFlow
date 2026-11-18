@@ -38,6 +38,7 @@ Los documentos académicos originales son fuentes históricas. Una vez incorpora
 
 - Leer la [guía de incorporación](docs/onboarding/getting-started.md).
 - Ejecutar la [demo local integrada](docs/development/local-demo.md) y consultar el [componente chatbot](chatbot/README.md).
+- Probar el [mapa simulado de presentación](docs/development/mapa-simulado-presentacion.md) con datos ficticios cargados manualmente.
 - Consultar la [visión y alcance del MVP](docs/product/vision-and-scope.md).
 - Usar la [guía de aceptación del MVP](docs/product/mvp-acceptance.md) para saber qué resultado es suficiente y qué evidencia conservar.
 - Leer la [replanificación tras la demo](docs/planning/mvp-replan-2026-09-29.md) y la [hoja de ruta](docs/planning/implementation-roadmap.md) para distinguir lo integrado de lo pendiente.
@@ -53,7 +54,7 @@ Los documentos académicos originales son fuentes históricas. Una vez incorpora
 ## Estado técnico
 
 - El backend parte de una copia independiente de [ICS2026-backend](https://github.com/agustinvallante/ICS2026-backend), commit `dc40f7cfa515a1425f8709c73ae917e9c004266a`.
-- El frontend React/Vite importado desde [AgroFlow-Dashboard](https://github.com/GabrielBurieque/AgroFlow-Dashboard) está en `frontend/`: muestra solo datos de la API: la cola y el panel usan los turnos de la demo; las secciones sin endpoint conservan su diseño, sin datos. Las propuestas de Next.js y sus librerías asociadas no son arquitectura aprobada; ver [ADR-005](docs/architecture/decisions/ADR-005-continuidad-react-vite-para-el-mvp.md).
+- El frontend React/Vite importado desde [AgroFlow-Dashboard](https://github.com/GabrielBurieque/AgroFlow-Dashboard) está en `frontend/`. La cola, los camiones en curso, los transportistas y las conversaciones usan AgroFlow API. El mapa ofrece la [simulación independiente de presentación](docs/development/mapa-simulado-presentacion.md). Las demás secciones sin endpoint conservan su diseño, sin datos. La arquitectura se registra en [ADR-005](docs/architecture/decisions/ADR-005-continuidad-react-vite-para-el-mvp.md).
 - La solución backend `AgroFlow.sln` conserva `LocalDemo` y habilita en el perfil MVP el login interno y las dos lecturas de turnos con SQLite, Identity y ámbito por ingenio. Consultar el [arranque del backend](backend/README.md#probar-las-lecturas-internas-del-mvp).
 - Los contratos HTTP distinguen ambos perfiles. El contrato MVP documenta el listado paginado y el detalle autenticado. [Contratos compartidos](docs/contracts/README.md)
 - Si ya existe una SQLite de la demo anterior, aplicar la [transición con respaldo y selección explícita](docs/development/local-demo-runbook.md#actualización-desde-la-demo-anterior-sin-perder-turnos) antes de iniciar la API renombrada; Git no mueve esos archivos ignorados.

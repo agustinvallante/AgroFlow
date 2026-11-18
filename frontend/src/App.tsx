@@ -4,6 +4,7 @@ import { Sidebar } from "./presentation/layout/Sidebar";
 import type { VistaId } from "./presentation/layout/vistas";
 import { PanelGeneralView } from "./presentation/views/PanelGeneralView";
 import { ColaTurnosView } from "./presentation/views/ColaTurnosView";
+import { MapaView } from "./presentation/views/MapaView";
 import { ChatbotView } from "./presentation/views/ChatbotView";
 import { TransportistasView } from "./presentation/views/TransportistasView";
 import { ReportesView } from "./presentation/views/ReportesView";
@@ -12,6 +13,7 @@ import { ConfiguracionView } from "./presentation/views/ConfiguracionView";
 const VISTA_COMPONENTES: Record<VistaId, ComponentType> = {
   general: PanelGeneralView,
   cola: ColaTurnosView,
+  mapa: MapaView,
   chatbot: ChatbotView,
   transportistas: TransportistasView,
   reportes: ReportesView,

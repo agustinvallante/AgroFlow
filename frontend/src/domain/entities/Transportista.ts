@@ -5,6 +5,8 @@ export interface Transportista {
   dni: string;
   /** Patentes de los camiones asociados; null si no tiene ninguno. */
   patente: string | null;
+  /** Camiones activos asociados; con ellos puede pedir turnos. */
+  patentes: string[];
   telefono: string;
   activo: boolean;
   puedeSolicitarTurnos: boolean;
