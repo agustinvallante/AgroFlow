@@ -36,6 +36,10 @@ Las políticas de prioridad, ventanas, asociaciones, alcance de catálogos y col
 - `planning/`: decisiones pendientes y secuencia de implementación.
 - `reference/`: procedencia y estado de las fuentes originales.
 
+## Auditorías funcionales
+
+- [Presentación de noviembre de 2026](audits/2026-11-14-presentacion.md) con hallazgos originales, estado actualizado y criterios de cierre.
+
 ## Jerarquía de autoridad
 
 Si dos documentos se contradicen, se debe detener la implementación y resolver la diferencia en el mismo pull request. El orden de autoridad es:
