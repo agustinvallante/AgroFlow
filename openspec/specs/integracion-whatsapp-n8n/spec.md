@@ -8,7 +8,7 @@ Define los límites funcionales del canal conversacional para CU-002, CU-003, CU
 
 ### Requirement: Identificación desde WhatsApp (RN-014, RN-018)
 
-Para solicitudes y consultas originadas en WhatsApp, AgroFlow SHALL identificar al transportista mediante el número telefónico del remitente y SHALL identificar el camión mediante su patente.
+Para solicitudes y consultas originadas en WhatsApp, ZafraFlow SHALL identificar al transportista mediante el número telefónico del remitente y SHALL identificar el camión mediante su patente.
 
 #### Scenario: Mensaje con identidad reconocida
 
@@ -20,7 +20,7 @@ Para solicitudes y consultas originadas en WhatsApp, AgroFlow SHALL identificar 
 
 - **GIVEN** un mensaje proveniente de un número no asociado a un transportista activo
 - **WHEN** n8n solicita una operación
-- **THEN** AgroFlow la rechaza sin exponer datos de turnos o camiones
+- **THEN** ZafraFlow la rechaza sin exponer datos de turnos o camiones
 
 ### Requirement: Solicitud conversacional sin elección de franja
 
@@ -34,7 +34,7 @@ n8n SHALL reunir el momento de corte y la carga estimada además de los datos re
 
 ### Requirement: Backend como fuente de verdad (RN-019, RN-037)
 
-El backend de AgroFlow SHALL determinar el estado vigente, quién debe ser notificado y qué cambió; n8n MUST limitarse a invocar la API y efectuar la comunicación mediante WhatsApp.
+El backend de ZafraFlow SHALL determinar el estado vigente, quién debe ser notificado y qué cambió; n8n MUST limitarse a invocar la API y efectuar la comunicación mediante WhatsApp.
 
 #### Scenario: Consulta por WhatsApp
 
@@ -46,11 +46,11 @@ El backend de AgroFlow SHALL determinar el estado vigente, quién debe ser notif
 
 - **GIVEN** una interrupción procesada por el backend
 - **WHEN** se requieren notificaciones
-- **THEN** n8n comunica los destinatarios y cambios indicados por AgroFlow sin recalcularlos
+- **THEN** n8n comunica los destinatarios y cambios indicados por ZafraFlow sin recalcularlos
 
 ### Requirement: Actualización EN_CAMINO por el canal (RN-030)
 
-AgroFlow SHALL admitir que un transportista identificado informe el estado `EN_CAMINO` mediante WhatsApp y n8n, sujeto a las mismas validaciones del ciclo de vida.
+ZafraFlow SHALL admitir que un transportista identificado informe el estado `EN_CAMINO` mediante WhatsApp y n8n, sujeto a las mismas validaciones del ciclo de vida.
 
 #### Scenario: Aviso válido de salida
 

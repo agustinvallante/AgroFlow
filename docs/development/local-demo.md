@@ -103,7 +103,7 @@ La memoria, los prompts y las herramientas de turnos se conservan. La consulta d
 
 ### Historial de ejecuciones de n8n
 
-Compose fija que n8n **no guarde** los datos de ejecuciones exitosas, manuales ni el progreso (`EXECUTIONS_DATA_SAVE_ON_SUCCESS=none`, entre otras); las fallidas se conservan para diagnóstico y se depuran a las 24 h, con un máximo de 50. El workflow exportado repite esa política en sus `settings` y el validador de CI la exige. El historial autoritativo de conversaciones vive en AgroFlow API. Para depurar una ejecución exitosa, habilitar temporalmente el guardado desde la configuración del workflow en n8n y volver a deshabilitarlo; no versionar ese cambio. Las ejecuciones previas a este ajuste no se borran solas: eliminarlas desde **Executions** si contienen datos de personas.
+Compose fija que n8n **no guarde** los datos de ejecuciones exitosas, manuales ni el progreso (`EXECUTIONS_DATA_SAVE_ON_SUCCESS=none`, entre otras); las fallidas se conservan para diagnóstico y se depuran a las 24 h, con un máximo de 50. El workflow exportado repite esa política en sus `settings` y el validador de CI la exige. El historial autoritativo de conversaciones vive en ZafraFlow API. Para depurar una ejecución exitosa, habilitar temporalmente el guardado desde la configuración del workflow en n8n y volver a deshabilitarlo; no versionar ese cambio. Las ejecuciones previas a este ajuste no se borran solas: eliminarlas desde **Executions** si contienen datos de personas.
 
 ### Webhook Evolution → n8n sin autenticación
 
@@ -112,7 +112,7 @@ El webhook de n8n no verifica que el evento provenga de Evolution: quien alcance
 - n8n publica sólo en `127.0.0.1` y Evolution lo llama por la red interna de Docker (`http://n8n:5678/...`); no abrir ni reenviar ese puerto.
 - La ruta del webhook es un identificador aleatorio; no compartirla.
 - El workflow descarta eventos de otra instancia que `EVOLUTION_INSTANCE`, mensajes propios, grupos, difusiones y estados, y direcciones que no sean `<dígitos>@s.whatsapp.net` o `<dígitos>@lid`.
-- AgroFlow API exige la clave de servicio: el webhook no la recibe ni la expone.
+- ZafraFlow API exige la clave de servicio: el webhook no la recibe ni la expone.
 
 Pendiente de verificar con Evolution real: si la versión fijada admite encabezados propios en el webhook, agregar autenticación por encabezado al nodo `Webhook` (credencial aparte). No se activó porque, sin esa verificación, rechazaría todos los eventos.
 

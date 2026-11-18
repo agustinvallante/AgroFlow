@@ -93,7 +93,7 @@ export function TransportistasView() {
       <div className="topbar">
         <div>
           <h1>Transportistas</h1>
-          <div className="zafra">Transportistas registrados · AgroFlow API</div>
+          <div className="zafra">Transportistas registrados · ZafraFlow API</div>
         </div>
         <div className="row-actions">
           <button className="btn-mini" onClick={() => { recargar(); recargarFlota(); }}>Actualizar</button>

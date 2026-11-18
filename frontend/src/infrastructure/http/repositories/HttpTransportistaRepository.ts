@@ -7,7 +7,7 @@ import { mapDriver, toDriverInput } from "../mappers/driverMapper";
 const BASE = "/api/v1/drivers";
 
 /**
- * Transportistas de AgroFlow API. Cada mutación lleva una Idempotency-Key
+ * Transportistas de ZafraFlow API. Cada mutación lleva una Idempotency-Key
  * nueva; la API responde un recibo y el transportista se relee para mostrar
  * lo persistido.
  */

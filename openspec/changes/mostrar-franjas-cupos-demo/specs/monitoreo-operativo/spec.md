@@ -77,7 +77,7 @@ la lectura independiente de camiones activos de otras fechas.
 El navegador SHALL consultar las ventanas en su mismo origen sin claves.
 El proxy Vite SHALL agregar la clave del dashboard exclusivamente del lado
 servidor al GET exacto de ventanas, con query opcional, sólo para clientes
-loopback con Host local y mismo origen. MUST NOT reenviar claves AgroFlow
+loopback con Host local y mismo origen. MUST NOT reenviar claves ZafraFlow
 aportadas por el navegador, habilitar mutaciones/subrutas de ventanas ni abrir
 las rutas del canal.
 

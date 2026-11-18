@@ -12,7 +12,7 @@ Además, el prototipo actual usa datos simulados y la automatización conversaci
 
 ## Decisión
 
-El backend de AgroFlow es la única fuente operativa de verdad para:
+El backend de ZafraFlow es la única fuente operativa de verdad para:
 
 - identidad efectiva, permisos y pertenencia al ingenio;
 - entidades y relaciones del dominio;

@@ -34,7 +34,7 @@ Turno que todavía puede influir en la operación o consumir capacidad. La defin
 
 ### Ventana horaria
 
-Intervalo de recepción con capacidad limitada. AgroFlow asigna automáticamente la próxima ventana compatible; el transportista no elige una franja en el MVP. Duración y cupo se configuran por ingenio mediante datos de arranque, sin edición desde la interfaz en esta etapa. El escenario de demostración usa ventanas de 30 minutos y dos camiones de cupo, sin convertir esos valores en reglas fijas del producto. El calendario de recepción, la zona horaria y sus límites requieren una decisión adicional.
+Intervalo de recepción con capacidad limitada. ZafraFlow asigna automáticamente la próxima ventana compatible; el transportista no elige una franja en el MVP. Duración y cupo se configuran por ingenio mediante datos de arranque, sin edición desde la interfaz en esta etapa. El escenario de demostración usa ventanas de 30 minutos y dos camiones de cupo, sin convertir esos valores en reglas fijas del producto. El calendario de recepción, la zona horaria y sus límites requieren una decisión adicional.
 
 ### Prioridad
 

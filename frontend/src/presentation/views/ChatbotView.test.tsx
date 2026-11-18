@@ -52,7 +52,7 @@ const mensajes: Record<string, MensajeChat[]> = {
   ],
 };
 
-describe("ChatbotView con AgroFlow API", () => {
+describe("ChatbotView con ZafraFlow API", () => {
   beforeEach(() => {
     mocks.obtenerConversaciones.mockReset().mockResolvedValue([reconocida, noRegistrada]);
     mocks.obtenerMensajes.mockReset().mockImplementation(async (id: string) => mensajes[id]);
@@ -68,7 +68,7 @@ describe("ChatbotView con AgroFlow API", () => {
 
     expect(await screen.findByText("[SINTÉTICO] Quiero mi turno")).toBeTruthy();
     expect(screen.getByText("Aceptado por el proveedor")).toBeTruthy();
-    expect(screen.getByText("Historial persistido en AgroFlow API")).toBeTruthy();
+    expect(screen.getByText("Historial persistido en ZafraFlow API")).toBeTruthy();
     expect(screen.getAllByText("Transportista Sintético").length).toBeGreaterThan(0);
     // La vista nunca afirma una entrega: sólo lo que informa la API.
     expect(screen.queryByText(/entregado/i)).toBeNull();

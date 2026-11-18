@@ -2,7 +2,7 @@
 
 ## Objetivo
 
-Llegar al lunes con una demostración local integrada y pequeña de AgroFlow: crear un turno, consultarlo y recorrer su ciclo de vida con backend y persistencia reales. Un segundo turno demuestra cancelación y liberación de capacidad.
+Llegar al lunes con una demostración local integrada y pequeña de ZafraFlow: crear un turno, consultarlo y recorrer su ciclo de vida con backend y persistencia reales. Un segundo turno demuestra cancelación y liberación de capacidad.
 
 Este alcance implementa la issue #49. No reemplaza la [aceptación del MVP](../../openspec/specs/aceptacion-del-mvp/spec.md) ni reduce sus requisitos.
 

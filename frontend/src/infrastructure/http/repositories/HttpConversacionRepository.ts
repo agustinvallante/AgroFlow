@@ -38,7 +38,7 @@ async function recorrerPaginas<D, T>(
   throw new ListadoIncompleto(items, `Se muestran los primeros ${items.length} ${nombre}.`);
 }
 
-/** Conversaciones y mensajes persistidos por AgroFlow API. */
+/** Conversaciones y mensajes persistidos por ZafraFlow API. */
 export class HttpConversacionRepository implements ConversacionRepository {
   private readonly api: ApiClient;
 

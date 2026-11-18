@@ -19,7 +19,7 @@ interface AssociationDto {
 const ASSOCIATIONS = "/api/v1/associations";
 
 /**
- * Asociaciones transportista-camión de AgroFlow API. Cada mutación lleva una
+ * Asociaciones transportista-camión de ZafraFlow API. Cada mutación lleva una
  * Idempotency-Key nueva; las reglas (un transportista activo por camión,
  * recursos activos) las valida el backend.
  */

@@ -14,7 +14,7 @@ export function BotFeedPanel({ mensajes }: { mensajes: MensajeChat[] }) {
             key={i}
           >
             <span className="who">
-              {m.autor === "transportista" ? "Transportista" : "Bot AgroFlow"}
+              {m.autor === "transportista" ? "Transportista" : "Bot ZafraFlow"}
             </span>
             {m.texto}
           </div>

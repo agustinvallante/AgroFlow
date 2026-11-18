@@ -1,6 +1,6 @@
-# Chatbot de AgroFlow
+# Chatbot de ZafraFlow
 
-Workflow de n8n para conversar por WhatsApp mediante Evolution API: registra cada mensaje en AgroFlow API, reúne datos y consume la API; no asigna turnos, no decide identidad ni deduplica, y no mantiene estado operativo propio. El [contrato HTTP canónico](../docs/contracts/openapi.yaml) y la [especificación de integración](../openspec/specs/integracion-whatsapp-n8n/spec.md) son la referencia.
+Workflow de n8n para conversar por WhatsApp mediante Evolution API: registra cada mensaje en ZafraFlow API, reúne datos y consume la API; no asigna turnos, no decide identidad ni deduplica, y no mantiene estado operativo propio. El [contrato HTTP canónico](../docs/contracts/openapi.yaml) y la [especificación de integración](../openspec/specs/integracion-whatsapp-n8n/spec.md) son la referencia.
 
 ## Ejecutar e importar
 

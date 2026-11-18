@@ -1,6 +1,6 @@
 openapi: 3.1.0
 info:
-  title: AgroFlow API — Lectura interna de turnos del MVP
+  title: ZafraFlow API — Lectura interna de turnos del MVP
   version: 0.1.0
   description: >-
     Contrato de B00 (#7) para B25 (#29) y B26 (#30). Describe las dos
@@ -165,7 +165,7 @@ components:
       scheme: bearer
       bearerFormat: JWT
       description: >-
-        Token de usuario interno activo, emitido por AgroFlow. Debe identificar
+        Token de usuario interno activo, emitido por ZafraFlow. Debe identificar
         al usuario mediante sub e incluir su rol y un único ingenioId válido.
 
   schemas:

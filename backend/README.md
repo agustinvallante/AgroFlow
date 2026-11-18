@@ -1,4 +1,4 @@
-# Backend de AgroFlow
+# Backend de ZafraFlow
 
 Base técnica en .NET 8 reutilizada de [ICS2026-backend](https://github.com/agustinvallante/ICS2026-backend).
 

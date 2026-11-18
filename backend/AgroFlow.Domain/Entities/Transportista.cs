@@ -63,7 +63,7 @@ public sealed class Transportista : EntityBase
     }
 }
 
-/// <summary>Shared validation primitives used by the AgroFlow domain entities.</summary>
+/// <summary>Shared validation primitives used by the ZafraFlow domain entities.</summary>
 public static class MasterDataValidation
 {
     public static Guid RequireIngenioId(Guid ingenioId) => ingenioId == Guid.Empty

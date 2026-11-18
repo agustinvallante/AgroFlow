@@ -2,10 +2,10 @@
 
 ## Acceso del equipo
 
-AgroFlow utiliza un repositorio y dos GitHub Projects personales:
+ZafraFlow utiliza un repositorio y dos GitHub Projects personales:
 
-- [AgroFlow — Frontend](https://github.com/users/agustinvallante/projects/1);
-- [AgroFlow — Backend](https://github.com/users/agustinvallante/projects/2).
+- [ZafraFlow — Frontend](https://github.com/users/agustinvallante/projects/1);
+- [ZafraFlow — Backend](https://github.com/users/agustinvallante/projects/2).
 
 Una persona que desarrolla y administra tareas necesita permiso **Write** tanto en el repositorio como en cada Project. Son permisos independientes. El rol Write permite trabajar con código, issues, pull requests e items; el rol Admin se reserva para quienes deban modificar accesos, campos o automatizaciones.
 
@@ -78,7 +78,7 @@ Se revisan `n8n-nodes-base.httpRequest`, `n8n-nodes-base.httpRequestTool` y el t
 
 Los destinos declarados permitidos son:
 
-- **API de AgroFlow:** los tres tipos admiten `={{ $env.AGROFLOW_API_URL }}/api/v1/appointments`, con el ID dinámico opcional y el sufijo `/transitions` cuando corresponda.
+- **API de ZafraFlow:** los tres tipos admiten `={{ $env.AGROFLOW_API_URL }}/api/v1/appointments`, con el ID dinámico opcional y el sufijo `/transitions` cuando corresponda.
 - **Respuesta de WhatsApp:** sólo el nodo ordinario `httpRequest`, con método `POST`, admite `={{ $env.EVOLUTION_INTERNAL_URL }}/message/sendText/{{ $env.EVOLUTION_INSTANCE }}`. Compose configura esa base como `http://evolution:8080`; no se autorizan otras operaciones de Evolution ni herramientas del agente contra ese servicio.
 
 La base debe ocupar el inicio de la plantilla: no basta mencionar esa variable o la ruta en otra URL. No se evalúa JavaScript; concatenaciones, transformaciones de la base y otros formatos requieren adaptar expresamente el control y sus regresiones. Los filtros se pasan por `queryParameters` (o `parametersQuery` en el tipo anterior), no como una URL arbitraria.

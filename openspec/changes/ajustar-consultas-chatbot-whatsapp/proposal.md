@@ -5,7 +5,7 @@
 ## Objetivo
 
 1. Que el transportista encuentre por WhatsApp sus turnos activos aunque estén asignados para mañana o un día posterior.
-2. Que el transportista pueda nombrar la finca como lo hace habitualmente ("Finca Norte", "norte", "finca sur") y que AgroFlow la resuelva a su código, sin una tabla de códigos en n8n.
+2. Que el transportista pueda nombrar la finca como lo hace habitualmente ("Finca Norte", "norte", "finca sur") y que ZafraFlow la resuelva a su código, sin una tabla de códigos en n8n.
 
 ## Motivación
 

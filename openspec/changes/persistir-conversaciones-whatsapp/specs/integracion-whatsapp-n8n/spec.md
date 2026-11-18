@@ -4,23 +4,23 @@
 
 ### Requirement: Autenticación del canal ante la API (OD-008)
 
-La integración de n8n SHALL autenticarse como servicio en cada operación de registro de mensajes, respuestas y resultados. AgroFlow MUST rechazar esas operaciones sin una credencial de servicio válida, MUST rechazar instancias del canal no habilitadas y SHALL determinar el ingenio únicamente a partir de la instancia autorizada.
+La integración de n8n SHALL autenticarse como servicio en cada operación de registro de mensajes, respuestas y resultados. ZafraFlow MUST rechazar esas operaciones sin una credencial de servicio válida, MUST rechazar instancias del canal no habilitadas y SHALL determinar el ingenio únicamente a partir de la instancia autorizada.
 
 #### Scenario: Credencial ausente o inválida
 
 - **GIVEN** una solicitud de registro de mensaje sin credencial de servicio válida
 - **WHEN** llega a la API
-- **THEN** AgroFlow responde no autenticado sin persistir datos
+- **THEN** ZafraFlow responde no autenticado sin persistir datos
 
 #### Scenario: Instancia no habilitada
 
 - **GIVEN** una credencial válida y una instancia del canal desconocida o inactiva
 - **WHEN** n8n registra un mensaje de esa instancia
-- **THEN** AgroFlow rechaza la operación sin persistir datos ni revelar otros ingenios
+- **THEN** ZafraFlow rechaza la operación sin persistir datos ni revelar otros ingenios
 
 ### Requirement: Registro previo al procesamiento conversacional (OD-011)
 
-n8n SHALL registrar cada mensaje entrante en AgroFlow antes de invocar al asistente o a cualquier operación de turnos, y SHALL continuar solo cuando AgroFlow autorice el procesamiento. Ante una disposición de detención, un conflicto, un error o la imposibilidad de registrar, n8n MUST NOT invocar al asistente, a las operaciones de turnos ni al envío.
+n8n SHALL registrar cada mensaje entrante en ZafraFlow antes de invocar al asistente o a cualquier operación de turnos, y SHALL continuar solo cuando ZafraFlow autorice el procesamiento. Ante una disposición de detención, un conflicto, un error o la imposibilidad de registrar, n8n MUST NOT invocar al asistente, a las operaciones de turnos ni al envío.
 
 #### Scenario: Mensaje autorizado de un transportista reconocido
 
@@ -30,7 +30,7 @@ n8n SHALL registrar cada mensaje entrante en AgroFlow antes de invocar al asiste
 
 #### Scenario: Mensaje repetido
 
-- **GIVEN** un mensaje que AgroFlow informa como repetido
+- **GIVEN** un mensaje que ZafraFlow informa como repetido
 - **WHEN** n8n recibe la disposición de detención
 - **THEN** finaliza sin invocar al asistente, las operaciones de turnos ni el envío
 
@@ -42,13 +42,13 @@ n8n SHALL registrar cada mensaje entrante en AgroFlow antes de invocar al asiste
 
 #### Scenario: Remitente no reconocido
 
-- **GIVEN** un mensaje autorizado cuyo remitente AgroFlow informa como no reconocido
+- **GIVEN** un mensaje autorizado cuyo remitente ZafraFlow informa como no reconocido
 - **WHEN** n8n lo procesa
 - **THEN** no invoca operaciones de turnos y solo puede responder con el texto fijo aprobado para remitentes no registrados
 
 ### Requirement: Envío limitado a respuestas registradas (OD-010)
 
-n8n SHALL enviar por WhatsApp únicamente el texto y el destinatario de una intención de respuesta confirmada por AgroFlow, y SHALL informar el resultado del envío. n8n MUST NOT reenviar automáticamente una respuesta cuyo resultado sea incierto.
+n8n SHALL enviar por WhatsApp únicamente el texto y el destinatario de una intención de respuesta confirmada por ZafraFlow, y SHALL informar el resultado del envío. n8n MUST NOT reenviar automáticamente una respuesta cuyo resultado sea incierto.
 
 #### Scenario: Envío confirmado por el proveedor
 

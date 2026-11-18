@@ -1,4 +1,4 @@
-# Documentación de AgroFlow
+# Documentación de ZafraFlow
 
 Este directorio es la entrada humana a la documentación. Los requisitos normativos y escenarios verificables viven en [`../openspec/specs/`](../openspec/specs/); aquí se conserva el contexto necesario para entenderlos y aplicarlos.
 

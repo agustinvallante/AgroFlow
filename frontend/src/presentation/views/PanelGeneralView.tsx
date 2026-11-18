@@ -14,7 +14,7 @@ import { ventanaDeRfc3339 } from "../../shared/utils/date";
 const ACTIVOS = ["viaje", "cancha", "ingresado", "descargando"];
 
 /**
- * Camiones en curso y franjas salen de AgroFlow API. Indicadores,
+ * Camiones en curso y franjas salen de ZafraFlow API. Indicadores,
  * feed del chatbot, molienda y avisos conservan su
  * lugar en la pantalla, sin datos y sin acciones.
  */
@@ -30,7 +30,7 @@ export function PanelGeneralView() {
       <div className="topbar">
         <div>
           <h1>Panel general</h1>
-          <div className="zafra">Camiones y franjas: AgroFlow API · Indicadores y avisos: sin datos</div>
+          <div className="zafra">Camiones y franjas: ZafraFlow API · Indicadores y avisos: sin datos</div>
         </div>
         <div className="clockbox">
           <div className="time">{hora}</div>

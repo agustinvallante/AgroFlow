@@ -13,7 +13,7 @@ export type EstadoTurno =
  * asignado a un camión/transportista. No conoce nada de la UI
  * ni de cómo se obtienen o persisten los datos.
  *
- * Solo contiene lo que informa AgroFlow API. Flota, canal, espera y
+ * Solo contiene lo que informa ZafraFlow API. Flota, canal, espera y
  * prioridad no están en el contrato y por eso no existen acá.
  */
 export interface Turno {

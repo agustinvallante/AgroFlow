@@ -4,8 +4,8 @@
 
 El código permanece en un monorepo con `frontend/` y `backend/`. OpenSpec, contratos y decisiones son compartidos. La separación de la planificación ya utiliza dos GitHub Projects:
 
-- [**AgroFlow — Frontend**](https://github.com/users/agustinvallante/projects/1), para tareas del área frontend;
-- [**AgroFlow — Backend**](https://github.com/users/agustinvallante/projects/2), para tareas del área backend.
+- [**ZafraFlow — Frontend**](https://github.com/users/agustinvallante/projects/1), para tareas del área frontend;
+- [**ZafraFlow — Backend**](https://github.com/users/agustinvallante/projects/2), para tareas del área backend.
 
 GitHub Projects son tableros de planificación, no repositorios de código. Las decisiones y el contrato compartidos no se copian como fuentes normativas separadas para cada tablero. Una necesidad transversal puede descomponerse en issues por área y enlazarse, manteniendo una sola especificación por capacidad.
 
