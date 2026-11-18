@@ -182,6 +182,7 @@ reales con Evolution, WhatsApp y agente simulados. El equipo también registró
 pruebas en vivo parciales. Para verificar la versión que se va a presentar,
 seguí el [ensayo con WhatsApp real](local-demo-runbook.md#ensayo-con-whatsapp-real)
 y registrá sus dos pasadas en la hoja de evidencia del runbook.
+Para mostrar el registro de un invitado, seguí el [alta en vivo de un voluntario](local-demo-runbook.md#alta-en-vivo-de-un-voluntario).
 
 Referencias autoritativas, sin duplicar DTOs ni reglas:
 
@@ -199,7 +200,7 @@ Referencias autoritativas, sin duplicar DTOs ni reglas:
 | Herramienta sin conexión | API iniciada, puertos coordinados y listener alcanzable desde Docker en Linux. |
 | `REFERENCE_NOT_FOUND` | Revisar remitente, finca activa y que la patente esté asociada al transportista activo. |
 | `401` sólo en `Lookup Farms` | Vincular `AgroFlow Service Key account` también en esa herramienta. |
-| Mensaje de remitente no identificado con número registrado | Verificar el formato E.164 y si Evolution entregó un remitente `@lid`. Ese tipo de dirección no se vincula a la ficha del transportista. |
+| Mensaje de remitente no identificado con número registrado | [Distinguir teléfono de `@lid` en el dashboard](local-demo-runbook.md#si-el-bot-no-reconoce-al-voluntario) y seguir el respaldo correspondiente. |
 | Webhook responde `503 not_persisted` | API detenida, credencial `AgroFlow Service Key account` ausente o distinta, o instancia distinta de `LocalDemo:WhatsAppInstance`. |
 | Webhook responde `200 ignored` | Mensaje propio, de grupo, sin texto o de una instancia distinta de `EVOLUTION_INSTANCE`. |
 | Dashboard muestra error de clave | Falta `AGROFLOW_DASHBOARD_KEY` en el entorno de Vite o no coincide con `Dashboard__ApiKey`. |

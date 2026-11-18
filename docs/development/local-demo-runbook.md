@@ -220,6 +220,68 @@ SQLite y dashboard, con la respuesta visible en el teléfono.
    localmente la patente y la finca ficticia elegida. Verificá en **Panel
    general → Cola del día** que haya alguna franja futura con cupo.
 
+### Alta en vivo de un voluntario
+
+**Antes de exponer.** Ensayá con el celular del voluntario y dejá listo otro
+remitente consentido que ya haya funcionado con el mismo bot. Para mostrar el
+alta desde cero, usá una SQLite de presentación separada de la del ensayo
+previo y arrancala con el seed ficticio. Prepará también en esa base la ficha
+del remitente de respaldo con otro camión. Reservá para el voluntario un
+camión habilitado, sin turnos activos ni asociación vigente. Por ejemplo,
+desasociá `AH303AB` de **Transportista Demo Cinco** y dejalo libre, siguiendo
+la [guía de asociaciones](local-demo.md#preparar-un-transportista-para-whatsapp-real).
+
+1. Pausá la proyección antes de ingresar o mostrar el número. Abrí
+   **Transportistas → + Nuevo transportista**, cargá un alias y un DNI
+   ficticio único, y el WhatsApp real del voluntario con su consentimiento,
+   en formato E.164. Pulsá **Guardar transportista**.
+2. En su fila, elegí **Asociar camión**, seleccioná `AH303AB` y confirmá
+   con **Asociar**. Verificá que aparezca la patente y desaparezca el aviso
+   de que no puede solicitar turnos. Si hay dudas, el detalle del
+   transportista en la API debe mostrar `canRequestAppointments: true`
+   y la patente en `activeTruckPlates`.
+3. Pedile que abra un chat privado con el número del bot y envíe un texto
+   nuevo, por ejemplo «¿Tengo algún turno activo?». En **Chatbot WhatsApp →
+   Actualizar**, verificá que la conversación reciente aparezca con el alias
+   registrado. En una base nueva, el bot debe indicar que aún no tiene un
+   turno activo. Confirmá que la respuesta haya llegado al teléfono.
+4. Pedile que solicite un turno con la patente asociada, **Finca Norte**,
+   un corte de prueba anterior a la hora actual y una carga de **25 t**.
+   Debe confirmar esos datos, recibir la franja asignada, poder consultar
+   el turno y avisar que está en camino. Mostrá el turno en **Cola de
+   turnos**, con la fecha que devolvió la API, y en **Camiones en curso**.
+   Mostrá la conversación sólo si no expone el contacto del voluntario.
+
+#### Si el bot no reconoce al voluntario
+
+- En **Chatbot WhatsApp**, buscá la conversación por la hora del mensaje.
+  Si figura **Remitente no registrado** y la dirección enmascarada termina
+  en `@lid`, Evolution entregó un identificador opaco. Para confirmarlo
+  desde el navegador, revisá la respuesta de `GET /api/v1/conversations`
+  en **Red** de las herramientas de desarrollo. La fila correspondiente
+  devuelve `addressKind: "LID"` y `sender.recognized: false`. Al registrar
+  el resultado, guardá sólo esos campos y el paso que falló.
+- Con `addressKind: "PHONE"` y `sender.recognized: false`, verificá fuera
+  de la proyección que la ficha esté activa y que el WhatsApp E.164
+  corresponda al celular que escribió. Corregí la ficha si hace falta y
+  pedí otro mensaje de texto. Si el alias aparece pero el alta del turno
+  falla, revisá por separado la patente, la asociación y la finca.
+- Con `addressKind: "LID"`, cambiá al remitente de respaldo ya ensayado
+  y usá la patente asociada a su ficha. La versión actual intenta enviar la respuesta
+  fija de remitente no registrado y omite al agente. Conservá la ficha con
+  el teléfono real y evitá usar el identificador LID o un dato alternativo
+  de Evolution como teléfono.
+- Si no aparece ninguna conversación nueva al actualizar, revisá que el
+  mensaje sea de texto, el bot siga conectado y el webhook publicado
+  reciba el evento, según el [diagnóstico del canal](local-demo.md#diagnóstico-y-parada-segura).
+  Si el respaldo por celular tampoco funciona, mostrales el
+  [ensayo con canal simulado](#respaldo-si-fallan-whatsapp-evolution-u-openai)
+  y anunciá que WhatsApp y el agente están simulados.
+
+Si vas a repetir con la misma patente, cancelá el turno de este guion desde
+la Cola y verificá que vuelva a quedar libre. Para cerrar #110, hacé además
+las dos pasadas de aceptación del apartado siguiente.
+
 ### Ejecutar dos pasadas
 
 1. Desde el remitente de prueba, pedí un turno indicando la patente asociada,
@@ -255,12 +317,9 @@ SQLite y dashboard, con la respuesta visible en el teléfono.
    el mismo teléfono y cotejá el nuevo turno. Para preparar la siguiente
    pasada, cancelá ese turno desde la cola y verificá que se libere su cupo.
 
-Si el canal falla, anotá el paso, el nodo y el error sin datos privados.
-Si la dirección llega como `@lid`, registrá el tipo y el resultado de
-identificación y probá con otro remitente consentido. Para mostrar el
-recorrido local, podés crear el turno desde **Cola de turnos** y usar
-`node chatbot/tests/acceptance.mjs` como respaldo del canal simulado.
-Registrá esos resultados por separado de las pasadas con WhatsApp real.
+Si el canal falla, seguí el [diagnóstico del remitente](#si-el-bot-no-reconoce-al-voluntario)
+y registrá el paso y el resultado sin datos privados. Registrá el respaldo
+simulado por separado de las pasadas con WhatsApp real.
 
 ### Evidencia del ensayo
 
@@ -270,7 +329,9 @@ la #110. Incluí SHA, fecha, responsable, máquina o sistema, versiones de
 n8n y Evolution y modelo usado. Omití teléfonos,
 credenciales, QR, rutas privadas y mensajes que identifiquen personas.
 Si hace falta adjuntar evidencia de un error, conservá sólo los campos
-sanitizados que expliquen el resultado.
+sanitizados que expliquen el resultado. Para un caso de remitente no
+reconocido, registrá `addressKind`, `sender.recognized` y si se pudo
+continuar con el teléfono de respaldo.
 
 | Pasada | SHA, fecha y entorno | Alta, consulta y EN_CAMINO | Cancelación, cupo y nueva alta | Reinicio y respuesta en el teléfono | Resultado o bloqueo |
 |---|---|---|---|---|---|
