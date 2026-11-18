@@ -17,6 +17,7 @@ export function ChatbotView() {
     cargando,
     error,
     errorRefresco,
+    avisoConversaciones,
   } = useChatbot();
 
   if (error) return (
@@ -61,6 +62,7 @@ export function ChatbotView() {
             <p>Se conservan las últimas conversaciones obtenidas. Podés actualizar o esperar el próximo refresco.</p>
           </div>
         )}
+        {avisoConversaciones && <ErrorState message={avisoConversaciones} />}
         <div className="chat-layout">
           <ConversationList
             conversaciones={conversaciones}

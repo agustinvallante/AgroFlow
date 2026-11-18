@@ -31,6 +31,13 @@ export class HttpTransportistaRepository implements TransportistaRepository {
     return this.obtener(recibo.resourceId);
   }
 
+  async actualizar(id: string, datos: NuevoTransportista): Promise<Transportista> {
+    await this.api.put<MutationReceiptDto>(`${BASE}/${encodeURIComponent(id)}`, toDriverInput(datos), {
+      "Idempotency-Key": this.nuevaClave(),
+    });
+    return this.obtener(id);
+  }
+
   async cambiarEstadoActivo(id: string): Promise<Transportista> {
     const actual = await this.obtener(id);
     if (!actual.activo) {

@@ -70,6 +70,11 @@ export function useTransportistas() {
     setTransportistas((prev) => [nuevo, ...prev]);
   }, []);
 
+  const editar = useCallback(async (id: string, datos: NuevoTransportista) => {
+    const actualizado = await container.transportistas.editarTransportista.execute(id, datos);
+    setTransportistas((prev) => prev.map((t) => (t.id === id ? actualizado : t)));
+  }, []);
+
   const cambiarEstado = useCallback(async (id: string) => {
     const actualizado = await container.transportistas.cambiarEstadoActivoTransportista.execute(id);
     setTransportistas((prev) => prev.map((t) => (t.id === id ? actualizado : t)));
@@ -85,6 +90,7 @@ export function useTransportistas() {
     setBusqueda,
     setFiltroEstado,
     crear,
+    editar,
     cambiarEstado,
     recargar: cargar,
   };

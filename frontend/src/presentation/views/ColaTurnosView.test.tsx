@@ -18,6 +18,15 @@ vi.mock("../../composition/container", () => ({
       cambiarEstadoTurno: { execute: mocks.cambiarEstado },
       cancelarTurno: { execute: vi.fn() },
     },
+    transportistas: {
+      obtenerTransportistas: {
+        execute: async () => [
+          { id: "d1", nombre: "Juan Pérez", dni: "1", telefono: "+5493815550101", patente: "AF123BC", patentes: ["AF123BC"], activo: true, puedeSolicitarTurnos: true },
+          { id: "d2", nombre: "Sin camión", dni: "2", telefono: "+5493815550199", patente: null, patentes: [], activo: true, puedeSolicitarTurnos: false },
+        ],
+      },
+    },
+    fincas: { obtenerFincas: { execute: async () => [{ id: "f1", codigo: "FINCA-NORTE", nombre: "Finca Norte" }] } },
   },
 }));
 
@@ -40,21 +49,33 @@ const turno: Turno = {
 const SIN_COINCIDENCIAS = "No hay turnos que coincidan con estos filtros.";
 const esperar = (ms = 0) => act(() => vi.advanceTimersByTimeAsync(ms));
 
-async function guardarTurnoValido() {
+async function guardarTurnoValido({ cargaTon = "28.5" } = {}) {
   fireEvent.click(screen.getByRole("button", { name: "+ Nuevo turno" }));
-  fireEvent.change(screen.getByPlaceholderText("+5493815550101"), { target: { value: "+5493815550101" } });
-  fireEvent.change(screen.getByPlaceholderText("AF123BC"), { target: { value: "AF123BC" } });
-  fireEvent.change(screen.getByPlaceholderText("FINCA-NORTE"), { target: { value: "FINCA-NORTE" } });
+  await esperar();
+  // Sólo se ofrecen transportistas habilitados; con un camión, su patente queda elegida.
+  expect(screen.queryByRole("option", { name: /Sin camión/ })).toBeNull();
+  fireEvent.change(screen.getByLabelText("Transportista"), { target: { value: "+5493815550101" } });
+  expect((screen.getByLabelText("Patente") as HTMLSelectElement).value).toBe("AF123BC");
+  fireEvent.change(screen.getByLabelText("Finca"), { target: { value: "FINCA-NORTE" } });
   fireEvent.change(document.querySelector('input[type="datetime-local"]')!, {
     target: { value: "2026-09-28T05:00" },
   });
-  fireEvent.change(screen.getByPlaceholderText("28.5"), { target: { value: "28.5" } });
+  fireEvent.change(screen.getByPlaceholderText("28.5"), { target: { value: cargaTon } });
   mocks.obtenerTurnos.mockResolvedValue([turno]);
   fireEvent.click(screen.getByRole("button", { name: "Guardar turno" }));
   await esperar();
 }
 
 describe("ColaTurnosView", () => {
+  it("no envía un alta sin carga estimada", async () => {
+    mocks.obtenerTurnos.mockResolvedValue([]);
+    render(<ColaTurnosView />);
+    await guardarTurnoValido({ cargaTon: "" });
+
+    expect(screen.getByText("Ingresá la carga estimada en toneladas, mayor que cero.")).toBeTruthy();
+    expect(mocks.crear).not.toHaveBeenCalled();
+  });
+
   beforeEach(() => {
     vi.useFakeTimers();
     mocks.obtenerTurnos.mockReset();
