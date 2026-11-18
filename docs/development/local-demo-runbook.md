@@ -415,7 +415,7 @@ En Windows PowerShell 5.1, guardar el resultado antes de filtrar (encadenar `Ven
 
 **Escenario A: turno hasta FINALIZADO**
 
-1. Abrir **Panel general → Cola del día**: en una base nueva, 20 franjas con 0 ocupados y 2 disponibles. Al repetir el guion, esos valores no se cumplen: antes de crear el turno anotar la ocupación de cada franja (`$antes = Ventanas $fecha`) y usarla como referencia.
+1. Abrir **Panel general → Cola del día**: en una base nueva, 20 franjas con 0 ocupados y 2 disponibles. Al repetir el guion, esos valores no se cumplen: la ocupación previa `N` de la ventana asignada se obtiene en el paso 3 como su `occupied` menos 1.
 2. `$a = Turno '+5493815550101' 'AF123BC' 'FINCA-NORTE'` → `status` `ASIGNADO`. Guardar la fecha asignada: `$fechaA = ([DateTimeOffset]$a.window.startAt).ToString('yyyy-MM-dd')`.
 3. `$todas = Ventanas $fechaA; $todas | Where-Object { $_.startAt -eq $a.window.startAt }` → en la primera pasada, `occupied` 1 y `available` 1 (en otras pasadas, `N`+1). En **Panel general** y **Cola de turnos** seleccionar `$fechaA`; el panel lo refleja en hasta 4 segundos y la Cola muestra `AF123BC`.
 4. `Pasar $a.id 'INGRESADO'` → `409`: no se saltan estados (PowerShell lo muestra como error).
