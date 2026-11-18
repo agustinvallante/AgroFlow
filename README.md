@@ -1,4 +1,4 @@
-# AgroFlow
+# ZafraFlow
 
 [![CI](https://github.com/agustinvallante/AgroFlow/actions/workflows/ci.yml/badge.svg)](https://github.com/agustinvallante/AgroFlow/actions/workflows/ci.yml)
 
@@ -20,7 +20,7 @@ OpenSpec no reemplaza las carpetas de código. `backend/` y `frontend/` permanec
 
 ## Organización del trabajo
 
-El código y los issues viven en este repositorio. Los tableros [AgroFlow — Backend](https://github.com/users/agustinvallante/projects/2) y [AgroFlow — Frontend](https://github.com/users/agustinvallante/projects/1) separan la planificación por área; no son repositorios distintos. Después de la demo, los issues describen **deltas sobre código ya integrado**. Antes de ampliar rutas o consumidores, hay que revisar [B00](https://github.com/agustinvallante/AgroFlow/issues/7), las decisiones pendientes, OpenSpec y OpenAPI.
+El código y los issues viven en este repositorio. Los tableros [ZafraFlow — Backend](https://github.com/users/agustinvallante/projects/2) y [ZafraFlow — Frontend](https://github.com/users/agustinvallante/projects/1) separan la planificación por área; no son repositorios distintos. Después de la demo, los issues describen **deltas sobre código ya integrado**. Antes de ampliar rutas o consumidores, hay que revisar [B00](https://github.com/agustinvallante/AgroFlow/issues/7), las decisiones pendientes, OpenSpec y OpenAPI.
 
 ## Fuente de verdad
 

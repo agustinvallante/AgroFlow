@@ -18,7 +18,7 @@ import {
 const BASE = "/api/v1/appointments";
 
 /**
- * Implementa TurnoRepository contra AgroFlow API (docs/contracts/openapi.yaml).
+ * Implementa TurnoRepository contra ZafraFlow API (docs/contracts/openapi.yaml).
  * Es la única fuente de turnos del dashboard.
  */
 export class HttpTurnoRepository implements TurnoRepository {

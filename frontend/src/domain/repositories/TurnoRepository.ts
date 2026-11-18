@@ -3,7 +3,7 @@ import type { EstadoTurno, FiltrosTurno, NuevoTurnoManual, Turno } from "../enti
 /**
  * Puerto (contrato) que define qué necesita la aplicación del mundo exterior
  * para trabajar con turnos. La capa de dominio/aplicación solo conoce esta
- * interfaz; la implementación HTTP contra AgroFlow API es un detalle de
+ * interfaz; la implementación HTTP contra ZafraFlow API es un detalle de
  * infraestructura. Solo incluye operaciones que existen en openapi.yaml.
  */
 export interface TurnoRepository {

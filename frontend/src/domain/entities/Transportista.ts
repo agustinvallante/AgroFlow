@@ -1,4 +1,4 @@
-/** Lo que publica el contrato de transportistas de AgroFlow API. */
+/** Lo que publica el contrato de transportistas de ZafraFlow API. */
 export interface Transportista {
   id: string;
   nombre: string;

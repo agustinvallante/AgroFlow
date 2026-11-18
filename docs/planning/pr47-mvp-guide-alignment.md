@@ -6,7 +6,7 @@
 
 | Guía | Alineación | Estado y límite |
 |---|---|---|
-| 1. Estructura | Priorizar `AgroFlow.sln`, proyectos `AgroFlow.*`, API/persistencia y el retiro ecommerce de main. Conservar menciones históricas intencionales en detector/runbook/tests; no restaurarlas como dominio activo. | No se modifica la estructura en esta corrección documental. |
+| 1. Estructura | Priorizar `AgroFlow.sln`, proyectos `ZafraFlow.*`, API/persistencia y el retiro ecommerce de main. Conservar menciones históricas intencionales en detector/runbook/tests; no restaurarlas como dominio activo. | No se modifica la estructura en esta corrección documental. |
 | 2. Acuerdos | Una asociación activa por camión; ventana automática compatible, sin preferencia; corte y carga obligatorios; capacidad/duración por ingenio desde datos de arranque; catálogos para operador/supervisor conforme a las specs. | Demo de 30 min/cupo 2 son datos de seed, no constantes. Prioridad aprobada no redondea por minuto. Campos, gestión externa y permisos adicionales siguen pendientes. |
 | 3. Persistencia | SQLite académico conforme a ADR-006; PostgreSQL como destino futuro; WAL condicionado a prueba. La demo conserva su esquema SQLite actual. | Se ignoran explícitamente ocho propiedades de timestamp no migradas: no persisten y no acreditan historial durable. B02 debe definir/migrar el esquema antes de habilitar la fundación. |
 | 4. Asociación | Se conserva la cardinalidad de una asociación activa por camión y su historial conceptual. | Alta/reactivación, pertenencia, contrato externo y concurrencia dependen de OD-007/OD-013/B00; no se publican aquí. |

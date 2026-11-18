@@ -126,7 +126,7 @@ Git renombra los archivos versionados, **no** la SQLite ignorada. Su ubicación 
    dotnet run --project backend/AgroFlow.Api/AgroFlow.Api.csproj --launch-profile http --urls http://localhost:5000
    ```
 
-   En Linux/macOS, configurá la misma variable con la ruta absoluta válida en ese host. Guardá la configuración fuera de Git y reaplicala al abrir otra terminal; sin ella, la protección de arranque vuelve a exigir selección explícita. Si trasladás después la base a una ubicación estable de AgroFlow, hacelo con una copia consistente verificada y conservando original/respaldo; no reemplaces una base ya existente.
+   En Linux/macOS, configurá la misma variable con la ruta absoluta válida en ese host. Guardá la configuración fuera de Git y reaplicala al abrir otra terminal; sin ella, la protección de arranque vuelve a exigir selección explícita. Si trasladás después la base a una ubicación estable de ZafraFlow, hacelo con una copia consistente verificada y conservando original/respaldo; no reemplaces una base ya existente.
 4. Comprobá `/health`, consultá los UUID registrados mediante `/api/v1/appointments/{id}` y verificá sus estados, maestros y cupos. Las migraciones pendientes se aplican al archivo seleccionado conservando su historial; el seed no duplica registros ni reemplaza turnos. Reiniciá y repetí la comprobación. Revisá la existencia de bases en ambas carpetas antes de limpiar nada.
 5. Si falla la comprobación, detené el backend y conservá todas las copias para diagnosticar. No borres ni sobreescribas la base previa como reparación. Una reversión utiliza el conjunto respaldado completo en una ubicación separada, con procesos detenidos y configuración absoluta; no mezcla el `.db` de una versión con auxiliares de otra.
 
@@ -332,7 +332,7 @@ Guion para que cualquier integrante repita la presentación con dos transportist
 
 | Componente | Guion manual (frontend + API) | Respaldo `demo-rehearsal.mjs` |
 |---|---|---|
-| AgroFlow API (LocalDemo) y SQLite | Real | Real, base temporal |
+| ZafraFlow API (LocalDemo) y SQLite | Real | Real, base temporal |
 | Frontend y proxy de Vite | Real | Real (se omite con `--sin-frontend`) |
 | Workflow `Chatbot.json` | n8n real sólo con Docker | Ejecutado por el simulador `n8n-simulator.mjs` |
 | Evolution / WhatsApp | Real sólo en el ensayo de #110 | **Simulado** |

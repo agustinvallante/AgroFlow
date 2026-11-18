@@ -30,7 +30,7 @@ import {
 
 /**
  * Raíz de composición: el único archivo que decide qué implementación
- * concreta se usa. El dashboard muestra únicamente datos de AgroFlow API;
+ * concreta se usa. El dashboard muestra únicamente datos de ZafraFlow API;
  * no hay repositorios mock ni datos de ejemplo.
  *
  * El navegador llama a /api en su propio origen y el proxy de Vite

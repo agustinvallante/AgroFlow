@@ -12,7 +12,7 @@ Los estados siguientes son una fotografía, no un monitor automático.
 
 | Aporte | Estado en este corte | Consecuencia para las issues |
 |---|---|---|
-| #76/#77; B01 #8 | Integrados; B01 cerrada | Usar `AgroFlow.sln` y `AgroFlow.*`. No repetir renombre/retiro de e-commerce ni recuperar Customer/registro público. Preservar detector y continuidad de SQLite anterior. |
+| #76/#77; B01 #8 | Integrados; B01 cerrada | Usar `AgroFlow.sln` y `ZafraFlow.*`. No repetir renombre/retiro de e-commerce ni recuperar Customer/registro público. Preservar detector y continuidad de SQLite anterior. |
 | API y frontend de demo | Integrados | Reutilizar appointments/transitions, migraciones/seed y cola HTTP React/Vite. Faltan perfil seguro/segregado, contratos y capacidades del MVP. |
 | [PR #47](https://github.com/agustinvallante/AgroFlow/pull/47), `efe8c7c` | Draft, no integrada | Coordinar adopción de entidades, servicio/repositorio de maestros, contexto de identidad y pruebas. `MasterDataController` tiene `[NonController]`: no publica CRUD. Su descripción conserva referencias antiguas; las guías actuales ya marcan Next.js como propuesta supersedida. |
 | [PR #79](https://github.com/agustinvallante/AgroFlow/pull/79), `15944f4` | Abierta, no integrada | Ruta objetivo del bot: `chatbot/workflows/Chatbot.json`; Compose/ejemplo en `infra/`. No hacer otra importación ni mantener dos copias operativas. Empaquetado/saludo/conectividad no acreditan E2E de turnos. |
@@ -22,7 +22,7 @@ Los estados siguientes son una fotografía, no un monitor automático.
 ## Decisiones que se conservan
 
 - React/TypeScript/Vite en `frontend/` ([ADR-005](../architecture/decisions/ADR-005-continuidad-react-vite-para-el-mvp.md)); no migración implícita a Next.js, BFF o bibliotecas de estado propuestas.
-- SQLite académico con datos ficticios; WAL condicionado a pruebas; PostgreSQL antes del primer cliente real ([ADR-006](../architecture/decisions/ADR-006-sqlite-para-persistencia-del-mvp.md)). PostgreSQL/Redis de Evolution no son la persistencia de AgroFlow ni su respaldo.
+- SQLite académico con datos ficticios; WAL condicionado a pruebas; PostgreSQL antes del primer cliente real ([ADR-006](../architecture/decisions/ADR-006-sqlite-para-persistencia-del-mvp.md)). PostgreSQL/Redis de Evolution no son la persistencia de ZafraFlow ni su respaldo.
 - Se conserva Identity. Hoy el arranque separa LocalDemo/SQLite de Identity/SQL Server: B02/B03 deben permitir el perfil MVP con identidad y appointments juntos. El login técnico `/api/auth/login` ya existe, con error genérico y expiración UTC, pero no acredita usuario activo/ingenio/roles del MVP.
 - Prioridad, asociación única activa, asignación automática, configuración al arranque, corte/carga y gestión acordada siguen [ADR-004](../architecture/decisions/ADR-004-politicas-operativas-del-mvp.md). No se vuelven a decidir por una implementación propuesta.
 - OpenAPI `0.3.0` sigue siendo contrato de demo. Rutas de maestros de títulos antiguos y propuestas de #47 no son API aprobada. La custodia de sesión web, permisos restantes y detalles [OD](open-decisions.md) se resuelven por slice, no por suposición.

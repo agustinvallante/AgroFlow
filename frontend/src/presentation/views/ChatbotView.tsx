@@ -32,11 +32,11 @@ export function ChatbotView() {
       <div className="topbar">
         <div>
           <h1>Chatbot de WhatsApp</h1>
-          <div className="zafra">Conversaciones: AgroFlow API · Métricas y plantillas: sin datos</div>
+          <div className="zafra">Conversaciones: ZafraFlow API · Métricas y plantillas: sin datos</div>
         </div>
         <div className="conn-status">
           <i />
-          Historial persistido en AgroFlow API
+          Historial persistido en ZafraFlow API
         </div>
       </div>
 

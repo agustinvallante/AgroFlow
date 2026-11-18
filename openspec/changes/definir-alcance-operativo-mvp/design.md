@@ -43,4 +43,4 @@ El backend entrega las ventanas, también las vacías, con cupo, ocupación y di
 
 ## Migración y verificación
 
-El código heredado de comercio electrónico no define reglas para AgroFlow. Antes de implementar endpoints se actualizará OpenAPI con las formas exactas y se prepararán migraciones/datos de arranque sin secretos ni personas reales. Las pruebas deberán cubrir orden de prioridad, ausencia de franja preferida, asociación única, cupos por ingenio, permisos y franjas vacías, además de concurrencia y recorridos integrados cuando se cierren sus decisiones técnicas.
+El código heredado de comercio electrónico no define reglas para ZafraFlow. Antes de implementar endpoints se actualizará OpenAPI con las formas exactas y se prepararán migraciones/datos de arranque sin secretos ni personas reales. Las pruebas deberán cubrir orden de prioridad, ausencia de franja preferida, asociación única, cupos por ingenio, permisos y franjas vacías, además de concurrencia y recorridos integrados cuando se cierren sus decisiones técnicas.

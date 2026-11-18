@@ -1,6 +1,6 @@
-# Frontend de AgroFlow
+# Frontend de ZafraFlow
 
-Aplicación web de AgroFlow, incorporada desde el prototipo
+Aplicación web de ZafraFlow, incorporada desde el prototipo
 [AgroFlow-Dashboard](https://github.com/GabrielBurieque/AgroFlow-Dashboard),
 basada en React, TypeScript y Vite. La [ADR-005](../docs/architecture/decisions/ADR-005-continuidad-react-vite-para-el-mvp.md)
 confirma la continuidad de esta base para el MVP. Las propuestas anteriores de

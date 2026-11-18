@@ -6,13 +6,13 @@
 
 ## Contexto
 
-AgroFlow requiere un frontend web, un backend .NET y una integración mediante n8n. El equipo prevé que algunos integrantes trabajen principalmente en frontend y otros en backend. A la vez, ambos lados dependen de los mismos casos de uso, reglas y contratos.
+ZafraFlow requiere un frontend web, un backend .NET y una integración mediante n8n. El equipo prevé que algunos integrantes trabajen principalmente en frontend y otros en backend. A la vez, ambos lados dependen de los mismos casos de uso, reglas y contratos.
 
 Separar inmediatamente el trabajo en repositorios independientes permitiría historiales y permisos distintos, pero también duplicaría onboarding, decisiones, issues y referencias. Para el tamaño y la etapa actual del proyecto, la coordinación del contrato representa un costo mayor que la independencia de despliegue.
 
 ## Decisión
 
-AgroFlow se mantiene como un monorepo con esta separación principal:
+ZafraFlow se mantiene como un monorepo con esta separación principal:
 
 ```text
 AgroFlow/

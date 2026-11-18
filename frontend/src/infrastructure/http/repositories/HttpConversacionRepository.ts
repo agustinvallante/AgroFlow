@@ -9,7 +9,7 @@ const PAGE_SIZE = "50";
 /** Tope de páginas por conversación: 1000 mensajes alcanzan para la demo. */
 const MAX_MESSAGE_PAGES = 20;
 
-/** Conversaciones y mensajes persistidos por AgroFlow API. */
+/** Conversaciones y mensajes persistidos por ZafraFlow API. */
 export class HttpConversacionRepository implements ConversacionRepository {
   private readonly api: ApiClient;
 

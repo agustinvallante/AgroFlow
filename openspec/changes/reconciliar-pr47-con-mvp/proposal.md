@@ -2,13 +2,13 @@
 
 ## Objetivo y estado
 
-Este cambio documenta la integración de ideas útiles de PR #47 con la estructura AgroFlow de main y la guía actualizada. El alcance elegido es una **fundación compatible, todavía no habilitada**: se conserva una base técnica revisada, pero no se publica CRUD de datos maestros ni se declara lista una API MVP.
+Este cambio documenta la integración de ideas útiles de PR #47 con la estructura ZafraFlow de main y la guía actualizada. El alcance elegido es una **fundación compatible, todavía no habilitada**: se conserva una base técnica revisada, pero no se publica CRUD de datos maestros ni se declara lista una API MVP.
 
 Las especificaciones canónicas y ADR-004/005/006 mantienen su autoridad. Las decisiones pendientes permanecen como propuestas o dependencias; no se convierten en política operativa por este cambio.
 
 ## Fundamento recuperable y límites
 
-Se preservan servicios y pruebas compatibles con AgroFlow, la persistencia académica SQLite y el frontend React/Vite. El `AgroFlowDbContext` conserva su esquema y migraciones actuales. Identity/JWT de main continúa como base, pero B00, B02, B03 y B05 siguen siendo dependencias para habilitar datos maestros y su segregación.
+Se preservan servicios y pruebas compatibles con ZafraFlow, la persistencia académica SQLite y el frontend React/Vite. El `AgroFlowDbContext` conserva su esquema y migraciones actuales. Identity/JWT de main continúa como base, pero B00, B02, B03 y B05 siguen siendo dependencias para habilitar datos maestros y su segregación.
 
 Las propiedades `CreatedAtUtc` e `InactivatedAtUtc` de cuatro entidades maestras no existen en las migraciones SQLite actuales. El modelo EF ignora explícitamente esos ocho campos no migrados: no son persistentes ni evidencian historial durable. B02 debe definir y migrar el esquema antes de habilitar esos datos.
 

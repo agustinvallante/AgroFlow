@@ -1,8 +1,8 @@
-# Integración local mínima con AgroFlow API
+# Integración local mínima con ZafraFlow API
 
 ## Objetivo
 
-Conectar el dashboard existente a la demo local de turnos sin reescribir la aplicación. El recorrido del lunes debe permitir crear, listar, consultar y actualizar turnos persistidos por AgroFlow API.
+Conectar el dashboard existente a la demo local de turnos sin reescribir la aplicación. El recorrido del lunes debe permitir crear, listar, consultar y actualizar turnos persistidos por ZafraFlow API.
 
 El contrato HTTP canónico vive en `docs/contracts/openapi.yaml` del repositorio `agustinvallante/AgroFlow`. Este documento sólo explica cómo lo consume el dashboard; no redefine reglas, DTOs ni estados válidos.
 
@@ -44,7 +44,7 @@ VITE_API_URL=http://localhost:5000
 Valores admitidos:
 
 - `VITE_DATA_SOURCE=mock`: respaldo local con los repositorios existentes;
-- `VITE_DATA_SOURCE=http`: usa AgroFlow API.
+- `VITE_DATA_SOURCE=http`: usa ZafraFlow API.
 
 El navegador no llama directo a la API: pide `/api/...` y `/health` a su propio origen y el proxy de Vite (`vite.config.ts`) los reenvía a `VITE_API_URL`. Así el dashboard no depende de la política CORS del backend ni del puerto en que abra Vite. Si la API arrancó en otro puerto (por ejemplo `5142`, sin `--urls http://localhost:5000`), se corrige cambiando `VITE_API_URL` y reiniciando `npm run dev`. El proxy existe con `npm run dev` y `npm run preview`; servir `dist/` desde otro servidor requiere su propio proxy.
 
@@ -61,7 +61,7 @@ domain/repositories/TurnoRepository
     ↓
 infrastructure/http/HttpTurnoRepository
     ↓
-AgroFlow API
+ZafraFlow API
 ```
 
 Archivos:

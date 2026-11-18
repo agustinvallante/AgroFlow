@@ -12,7 +12,7 @@ export function Sidebar({ vistaActiva, onCambiarVista }: SidebarProps) {
     <aside className="sidebar">
       <div className="brand">
         <div className="mark">
-          <img src={logo} alt="AgroFlow" width={200} height={38} />
+          <img src={logo} alt="ZafraFlow" width={200} height={38} />
         </div>
         <div className="brand-sub">Control de Playa</div>
         <select className="ingenio-select" disabled>
@@ -36,7 +36,7 @@ export function Sidebar({ vistaActiva, onCambiarVista }: SidebarProps) {
       <div className="sidebar-foot">
         Sesión: sin datos
         <br />
-        AgroFlow API · {container.apiUrl}
+        ZafraFlow API · {container.apiUrl}
       </div>
     </aside>
   );

@@ -16,7 +16,7 @@ La normativa vigente del producto reside en `openspec/specs/`. Si existe una dif
 
 | ID | Regla original | Capability OpenSpec destino | Estado |
 |---|---|---|---|
-| RN-001 | Solo los usuarios registrados y activos pueden autenticarse en AgroFlow. | `acceso-y-autorizacion` | Especificada |
+| RN-001 | Solo los usuarios registrados y activos pueden autenticarse en ZafraFlow. | `acceso-y-autorizacion` | Especificada |
 | RN-002 | Las contraseñas nunca deben almacenarse en texto plano; deben almacenarse mediante un algoritmo seguro de hashing. | `acceso-y-autorizacion` | Especificada |
 | RN-003 | Todo usuario autenticado debe tener asignado un rol válido. | `acceso-y-autorizacion` | Especificada |
 | RN-004 | El token JWT debe identificar al usuario y contener su rol para permitir la autorización. | `acceso-y-autorizacion` | Especificada |
@@ -28,7 +28,7 @@ La normativa vigente del producto reside en `openspec/specs/`. Si existe una dif
 
 | ID | Regla original | Capability OpenSpec destino | Estado |
 |---|---|---|---|
-| RN-008 | La asignación de turnos debe ser realizada exclusivamente por el backend de AgroFlow. | `turnos-solicitud-y-asignacion` | Especificada |
+| RN-008 | La asignación de turnos debe ser realizada exclusivamente por el backend de ZafraFlow. | `turnos-solicitud-y-asignacion` | Especificada |
 | RN-009 | Todo turno debe poseer una ventana horaria de llegada. | `turnos-solicitud-y-asignacion` | Especificada |
 | RN-010 | La prioridad debe considerar el tiempo transcurrido desde el corte de la caña. | `turnos-solicitud-y-asignacion` | Especificada |
 | RN-011 | La prioridad debe contemplar la diferenciación entre flota propia y flota de terceros. | `turnos-solicitud-y-asignacion` | Especificada |
@@ -36,7 +36,7 @@ La normativa vigente del producto reside en `openspec/specs/`. Si existe una dif
 | RN-013 | Un turno solo puede informarse como confirmado cuando haya sido persistido correctamente por el backend. | `turnos-solicitud-y-asignacion` | Especificada |
 | RN-014 | En solicitudes originadas por WhatsApp, el transportista se identifica por el número telefónico del remitente. | `integracion-whatsapp-n8n` | Especificada |
 | RN-015 | El camión se identifica mediante una patente única y debe encontrarse activo. | `turnos-solicitud-y-asignacion` | Especificada |
-| RN-016 | Si la ventana solicitada no tiene disponibilidad, AgroFlow asigna automáticamente la próxima ventana disponible considerando las reglas de prioridad. | `turnos-solicitud-y-asignacion` | Antecedente sustituido |
+| RN-016 | Si la ventana solicitada no tiene disponibilidad, ZafraFlow asigna automáticamente la próxima ventana disponible considerando las reglas de prioridad. | `turnos-solicitud-y-asignacion` | Antecedente sustituido |
 
 ## CU-003 - Consultar Turno
 
@@ -44,7 +44,7 @@ La normativa vigente del producto reside en `openspec/specs/`. Si existe una dif
 |---|---|---|---|
 | RN-017 | Un transportista solo puede consultar turnos correspondientes a vehículos que esté autorizado a utilizar. | `turnos-consulta` | Especificada |
 | RN-018 | Las consultas vía WhatsApp identifican al transportista por su número telefónico y al vehículo por su patente. | `integracion-whatsapp-n8n` | Especificada |
-| RN-019 | La consulta debe devolver siempre el estado actual almacenado en AgroFlow; n8n no es la fuente de verdad del turno. | `turnos-consulta` | Especificada |
+| RN-019 | La consulta debe devolver siempre el estado actual almacenado en ZafraFlow; n8n no es la fuente de verdad del turno. | `turnos-consulta` | Especificada |
 | RN-020 | Consultar un turno no debe alterar su estado, horario, prioridad ni ningún otro dato. | `turnos-consulta` | Especificada |
 
 ## CU-004 - Consultar Turnos del Ingenio
@@ -62,7 +62,7 @@ La normativa vigente del producto reside en `openspec/specs/`. Si existe una dif
 |---|---|---|---|
 | RN-023 | Un usuario interno solo puede consultar detalles de turnos pertenecientes a su ingenio. | `turnos-consulta` | Especificada |
 | RN-024 | Consultar el detalle de un turno no modifica su estado, prioridad, horario ni ningún otro dato. | `turnos-consulta` | Especificada |
-| RN-025 | Toda la información mostrada debe provenir del backend de AgroFlow y reflejar su estado actual. | `turnos-consulta` | Especificada |
+| RN-025 | Toda la información mostrada debe provenir del backend de ZafraFlow y reflejar su estado actual. | `turnos-consulta` | Especificada |
 
 ## CU-006 - Actualizar Estado de Turno
 
@@ -92,7 +92,7 @@ La normativa vigente del producto reside en `openspec/specs/`. Si existe una dif
 | ID | Regla original | Capability OpenSpec destino | Estado |
 |---|---|---|---|
 | RN-038 | El dashboard solo muestra información del ingenio asociado al usuario autenticado. | `monitoreo-operativo` | Especificada |
-| RN-039 | Los indicadores se calculan a partir del estado actual almacenado por AgroFlow. | `monitoreo-operativo` | Especificada |
+| RN-039 | Los indicadores se calculan a partir del estado actual almacenado por ZafraFlow. | `monitoreo-operativo` | Especificada |
 | RN-040 | Por defecto los indicadores corresponden al día actual. | `monitoreo-operativo` | Especificada |
 | RN-041 | Si existe una interrupción activa, el dashboard debe indicarla. | `monitoreo-operativo` | Especificada |
 | RN-042 | Consultar el dashboard no modifica datos. | `monitoreo-operativo` | Especificada |
@@ -113,7 +113,7 @@ La normativa vigente del producto reside en `openspec/specs/`. Si existe una dif
 |---|---|---|---|
 | RN-047 | La patente de un camión debe ser única. | `datos-maestros` | Especificada |
 | RN-048 | Un camión inactivo no puede utilizarse para solicitar nuevos turnos. | `datos-maestros` | Especificada |
-| RN-049 | El tipo de flota debe pertenecer a los valores admitidos por AgroFlow. | `datos-maestros` | Especificada |
+| RN-049 | El tipo de flota debe pertenecer a los valores admitidos por ZafraFlow. | `datos-maestros` | Especificada |
 | RN-049A | Un camión con historial operativo debe inhabilitarse en lugar de eliminarse físicamente. | `datos-maestros` | Especificada |
 
 ## CU-011 - Cancelar Turno

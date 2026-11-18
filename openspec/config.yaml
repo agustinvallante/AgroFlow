@@ -1,7 +1,7 @@
 schema: spec-driven
 
 context: |
-  Producto: AgroFlow, sistema web para coordinar turnos y operaciones de ingreso
+  Producto: ZafraFlow, sistema web para coordinar turnos y operaciones de ingreso
   de camiones en un ingenio azucarero.
 
   Estructura: monorepo con backend/ para la API ASP.NET Core .NET 8 y frontend/
@@ -21,7 +21,7 @@ rules:
   proposal:
     - "Declarar objetivo, alcance, no alcance y capacidades afectadas."
     - "Identificar impacto en frontend, backend, persistencia, contrato API y pruebas."
-    - "Vincular los casos de uso de AgroFlow relacionados."
+    - "Vincular los casos de uso de ZafraFlow relacionados."
   specs:
     - "Describir comportamiento observable y no clases, tablas ni bibliotecas."
     - "Usar encabezados exactos Requirement y Scenario y palabras normativas SHALL o MUST."

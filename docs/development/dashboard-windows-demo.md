@@ -85,7 +85,7 @@ cancelación y controles del proxy.
 - Para comprobar capacidad y duración variables se agregó **sólo en esa base
   efímera** una ventana de capacidad siete, 23:15–00:00 del día siguiente.
   El panel conservó ambas fechas y UTC-03:00. No se alteró el seed del proyecto.
-- El navegador no envió claves AgroFlow; el proxy real bloqueó POST, subrutas
+- El navegador no envió claves ZafraFlow; el proxy real bloqueó POST, subrutas
   y origen ajeno con 404.
 
 Entrega parcial: **#73 y #44 siguen abiertas** por el MVP pendiente. No se

@@ -108,7 +108,7 @@ export function ColaTurnosView() {
         <div>
           <h1>Cola de turnos</h1>
           <div className="zafra">
-            Turnos programados · AgroFlow API ({container.apiUrl})
+            Turnos programados · ZafraFlow API ({container.apiUrl})
           </div>
         </div>
         <button className="btn-primary" onClick={() => setMostrarForm((v) => !v)}>
