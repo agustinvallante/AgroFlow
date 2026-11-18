@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Conversacion, MensajeChat } from "../../domain/entities/Conversacion";
 
@@ -54,8 +54,8 @@ const mensajes: Record<string, MensajeChat[]> = {
 
 describe("ChatbotView con AgroFlow API", () => {
   beforeEach(() => {
-    mocks.obtenerConversaciones.mockResolvedValue([reconocida, noRegistrada]);
-    mocks.obtenerMensajes.mockImplementation(async (id: string) => mensajes[id]);
+    mocks.obtenerConversaciones.mockReset().mockResolvedValue([reconocida, noRegistrada]);
+    mocks.obtenerMensajes.mockReset().mockImplementation(async (id: string) => mensajes[id]);
   });
 
   afterEach(() => {
@@ -190,4 +190,139 @@ describe("ChatbotView con AgroFlow API", () => {
 
     expect(await screen.findByText("Falta AGROFLOW_DASHBOARD_KEY")).toBeTruthy();
   });
+
+  describe("recuperación y respuestas fuera de orden", () => {
+    const esperar = (ms = 0) => act(() => vi.advanceTimersByTimeAsync(ms));
+    const seleccionar = (nombre: string) =>
+      fireEvent.click(screen.getByText(nombre, { selector: ".conv-top span" }));
+
+    beforeEach(() => vi.useFakeTimers());
+    afterEach(() => vi.useRealTimers());
+
+    it("se recupera por polling después de una falla inicial sin dejar el error bloqueando la vista", async () => {
+      mocks.obtenerConversaciones.mockRejectedValueOnce(new Error("API no disponible."));
+      render(<ChatbotView />);
+      await esperar();
+      expect(screen.getByRole("alert").textContent).toContain("API no disponible.");
+      expect(screen.getByRole("button", { name: "Reintentar" })).toBeTruthy();
+      expect(screen.queryByText("Todavía no hay conversaciones registradas.")).toBeNull();
+
+      await esperar(15_000);
+      expect(screen.getByText("[SINTÉTICO] Quiero mi turno")).toBeTruthy();
+      expect(screen.queryByText("API no disponible.")).toBeNull();
+      expect(screen.queryByRole("button", { name: "Reintentar" })).toBeNull();
+    });
+
+    it("permite reintentar la carga inicial, incluso si el primer reintento también falla", async () => {
+      mocks.obtenerConversaciones
+        .mockRejectedValueOnce(new Error("Primera falla."))
+        .mockRejectedValueOnce(new Error("Segunda falla."));
+      render(<ChatbotView />);
+      await esperar();
+      fireEvent.click(screen.getByRole("button", { name: "Reintentar" }));
+      await esperar();
+      expect(screen.getByText("Segunda falla.")).toBeTruthy();
+      fireEvent.click(screen.getByRole("button", { name: "Reintentar" }));
+      await esperar();
+      expect(screen.getByText("[SINTÉTICO] Quiero mi turno")).toBeTruthy();
+      expect(screen.queryByRole("alert")).toBeNull();
+    });
+
+    it("conserva historial y selección al fallar un refresco y limpia el aviso al recuperarse", async () => {
+      render(<ChatbotView />);
+      await esperar();
+      seleccionar(noRegistrada.nombre);
+      await esperar();
+      mocks.obtenerConversaciones.mockRejectedValueOnce(new Error("Falló el refresco."));
+      fireEvent.click(screen.getByRole("button", { name: "Actualizar" }));
+      await esperar();
+      expect(screen.getByText("Datos desactualizados.")).toBeTruthy();
+      expect(screen.getByText("[SINTÉTICO] No registrado")).toBeTruthy();
+      expect(screen.queryByText("[SINTÉTICO] Quiero mi turno")).toBeNull();
+
+      fireEvent.click(screen.getByRole("button", { name: "Actualizar" }));
+      await esperar();
+      expect(screen.queryByText("Datos desactualizados.")).toBeNull();
+      expect(screen.getByText("[SINTÉTICO] No registrado")).toBeTruthy();
+    });
+
+    it("una falla al refrescar mensajes conserva el historial de la misma conversación", async () => {
+      render(<ChatbotView />);
+      await esperar();
+      mocks.obtenerMensajes.mockRejectedValueOnce(new Error("No se pudieron actualizar los mensajes."));
+      fireEvent.click(screen.getByRole("button", { name: "Actualizar" }));
+      await esperar();
+      expect(screen.getByText("No se pudieron actualizar los mensajes.")).toBeTruthy();
+      expect(screen.getByText("[SINTÉTICO] Quiero mi turno")).toBeTruthy();
+      fireEvent.click(screen.getByRole("button", { name: "Actualizar" }));
+      await esperar();
+      expect(screen.queryByText("No se pudieron actualizar los mensajes.")).toBeNull();
+    });
+
+    it("una falla tardía de la carga inicial no bloquea una recuperación posterior", async () => {
+      const inicial = diferida<Conversacion[]>();
+      mocks.obtenerConversaciones.mockReturnValueOnce(inicial.promesa);
+      render(<ChatbotView />);
+      await esperar(15_000);
+      expect(screen.getByText("[SINTÉTICO] Quiero mi turno")).toBeTruthy();
+      await act(async () => inicial.rechazar(new Error("Falla inicial atrasada.")));
+      expect(screen.queryByText("Falla inicial atrasada.")).toBeNull();
+      expect(screen.getByText("[SINTÉTICO] Quiero mi turno")).toBeTruthy();
+    });
+
+    it("un listado anterior no pisa la respuesta de un refresco más reciente", async () => {
+      render(<ChatbotView />);
+      await esperar();
+      const anterior = diferida<Conversacion[]>();
+      const reciente = diferida<Conversacion[]>();
+      mocks.obtenerConversaciones.mockReturnValueOnce(anterior.promesa).mockReturnValueOnce(reciente.promesa);
+      fireEvent.click(screen.getByRole("button", { name: "Actualizar" }));
+      fireEvent.click(screen.getByRole("button", { name: "Actualizar" }));
+      await act(async () => reciente.resolver([noRegistrada]));
+      await act(async () => anterior.resolver([reconocida]));
+      await esperar();
+      expect(screen.getByText("[SINTÉTICO] No registrado")).toBeTruthy();
+      expect(screen.queryByText("[SINTÉTICO] Quiero mi turno")).toBeNull();
+    });
+
+    it.each(["respuesta", "error"])("descarta una %s tardía de la conversación anterior", async (tipo) => {
+      render(<ChatbotView />);
+      await esperar();
+      const anterior = diferida<MensajeChat[]>();
+      mocks.obtenerMensajes.mockReturnValueOnce(anterior.promesa);
+      seleccionar(noRegistrada.nombre);
+      await esperar();
+      seleccionar(reconocida.nombre);
+      await esperar();
+      await act(async () => {
+        if (tipo === "respuesta") anterior.resolver(mensajes.c2);
+        else anterior.rechazar(new Error("Error de la conversación anterior."));
+      });
+      expect(screen.getByText("[SINTÉTICO] Quiero mi turno")).toBeTruthy();
+      expect(screen.queryByText("[SINTÉTICO] No registrado")).toBeNull();
+      expect(screen.queryByText("Error de la conversación anterior.")).toBeNull();
+    });
+
+    it("retira la selección si deja de existir y no reutiliza sus mensajes en otra conversación", async () => {
+      render(<ChatbotView />);
+      await esperar();
+      mocks.obtenerConversaciones.mockResolvedValueOnce([]);
+      fireEvent.click(screen.getByRole("button", { name: "Actualizar" }));
+      await esperar();
+      expect(screen.queryByText("[SINTÉTICO] Quiero mi turno")).toBeNull();
+      expect(screen.getByText("Todavía no hay conversaciones registradas.")).toBeTruthy();
+      mocks.obtenerConversaciones.mockResolvedValueOnce([noRegistrada]);
+      fireEvent.click(screen.getByRole("button", { name: "Actualizar" }));
+      await esperar();
+      expect(screen.getByText("[SINTÉTICO] No registrado")).toBeTruthy();
+      expect(screen.queryByText("[SINTÉTICO] Quiero mi turno")).toBeNull();
+    });
+  });
 });
+
+function diferida<T>() {
+  let resolver!: (valor: T) => void;
+  let rechazar!: (error: unknown) => void;
+  const promesa = new Promise<T>((res, rej) => { resolver = res; rechazar = rej; });
+  return { promesa, resolver, rechazar };
+}

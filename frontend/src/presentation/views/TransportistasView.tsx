@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { useTransportistas } from "../hooks/useTransportistas";
+import { useFlotaAsociada } from "../hooks/useFlotaAsociada";
+import { CamionesAsociados } from "../components/transportistas/CamionesAsociados";
 import { MetricCard } from "../components/common/MetricCard";
 import { EmptyState, ErrorState, LoadingState } from "../components/common/StatusStates";
 
@@ -16,12 +18,15 @@ export function TransportistasView() {
     resumen,
     cargando,
     error,
+    errorRefresco,
+    recargar,
     filtros,
     setBusqueda,
     setFiltroEstado,
     crear,
     cambiarEstado,
   } = useTransportistas();
+  const { flota, errorFlota, recargarFlota, asociar, desasociar } = useFlotaAsociada(recargar);
 
   const [mostrarForm, setMostrarForm] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -52,7 +57,12 @@ export function TransportistasView() {
     }
   };
 
-  if (error) return <ErrorState message={error} />;
+  if (error) return (
+    <div className="view" role="alert">
+      <ErrorState message={error} />
+      <button className="btn-mini" onClick={recargar}>Reintentar</button>
+    </div>
+  );
 
   return (
     <div className="view">
@@ -61,9 +71,12 @@ export function TransportistasView() {
           <h1>Transportistas</h1>
           <div className="zafra">Transportistas registrados · AgroFlow API</div>
         </div>
-        <button className="btn-primary" onClick={() => setMostrarForm((v) => !v)}>
-          + Nuevo transportista
-        </button>
+        <div className="row-actions">
+          <button className="btn-mini" onClick={() => { recargar(); recargarFlota(); }}>Actualizar</button>
+          <button className="btn-primary" onClick={() => setMostrarForm((v) => !v)}>
+            + Nuevo transportista
+          </button>
+        </div>
       </div>
 
       <div className="metrics" style={{ marginBottom: 20 }}>
@@ -112,6 +125,20 @@ export function TransportistasView() {
       </div>
 
       {accionError && <ErrorState message={accionError} />}
+      {errorFlota && (
+        <div role="alert">
+          <strong>No se pudieron cargar los camiones.</strong>
+          <ErrorState message={errorFlota} />
+          <p>Se muestran las patentes informadas por el listado. Usá Actualizar para reintentar la asociación.</p>
+        </div>
+      )}
+      {errorRefresco && (
+        <div role="alert">
+          <strong>Datos desactualizados.</strong>
+          <ErrorState message={errorRefresco} />
+          <p>Se conserva el último listado obtenido. Usá Actualizar para reintentar.</p>
+        </div>
+      )}
 
       {cargando ? (
         <LoadingState label="Cargando transportistas..." />
@@ -135,7 +162,16 @@ export function TransportistasView() {
                   <td style={{ fontFamily: "'IBM Plex Mono',monospace" }}>{t.dni}</td>
                   <td style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 12.5 }}>{t.telefono}</td>
                   <td>
-                    {t.patente ?? "—"}
+                    {errorFlota ? (t.patente ?? "—") : (
+                      <CamionesAsociados
+                        nombreTransportista={t.nombre}
+                        activo={t.activo}
+                        asociados={flota.porTransportista[t.id] ?? []}
+                        libres={flota.libres}
+                        onAsociar={(camionId) => asociar(t.id, camionId)}
+                        onDesasociar={desasociar}
+                      />
+                    )}
                     {!t.puedeSolicitarTurnos && (
                       <span className="fuente-demo">
                         {t.activo ? "sin camión asociado · no puede solicitar turnos" : "inhabilitado"}

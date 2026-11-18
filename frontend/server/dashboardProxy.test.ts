@@ -78,4 +78,51 @@ describe("intermediario local del dashboard", () => {
     expect(readDashboardKey({})).toBeUndefined();
     expect(() => readDashboardKey({ VITE_DASHBOARD_KEY: "x" })).toThrow(/VITE_/);
   });
+
+  it("autoriza ventanas sólo con GET exacto, local y del mismo origen", () => {
+    const url = "/api/v1/windows?date=2026-09-28";
+    expect(isAllowedDashboardRequest({ ...local(url), method: "GET" })).toBe(true);
+    for (const method of ["POST", "PATCH", "PUT", "DELETE"]) {
+      expect(isAllowedDashboardRequest({ ...local(url), method })).toBe(false);
+    }
+    for (const ruta of ["/api/v1/windowsX", "/api/v1/windows/id", "/api/v1/windows/../drivers", "/api/v1/windows%2fdrivers"]) {
+      expect(isAllowedDashboardRequest(local(ruta))).toBe(false);
+    }
+    expect(isAllowedDashboardRequest(local(url, {}, "10.0.0.5"))).toBe(false);
+    expect(isAllowedDashboardRequest(local(url, { host: "rebind.example" }))).toBe(false);
+    expect(isAllowedDashboardRequest(local(url, { origin: "https://otro.example" }))).toBe(false);
+    expect(isAllowedDashboardRequest(local(url, { "sec-fetch-site": "cross-site" }))).toBe(false);
+  });
+
+  it("autoriza camiones sólo con GET exacto sobre la colección", () => {
+    expect(isAllowedDashboardRequest({ ...local("/api/v1/trucks?active=true"), method: "GET" })).toBe(true);
+    for (const method of ["POST", "PUT", "DELETE"]) {
+      expect(isAllowedDashboardRequest({ ...local("/api/v1/trucks"), method })).toBe(false);
+    }
+    for (const ruta of ["/api/v1/trucksX", "/api/v1/trucks/id", "/api/v1/trucks/../drivers"]) {
+      expect(isAllowedDashboardRequest(local(ruta))).toBe(false);
+    }
+  });
+
+  it("autoriza la gestión de asociaciones desde el mismo origen local", () => {
+    expect(isAllowedDashboardRequest({ ...local("/api/v1/associations?active=true"), method: "GET" })).toBe(true);
+    expect(isAllowedDashboardRequest({ ...local("/api/v1/associations"), method: "POST" })).toBe(true);
+    expect(isAllowedDashboardRequest({ ...local("/api/v1/associations/id/inactivation"), method: "POST" })).toBe(true);
+    expect(isAllowedDashboardRequest(local("/api/v1/associationsX"))).toBe(false);
+    expect(isAllowedDashboardRequest(local("/api/v1/associations", { origin: "https://attacker.example" }))).toBe(false);
+    expect(isAllowedDashboardRequest(local("/api/v1/associations/%2e%2e/conversation-events"))).toBe(false);
+  });
+
+  it("ventanas recibe sólo la clave del servidor y el proxy bloquea mutaciones y subrutas", () => {
+    const proxy = createApiProxy("http://localhost:5000", "clave-sintetica-del-servidor");
+    const windows = proxy["/api/v1/windows"];
+    expect(windows.bypass?.({ ...local("/api/v1/windows"), method: "GET" } as never, undefined, windows as never)).toBeUndefined();
+    expect(windows.bypass?.({ ...local("/api/v1/windows"), method: "POST" } as never, undefined, windows as never)).toBe(false);
+    expect(windows.bypass?.(local("/api/v1/windows/id") as never, undefined, windows as never)).toBe(false);
+    const headers = new Map([[DASHBOARD_KEY_HEADER, "clave-falsa-del-navegador"], ["x-agroflow-service-key", "canal"]]);
+    let listener!: (request: { removeHeader: (name: string) => void; setHeader: (name: string, value: string) => void }) => void;
+    windows.configure?.({ on: (_event: string, fn: typeof listener) => { listener = fn; } } as never, {} as never);
+    listener({ removeHeader: (name) => { headers.delete(name); }, setHeader: (name, value) => { headers.set(name, value); } });
+    expect([...headers.entries()]).toEqual([[DASHBOARD_KEY_HEADER, "clave-sintetica-del-servidor"]]);
+  });
 });

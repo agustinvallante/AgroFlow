@@ -83,9 +83,8 @@ public sealed class DriverLifecycleHttpTests : IDisposable
         Assert.Equal(HttpStatusCode.NotFound, rejected.StatusCode);
         Assert.Equal("REFERENCE_NOT_FOUND", (await rejected.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("code").GetString());
 
-        // La gestión de asociaciones no tiene ruta publicada (OD-002/OD-013):
-        // la prueba crea camión y asociación directamente, como lo haría ese
-        // mecanismo una vez aprobado.
+        // No hay alta de camiones por HTTP: la prueba crea camión y asociación
+        // directamente (la ruta de asociaciones la cubre AssociationsHttpTests).
         await using (var db = CreateContext())
         {
             var driver = await db.Transportistas.SingleAsync(t => t.Id == driverId);

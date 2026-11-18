@@ -1,6 +1,9 @@
 import { HttpTurnoRepository } from "../infrastructure/http/repositories/HttpTurnoRepository";
 import { HttpTransportistaRepository } from "../infrastructure/http/repositories/HttpTransportistaRepository";
 import { HttpConversacionRepository } from "../infrastructure/http/repositories/HttpConversacionRepository";
+import { HttpVentanaRepository } from "../infrastructure/http/repositories/HttpVentanaRepository";
+import { HttpAsociacionRepository } from "../infrastructure/http/repositories/HttpAsociacionRepository";
+import { ObtenerVentanas } from "../application/usecases/ventanas/ObtenerVentanas";
 
 import {
   CambiarEstadoTurno,
@@ -8,12 +11,18 @@ import {
   CrearTurnoManual,
   ObtenerDetalleTurno,
   ObtenerTurnosDelDia,
+  ObtenerTurnosActivos,
 } from "../application/usecases/turnos/TurnoUseCases";
 import {
   CambiarEstadoActivoTransportista,
   CrearTransportista,
   ObtenerTransportistas,
 } from "../application/usecases/transportistas/TransportistaUseCases";
+import {
+  AsociarCamion,
+  DesasociarCamion,
+  ObtenerFlotaAsociada,
+} from "../application/usecases/transportistas/AsociacionUseCases";
 import {
   ObtenerConversaciones,
   ObtenerMensajesConversacion,
@@ -28,7 +37,7 @@ import {
  * (vite.config.ts) lo reenvía a VITE_API_URL, por defecto
  * http://localhost:5000. Así no interviene CORS.
  *
- * Transportistas y conversaciones exigen la clave del dashboard, que el
+ * Transportistas, asociaciones, camiones, conversaciones y ventanas exigen la clave del dashboard, que el
  * proxy agrega del lado servidor (server/dashboardProxy.ts). Métricas del
  * panel y del chatbot, plantillas, reportes y configuración no tienen
  * endpoint en openapi.yaml: sus vistas conservan el diseño, sin datos.
@@ -40,11 +49,17 @@ function crearContainer() {
   const turnoRepository = new HttpTurnoRepository("");
   const transportistaRepository = new HttpTransportistaRepository("");
   const conversacionRepository = new HttpConversacionRepository("");
+  const ventanaRepository = new HttpVentanaRepository("");
+  const asociacionRepository = new HttpAsociacionRepository("");
 
   return {
     apiUrl,
+    ventanas: {
+      obtenerVentanas: new ObtenerVentanas(ventanaRepository),
+    },
     turnos: {
       obtenerTurnosDelDia: new ObtenerTurnosDelDia(turnoRepository),
+      obtenerTurnosActivos: new ObtenerTurnosActivos(turnoRepository),
       obtenerDetalleTurno: new ObtenerDetalleTurno(turnoRepository),
       crearTurnoManual: new CrearTurnoManual(turnoRepository),
       cancelarTurno: new CancelarTurno(turnoRepository),
@@ -54,6 +69,11 @@ function crearContainer() {
       obtenerTransportistas: new ObtenerTransportistas(transportistaRepository),
       crearTransportista: new CrearTransportista(transportistaRepository),
       cambiarEstadoActivoTransportista: new CambiarEstadoActivoTransportista(transportistaRepository),
+    },
+    asociaciones: {
+      obtenerFlotaAsociada: new ObtenerFlotaAsociada(asociacionRepository),
+      asociarCamion: new AsociarCamion(asociacionRepository),
+      desasociarCamion: new DesasociarCamion(asociacionRepository),
     },
     conversaciones: {
       obtenerConversaciones: new ObtenerConversaciones(conversacionRepository),

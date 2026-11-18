@@ -6,6 +6,7 @@ import {
   fechaHoraEnZonaIngenio,
   horaDeRfc3339,
   leerFechaRfc3339,
+  ventanaDeRfc3339,
 } from "./date";
 
 describe("fechas RFC 3339 de la API", () => {
@@ -32,6 +33,16 @@ describe("fechas RFC 3339 de la API", () => {
     expect(horaDeRfc3339(undefined)).toBe("—");
     expect(horaDeRfc3339("2026-09-28T08:00:00")).toBe("—");
     expect(fechaHoraDeRfc3339("no es una fecha")).toBe("—");
+  });
+
+  it("presenta fecha, rango horario y desplazamiento de una ventana", () => {
+    expect(ventanaDeRfc3339("2026-09-28T08:00:00-03:00", "2026-09-28T08:30:00-03:00"))
+      .toBe("28/09/2026 08:00 – 08:30 (UTC-03:00)");
+  });
+
+  it("identifica ambos días cuando una ventana cruza la medianoche", () => {
+    expect(ventanaDeRfc3339("2026-09-28T23:30:00-03:00", "2026-09-29T00:00:00-03:00"))
+      .toBe("28/09/2026 23:30 (UTC-03:00) – 29/09/2026 00:00 (UTC-03:00)");
   });
 });
 

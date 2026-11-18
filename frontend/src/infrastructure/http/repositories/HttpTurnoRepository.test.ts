@@ -83,3 +83,72 @@ describe("HttpTurnoRepository.cambiarEstado", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 });
+
+describe("HttpTurnoRepository: consultas por día y activos", () => {
+  const fetchMock = vi.fn<typeof fetch>();
+  beforeEach(() => {
+    fetchMock.mockReset();
+    vi.stubGlobal("fetch", fetchMock);
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("consulta active=true sin fecha y conserva ventanas de distintas fechas", async () => {
+    const manana = {
+      ...turnoApi, id: "otro", window: {
+        startAt: "2026-09-29T08:00:00-03:00", endAt: "2026-09-29T08:30:00-03:00",
+      },
+    };
+    fetchMock.mockResolvedValueOnce(respuesta(200, [turnoApi, manana]))
+      .mockResolvedValueOnce(respuesta(200, turnoApi))
+      .mockResolvedValueOnce(respuesta(200, manana));
+    const repo = new HttpTurnoRepository("");
+    const turnos = await repo.obtenerTurnosActivos();
+    const consulta = new URL(String(fetchMock.mock.calls[0][0]));
+    expect(consulta.pathname).toBe("/api/v1/appointments");
+    expect([...consulta.searchParams]).toEqual([["active", "true"]]);
+    expect(turnos.map((t) => t.ventana.inicio)).toEqual([
+      turnoApi.window.startAt, manana.window.startAt,
+    ]);
+  });
+
+  it.each([undefined, { fecha: "2026-09-29", estado: "viaje" as const }])(
+    "el listado diario conserva los filtros y no agrega active (%j)", async (filtros) => {
+      fetchMock.mockResolvedValue(respuesta(200, []));
+      await new HttpTurnoRepository("").obtenerTurnosDelDia(filtros);
+      const consulta = new URL(String(fetchMock.mock.calls[0][0]));
+      expect(consulta.searchParams.has("active")).toBe(false);
+      expect(consulta.searchParams.get("date")).toBe(filtros?.fecha ?? null);
+      expect(consulta.searchParams.get("status")).toBe(filtros ? "EN_CAMINO" : null);
+    }
+  );
+
+  it("una consulta de activos no usa el estado viejo del detalle cacheado", async () => {
+    fetchMock.mockResolvedValueOnce(respuesta(200, turnoApi))
+      .mockResolvedValueOnce(respuesta(200, [{ ...turnoApi, status: "EN_DESCARGA" }]));
+    const repo = new HttpTurnoRepository("");
+    await repo.obtenerTurno(turnoApi.id);
+    const turnos = await repo.obtenerTurnosActivos();
+    expect(turnos[0].estado).toBe("descargando");
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("propaga una falla de activos en lugar de devolver una lista vacía", async () => {
+    fetchMock.mockRejectedValue(new TypeError("Failed to fetch"));
+    await expect(new HttpTurnoRepository("").obtenerTurnosActivos()).rejects.toThrow();
+  });
+
+  it("reutiliza los detalles cacheados durante el polling y conserva el resumen vigente", async () => {
+    fetchMock.mockResolvedValueOnce(respuesta(200, [turnoApi]))
+      .mockResolvedValueOnce(respuesta(200, turnoApi))
+      .mockResolvedValueOnce(respuesta(200, [{ ...turnoApi, status: "EN_DESCARGA" }]));
+    const repo = new HttpTurnoRepository("");
+    await repo.obtenerTurnosActivos();
+    expect(fetchMock).toHaveBeenCalledTimes(2); // Listado y detalle en la primera carga.
+    const actualizados = await repo.obtenerTurnosActivos();
+    expect(fetchMock).toHaveBeenCalledTimes(3); // El refresco sólo pide el listado.
+    expect(actualizados[0].estado).toBe("descargando");
+    const url = new URL(String(fetchMock.mock.calls[2][0]));
+    expect(url.pathname).toBe("/api/v1/appointments");
+    expect(url.searchParams.get("active")).toBe("true");
+  });
+});

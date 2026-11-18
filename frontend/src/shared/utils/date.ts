@@ -62,6 +62,17 @@ export function datetimeLocalARfc3339(valor: string): string {
   return `${conSegundos}${desplazamiento}`;
 }
 
+/** Ventana con fecha y zona del ingenio, incluso si cruza la medianoche. */
+export function ventanaDeRfc3339(inicio: string, fin: string): string {
+  const desde = leerFechaRfc3339(inicio);
+  const hasta = leerFechaRfc3339(fin);
+  if (!desde || !hasta) return "—";
+  if (desde.fecha === hasta.fecha && desde.desplazamiento === hasta.desplazamiento) {
+    return `${desde.fecha} ${desde.hora} – ${hasta.hora} (UTC${desde.desplazamiento})`;
+  }
+  return `${fechaHoraDeRfc3339(inicio)} – ${fechaHoraDeRfc3339(fin)}`;
+}
+
 /** Zona del ingenio sembrado en la demo local. */
 export const ZONA_INGENIO = "America/Argentina/Tucuman";
 

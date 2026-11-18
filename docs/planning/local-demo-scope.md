@@ -24,11 +24,19 @@ El contrato exacto es [OpenAPI](../contracts/openapi.yaml). Este documento no re
 - despliegue o infraestructura productiva;
 - CRUD de transportistas, camiones, fincas o asociaciones;
 - interrupciones y reprogramación;
-- dashboard de indicadores/cupos, mapa o reportes;
+- indicadores generales del dashboard, mapa o reportes;
 - WhatsApp real;
 - cierre de decisiones generales de idempotencia, concurrencia, auditoría u operación productiva.
 
 Los datos maestros se preparan mediante seed. Las exclusiones son sólo de esta demo; permanecen vigentes en el MVP completo.
+
+### Ampliación de presentación: franjas y cupos (#73 parcial)
+
+El panel consume las ventanas persistidas de la #119 e incluye franjas vacías,
+ocupadas y completas, fecha opcional, cupos de la API y refresco periódico.
+El [recorrido de franjas](../development/dashboard-windows-demo.md) especifica
+cómo ensayarlo. Este corte no incluye indicadores generales ni interrupciones,
+no cierra #73/#44 y no amplía las decisiones operativas del MVP.
 
 ## Supuestos controlados
 
