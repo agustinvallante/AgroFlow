@@ -90,13 +90,12 @@ otro servidor requiere su propio proxy.
 
 ### Clave del dashboard (intermediario local)
 
-Conversaciones, transportistas y ventanas exigen `X-AgroFlow-Dashboard-Key`. El navegador
+Conversaciones, transportistas, asociaciones, ventanas y los catálogos de camiones y fincas usan `X-AgroFlow-Dashboard-Key` en las solicitudes del dashboard. El navegador
 nunca la conoce: [`server/dashboardProxy.ts`](server/dashboardProxy.ts) la
 agrega en el proxy de Vite, del lado de Node, leyendo `AGROFLOW_DASHBOARD_KEY`
 (sin prefijo `VITE_`) del entorno o de `.env.local`. Además:
 
-- sólo la agrega a `/api/v1/conversations`, `/api/v1/drivers` y al GET exacto de `/api/v1/windows`, y descarta
-  cualquier encabezado `X-AgroFlow-*` que envíe el navegador;
+- sólo la agrega a las rutas de conversaciones, transportistas y asociaciones, y al GET de las colecciones `/api/v1/windows`, `/api/v1/trucks` y `/api/v1/farms`; descarta cualquier encabezado `X-AgroFlow-*` que envíe el navegador;
 - exige cliente de loopback, `Host` local y mismo origen (contra DNS
   rebinding y pedidos de otros sitios); en caso contrario responde `404`;
 - bloquea las rutas de n8n (`/api/v1/conversation-events`,

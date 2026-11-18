@@ -2,7 +2,7 @@
 
 La API y el frontend integrado se ejecutan en el host. n8n, Evolution API,
 PostgreSQL y Redis se ejecutan en Docker. Esta guía explica cómo preparar
-`LocalDemo` y su canal de WhatsApp con AgroFlow API como fuente de verdad.
+`LocalDemo` y su canal de WhatsApp con la API de ZafraFlow como fuente de verdad.
 
 ## Antes de iniciar: conservar la SQLite existente
 
