@@ -13,7 +13,9 @@ Esta guía coordina la ejecución local aprobada en la issue #49. El backend mig
 - Puertos libres: `5000` para API, `5173` para frontend y `5678` para n8n.
 - Fecha local cubierta por las ventanas generadas por el seed.
 
-No uses secretos ni datos personales reales. La demo no requiere login, registro ni credenciales.
+El recorrido básico usa datos ficticios y no requiere login. Para integrar
+el dashboard y el canal, configurá las claves localmente. En el ensayo en vivo
+usá únicamente números de prueba consentidos y mantenelos fuera del repositorio.
 
 ## URLs
 
@@ -71,12 +73,13 @@ dotnet run --launch-profile http --urls http://localhost:5000
 
 ### Canal de WhatsApp, conversaciones y transportistas
 
-Estas rutas existen sólo en el perfil LocalDemo y **nunca son anónimas** ([contrato](../contracts/openapi.yaml), etiquetas `Canal`, `Conversaciones` y `Transportistas`):
+Estas rutas existen sólo en el perfil LocalDemo y requieren la clave que
+corresponda según el [contrato](../contracts/openapi.yaml).
 
 | Consumidor | Encabezado | Configuración |
 |---|---|---|
 | n8n (canal) | `X-AgroFlow-Service-Key` | `ChannelIntegration__ServiceKey` |
-| Dashboard (conversaciones y transportistas) | `X-AgroFlow-Dashboard-Key` | `Dashboard__ApiKey` |
+| Dashboard (conversaciones, transportistas, camiones, asociaciones y ventanas) | `X-AgroFlow-Dashboard-Key` | `Dashboard__ApiKey` |
 
 - Cada clave debe tener al menos 32 bytes y ser distinta de la otra. Se cargan desde variables de entorno o `dotnet user-secrets`, nunca desde `appsettings*.json` versionados ni desde el JSON del workflow. Generación sugerida: `openssl rand -hex 32`.
 - Sin clave configurada la API arranca igual (la demo de turnos no cambia) y registra un aviso: las rutas de esa clave responden `401` hasta configurarla. Una clave presente pero corta, o igual a la otra, aborta el arranque.
@@ -151,7 +154,10 @@ Objetivo: registrar un transportista, simular un mensaje de WhatsApp y verlo alm
    npm run dev
    ```
 
-4. **Registrar el transportista**: en `http://localhost:5173` → **Transportistas** → **+ Nuevo transportista**, con nombre, DNI y WhatsApp E.164, por ejemplo `+5493815550155`. Aparece en el listado leído de la API como "sin camión asociado": el canal lo reconoce, pero todavía no puede solicitar turnos, porque la gestión de asociaciones transportista–camión sigue pendiente (OD-002, OD-013). Para probar turnos por el chatbot, usar un transportista del seed.
+4. En **Transportistas → + Nuevo transportista**, registrá nombre, DNI y
+   WhatsApp E.164 ficticios, por ejemplo `+5493815550155`. El canal puede
+   reconocerlo aun cuando figure **sin camión asociado**. Para probar además
+   solicitudes de turno con ese remitente, [asociá un camión activo y libre](local-demo.md#preparar-un-transportista-para-whatsapp-real).
 5. **Simular el mensaje** (tercera terminal, desde la raíz del repositorio):
 
    ```powershell
@@ -167,14 +173,103 @@ Objetivo: registrar un transportista, simular un mensaje de WhatsApp y verlo alm
 
 Prueba automatizada equivalente, con base y claves temporales (no toca la base de la demo): `node chatbot/tests/acceptance.mjs`, después de `dotnet build backend/AgroFlow.Api` y `npm ci` en `frontend/`.
 
-Para usar WhatsApp real hace falta n8n y Evolution en Docker con las credenciales de la [guía de la demo](local-demo.md#importar-el-workflow-y-vincular-credenciales); ese recorrido no se verificó con este cambio.
-
 ### Chat largo: verificar paginación
 
 Como parte del ensayo, abrir una conversación ficticia con más de 50 mensajes.
 La segunda petición de historial debe reutilizar nextCursor y responder 200,
 sin `Cursor inválido`. Seguir la [guía de paginación y regresión de #122](conversation-pagination.md).
 La corrección conserva el historial existente y no requiere reinicializar la base.
+
+## Ensayo con WhatsApp real
+
+Guion de la [#110](https://github.com/agustinvallante/AgroFlow/issues/110).
+El circuito a comprobar es teléfono → WhatsApp → Evolution → n8n → API →
+SQLite y dashboard, con la respuesta visible en el teléfono.
+
+### Preparar el entorno y el remitente
+
+1. En la máquina de presentación, registrá `git rev-parse HEAD` y
+   `git status --short`. Usá el workflow exportado de ese mismo commit.
+   Hacé la pasada de preparación con el código disponible y las dos pasadas
+   de aceptación con el SHA elegido para la presentación.
+2. Usá una SQLite dedicada al ensayo. Para crearla, elegí un archivo nuevo
+   en una carpeta privada, con ruta absoluta en
+   `ConnectionStrings__AgroFlowDb` (`Data Source=<ruta absoluta>;Default Timeout=5`).
+   Para cargar sólo el seed ficticio, apuntá `LocalDemo__TeamFile` a un
+   archivo inexistente de esa carpeta. Si retomás un ensayo, reutilizá su
+   misma ruta, configuración y datos. Conservá los volúmenes y las claves de
+   la instalación de Docker.
+3. Seguí el [arranque del monorepo](local-demo.md#camino-rápido). Verificá API
+   con `/health` en 200, dashboard con acceso a Transportistas y cuatro
+   servicios saludables en Compose. Comprobá que `EVOLUTION_INSTANCE` y
+   `LocalDemo__WhatsAppInstance` coincidan, y que n8n llegue a la API por
+   `AGROFLOW_API_URL`.
+4. [Importá y publicá el workflow con sus credenciales](local-demo.md#importar-el-workflow-y-vincular-credenciales),
+   incluida la clave de servicio en **Lookup Farms**. En Evolution confirmá
+   la [sesión del bot y el webhook](local-demo.md#vincular-whatsapp).
+5. Desde **Transportistas**, registrá o reutilizá el remitente autorizado,
+   [asociale un camión y verificá la patente en su fila](local-demo.md#preparar-un-transportista-para-whatsapp-real).
+   Si usás `AH303AB`, liberalo de **Transportista Demo Cinco** sólo en la
+   base de ensayo y verificá que la patente no tenga turnos activos. Anotá
+   localmente la patente y la finca ficticia elegida. Verificá en **Panel
+   general → Cola del día** que haya alguna franja futura con cupo.
+
+### Ejecutar dos pasadas
+
+1. Desde el remitente de prueba, pedí un turno indicando la patente asociada,
+   una finca por nombre (por ejemplo, **Finca Norte**), la fecha y hora
+   de corte y la carga estimada. Confirmá esos datos si el bot lo pide.
+2. Cotejá la respuesta del teléfono con el detalle del turno en **Cola de
+   turnos** y con `GET /api/v1/appointments/{id}`. Deben coincidir franja,
+   fecha y estado `ASIGNADO`. En Cola de turnos y Panel general seleccioná
+   la fecha de la franja que devolvió la API, incluso si es mañana.
+   Registrá la ocupación de la franja antes de cancelar. Para cotejarla
+   por API, consultá `GET /api/v1/windows?date=YYYY-MM-DD` para esa fecha
+   con la clave del dashboard en un cliente local.
+3. Consultá el turno por WhatsApp y después avisá que estás en camino con
+   esa patente. Verificá `EN_CAMINO` en el detalle de la API y **Camiones
+   en curso**. En **Chatbot WhatsApp**, comprobá que figuren los mensajes
+   de la conversación. El estado `ACCEPTED` indica aceptación del envío
+   por el proveedor. Confirmá la recepción mirando el teléfono.
+4. En **Cola de turnos**, cancelá el turno y verificá `CANCELADO` en el
+   detalle. La franja de esa fecha debe perder un ocupado y ganar un
+   disponible respecto de la lectura anterior. Consultá por WhatsApp y
+   comprobá que informe que no hay turno activo. Si necesitás contrastarlo
+   con HTTP, usá `GET /api/v1/appointments?active=true&phone=<E.164 codificado>`
+   (codificá el `+` como `%2B`) y esperá `200 []`.
+5. Volvé a solicitar con la misma patente y verificá un nuevo `ASIGNADO`
+   con un identificador distinto y una franja confirmada por la API.
+   Registrá la nueva asignación aunque cambie de franja.
+6. Detené y reiniciá la API con la misma SQLite y configuración. Desde la
+   raíz del repositorio, usá
+   `docker compose --env-file infra/.env -f infra/compose.yaml restart`
+   para reiniciar los servicios de la demo conservando volúmenes y claves.
+   Esperá que el bot vuelva a estar conectado. Comprobá que se mantengan
+   ambos turnos, los cupos, la asociación y el historial. Consultá desde
+   el mismo teléfono y cotejá el nuevo turno. Para preparar la siguiente
+   pasada, cancelá ese turno desde la cola y verificá que se libere su cupo.
+
+Si el canal falla, anotá el paso, el nodo y el error sin datos privados.
+Si la dirección llega como `@lid`, registrá el tipo y el resultado de
+identificación y probá con otro remitente consentido. Para mostrar el
+recorrido local, podés crear el turno desde **Cola de turnos** y usar
+`node chatbot/tests/acceptance.mjs` como respaldo del canal simulado.
+Registrá esos resultados por separado de las pasadas con WhatsApp real.
+
+### Evidencia del ensayo
+
+Al ejecutar el ensayo, copiá esta tabla a un registro fechado bajo
+`docs/development/`, completá las dos pasadas y enlazá el registro desde
+la #110. Incluí SHA, fecha, responsable, máquina o sistema, versiones de
+n8n y Evolution y modelo usado. Omití teléfonos,
+credenciales, QR, rutas privadas y mensajes que identifiquen personas.
+Si hace falta adjuntar evidencia de un error, conservá sólo los campos
+sanitizados que expliquen el resultado.
+
+| Pasada | SHA, fecha y entorno | Alta, consulta y EN_CAMINO | Cancelación, cupo y nueva alta | Reinicio y respuesta en el teléfono | Resultado o bloqueo |
+|---|---|---|---|---|---|
+| 1 | Pendiente | Pendiente | Pendiente | Pendiente | Pendiente |
+| 2 | Pendiente | Pendiente | Pendiente | Pendiente | Pendiente |
 
 ## Franjas y cupos del panel
 
