@@ -4,6 +4,11 @@ import {
   calcularViaje,
   distanciaRutaKm,
   duracionEstimadaMs,
+  esInstanteValido,
+  esMinutosValidos,
+  esUbicacionValida,
+  esVelocidadValida,
+  esViajeValido,
   FACTOR_RUTA,
   PROGRESO_MAXIMO_SIN_CONFIRMAR,
 } from "./simulacionViajes";
@@ -73,5 +78,38 @@ describe("calcularViaje", () => {
     expect(durante.llegadaEstimadaMs).toBe(sinRetraso.llegadaEstimadaMs);
     expect(durante.situacion.estado).toBe("demora");
     expect(calcularViaje(viaje, finca, ingenio, sinRetraso.llegadaEstimadaMs + 20 * MINUTO).situacion.estado).toBe("en-playa");
+  });
+});
+
+describe("validación de datos del escenario", () => {
+  it("acepta los extremos de los rangos y rechaza lo que queda afuera", () => {
+    expect(esVelocidadValida(1)).toBe(true);
+    expect(esVelocidadValida(120)).toBe(true);
+    for (const v of [0, 0.5, 121, 1e-12, Number.NaN, Infinity, "40"]) expect(esVelocidadValida(v)).toBe(false);
+
+    expect(esMinutosValidos(0)).toBe(true);
+    expect(esMinutosValidos(1440)).toBe(true);
+    for (const m of [-1, 1441, 1e12, Infinity, Number.NaN]) expect(esMinutosValidos(m)).toBe(false);
+
+    expect(esUbicacionValida({ lat: -90, lon: 180 })).toBe(true);
+    expect(esUbicacionValida({ lat: 90.1, lon: 0 })).toBe(false);
+    expect(esUbicacionValida({ lat: 0, lon: -180.1 })).toBe(false);
+    expect(esUbicacionValida({ lat: 0 })).toBe(false);
+  });
+
+  it("sólo acepta instantes que Date puede representar", () => {
+    expect(esInstanteValido(Date.now())).toBe(true);
+    for (const ms of [1e300, Infinity, Number.NaN]) expect(esInstanteValido(ms)).toBe(false);
+    expect(() => new Date(1e15).toISOString()).not.toThrow();
+  });
+
+  it("valida un viaje completo", () => {
+    const valido = { id: "v1", patente: "AF100AA", fincaId: "f1", salidaMs: 0, velocidadKmh: 40, retrasoMin: 0 };
+
+    expect(esViajeValido(valido)).toBe(true);
+    expect(esViajeValido({ ...valido, velocidadKmh: 1e-12 })).toBe(false);
+    expect(esViajeValido({ ...valido, salidaMs: 1e300 })).toBe(false);
+    expect(esViajeValido({ ...valido, patente: "" })).toBe(false);
+    expect(esViajeValido({ ...valido, fincaId: undefined })).toBe(false);
   });
 });

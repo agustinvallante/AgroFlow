@@ -168,12 +168,138 @@ describe("MapaView", () => {
 
     escribir("Velocidad (km/h)", "0");
     cargarViaje();
-    expect(screen.getByText("La velocidad debe ser mayor a 0.")).toBeTruthy();
+    expect(screen.getByText("La velocidad debe estar entre 1 y 120 km/h.")).toBeTruthy();
 
     escribir("Velocidad (km/h)", "40");
     cargarViaje();
     cargarViaje("AF600FF");
     expect(screen.getByText("Ese camión ya tiene un viaje sin terminar.")).toBeTruthy();
+  });
+
+  it("rechaza coordenadas fuera de rango", () => {
+    render(<MapaView />);
+    cargarIngenio();
+
+    escribir("Nombre de la finca", "Lejana");
+    escribir("Latitud de la finca", "91");
+    escribir("Longitud de la finca", "-65");
+    clic("Agregar finca");
+    expect(screen.getByText("La latitud debe estar entre -90 y 90.")).toBeTruthy();
+
+    escribir("Latitud de la finca", "-26");
+    escribir("Longitud de la finca", "-181");
+    clic("Agregar finca");
+    expect(screen.getByText("La longitud debe estar entre -180 y 180.")).toBeTruthy();
+    expect(within(screen.getByRole("img")).queryByText("Lejana")).toBeNull();
+  });
+
+  it.each([
+    ["Velocidad (km/h)", "1e-12", "La velocidad debe estar entre 1 y 120 km/h."],
+    ["Velocidad (km/h)", "Infinity", "La velocidad debe estar entre 1 y 120 km/h."],
+    ["Velocidad (km/h)", "121", "La velocidad debe estar entre 1 y 120 km/h."],
+    ["Sale en (min)", "-1", "La salida debe estar entre 0 y 1440 minutos."],
+    ["Sale en (min)", "1e12", "La salida debe estar entre 0 y 1440 minutos."],
+    ["Retraso simulado (min)", "-5", "El retraso debe estar entre 0 y 1440 minutos."],
+    ["Retraso simulado (min)", "Infinity", "El retraso debe estar entre 0 y 1440 minutos."],
+  ])("rechaza %s = %s sin agregar el viaje", (campo, valor, error) => {
+    render(<MapaView />);
+    cargarIngenio();
+    cargarFinca();
+
+    escribir(campo, valor);
+    cargarViaje();
+
+    expect(screen.getByText(error)).toBeTruthy();
+    expect(screen.getByText("Sin viajes cargados.")).toBeTruthy();
+  });
+
+  it("muestra Programado hasta la hora de salida", () => {
+    render(<MapaView />);
+    cargarIngenio();
+    cargarFinca();
+    escribir("Sale en (min)", "30");
+    cargarViaje();
+
+    expect(contador(/Programados (\d+)/)).toBe("1");
+    expect(screen.getByText("Programado", { selector: "em" })).toBeTruthy();
+
+    avanzar(31 * 60_000);
+    expect(contador(/Programados (\d+)/)).toBe("0");
+    expect(contador(/En ruta (\d+)/)).toBe("1");
+  });
+
+  it("conserva el adelanto acumulado al recargar", () => {
+    const { unmount } = render(<MapaView />);
+    clic("x60");
+    avanzar(10_000);
+    unmount();
+
+    render(<MapaView />);
+
+    // 10 s a x60 adelantan 590 s: unos 10 minutos.
+    expect(screen.getByText("Adelantado 10 min")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "x1", pressed: true })).toBeTruthy();
+  });
+
+  it("a x60 no escribe en el navegador en cada tick", () => {
+    render(<MapaView />);
+    clic("x60");
+    const escrituras = vi.spyOn(Storage.prototype, "setItem");
+
+    avanzar(20_000);
+
+    // 200 ticks; el adelanto se guarda cada 5 s.
+    expect(escrituras.mock.calls.length).toBeLessThanOrEqual(5);
+    escrituras.mockRestore();
+  });
+
+  it("sigue funcionando si el navegador no permite guardar", () => {
+    vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+      throw new Error("bloqueado");
+    });
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new Error("bloqueado");
+    });
+    try {
+      render(<MapaView />);
+      cargarIngenio();
+      cargarFinca();
+      cargarViaje();
+
+      expect(screen.getByText("AF600FF", { selector: "strong" })).toBeTruthy();
+      expect(contador(/En ruta (\d+)/)).toBe("1");
+    } finally {
+      vi.restoreAllMocks();
+    }
+  });
+
+  it("descarta lo guardado que no es válido en lugar de romper la vista", () => {
+    const ingenio = { nombre: "Ingenio Prueba", lat: -26.75, lon: -65 };
+    const finca = { id: "f1", nombre: "Finca Prueba", lat: -26.6, lon: -65.4 };
+    const viaje = { fincaId: "f1", salidaMs: Date.now(), velocidadKmh: 40, retrasoMin: 0 };
+    localStorage.setItem(
+      "agroflow.mapa-simulado.v2",
+      JSON.stringify({
+        ingenio,
+        fincas: [finca, { id: "f2", nombre: "Sin coordenadas" }],
+        viajes: [
+          { ...viaje, id: "v1", patente: "AF100AA" },
+          { ...viaje, id: "v2", patente: "AF200BB", velocidadKmh: 1e-12 },
+          { ...viaje, id: "v3", patente: "AF300CC", salidaMs: 1e300 },
+          { ...viaje, id: "v4", patente: "AF400DD", fincaId: "f2" },
+        ],
+        siguienteId: 5,
+        adelantoMs: Number.MAX_VALUE,
+      }),
+    );
+
+    render(<MapaView />);
+
+    expect(screen.getByText("AF100AA", { selector: "strong" })).toBeTruthy();
+    for (const patente of ["AF200BB", "AF300CC", "AF400DD"])
+      expect(screen.queryByText(patente, { selector: "strong" })).toBeNull();
+    expect(within(screen.getByRole("img")).queryByText("Sin coordenadas")).toBeNull();
+    expect(screen.getByText("Tiempo real")).toBeTruthy();
   });
 
   it("al quitar una finca quita también sus viajes", () => {

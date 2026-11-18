@@ -18,7 +18,7 @@ La pestaña Mapa SHALL identificar que usa datos cargados a mano y que su inform
 
 ### Requirement: Carga manual y validaciones del escenario
 
-El mapa SHALL iniciar sin ingenio, fincas ni viajes precargados en un navegador sin datos guardados. SHALL exigir nombre y coordenadas válidas de los lugares. La latitud MUST estar entre -90 y 90 y la longitud entre -180 y 180. Un viaje SHALL requerir un ingenio, una finca cargada, patente, velocidad mayor que cero y valores no negativos de salida relativa y retraso. Una patente normalizada MUST NOT tener dos viajes simulados sin terminar.
+El mapa SHALL iniciar sin ingenio, fincas ni viajes precargados en un navegador sin datos guardados. SHALL exigir nombre y coordenadas válidas de los lugares. La latitud MUST estar entre -90 y 90 y la longitud entre -180 y 180. Un viaje SHALL requerir un ingenio, una finca cargada, patente, una velocidad entre 1 y 120 km/h y una salida relativa y un retraso entre 0 y 1440 minutos. Los valores numéricos MUST ser finitos. Una patente normalizada MUST NOT tener dos viajes simulados sin terminar.
 
 #### Scenario: Preparación incompleta
 
@@ -28,9 +28,9 @@ El mapa SHALL iniciar sin ingenio, fincas ni viajes precargados en un navegador 
 
 #### Scenario: Entrada inválida o viaje duplicado
 
-- **GIVEN** una coordenada inválida, velocidad cero o una patente con un viaje sin terminar
+- **GIVEN** una coordenada fuera de rango, un valor no finito o fuera de los límites del viaje, o una patente con un viaje sin terminar
 - **WHEN** se envía el formulario correspondiente
-- **THEN** se muestra el error y se conserva el escenario previo
+- **THEN** se muestra el error, se conserva el escenario previo y la vista sigue disponible
 
 ### Requirement: Recorrido estimado de finca a ingenio
 
@@ -73,3 +73,15 @@ El escenario SHALL conservarse en localStorage por navegador y origen, incluidos
 - **GIVEN** una finca con viajes cargados
 - **WHEN** se quita esa finca
 - **THEN** desaparecen tanto la finca como sus viajes de la simulación
+
+#### Scenario: Datos guardados inválidos
+
+- **GIVEN** un escenario guardado con lugares, viajes o adelanto fuera de los límites admitidos
+- **WHEN** se abre Mapa en ese navegador
+- **THEN** la vista descarta los elementos inválidos, conserva los válidos y sigue disponible sin borrar el almacenamiento a mano
+
+#### Scenario: Almacenamiento no disponible
+
+- **GIVEN** un navegador que no permite leer ni guardar en localStorage
+- **WHEN** se cargan lugares y viajes
+- **THEN** la simulación funciona durante la visita aunque no se conserve al recargar

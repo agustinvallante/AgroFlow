@@ -16,6 +16,17 @@
 - [x] Verificar la rama sincronizada con suites backend/frontend, OpenSpec, contrato, enlaces y aceptación local del canal.
 - [x] Ejecutar el guion de navegador sin API y comprobar viaje x60 y persistencia tras recarga.
 - [ ] Obtener la revisión de Facundo y Lucas.
+
+## Correcciones de la revisión de Lucas
+
+- [x] Limitar velocidad (1 a 120 km/h), salida y retraso (0 a 1440 min) a valores finitos; la hora no representable se muestra como guion.
+- [x] Descartar al leer los lugares, viajes y adelanto guardados que no sean válidos.
+- [x] Guardar el adelanto como mucho cada 5 s, al cambiar la velocidad, al salir de la pestaña y al cerrar la página.
+- [x] Probar adelanto tras recarga, almacenamiento bloqueado, coordenadas fuera de rango, límites del viaje, Programado y datos guardados inválidos.
+- [ ] Enlazar la minuta o el comentario del acuerdo del 2026-11-14.
+
+## Cierre
+
 - [ ] Consolidar la capacidad después de aceptar la revisión.
 
 La comprobación del navegador con API desconectada y las regresiones de las vistas HTTP se registran junto con las pruebas de esta revisión. La presentación completa conserva su seguimiento en #111.

@@ -1,8 +1,51 @@
 /**
  * Simulación de viajes finca → ingenio sin GPS: la posición de cada camión se
  * deduce del reloj, la distancia a su finca y una velocidad estimada. Son
- * funciones puras; la fuente de los datos (hoy de ejemplo) queda afuera.
+ * funciones puras; la fuente de los datos (hoy, la carga manual) queda afuera.
  */
+
+/**
+ * Rangos admitidos para un viaje. Fuera de ellos las horas dejan de ser
+ * representables (`Date` lanza error) o el escenario deja de ser verosímil.
+ */
+export const LIMITES_VIAJE = {
+  velocidadMinKmh: 1,
+  velocidadMaxKmh: 120,
+  /** Un día: tope de salida relativa y de retraso. */
+  minutosMax: 1440,
+} as const;
+
+/** Instantes muy lejanos que todavía permiten calcular y mostrar una hora. */
+const INSTANTE_MAXIMO_MS = 1e15;
+
+const enRango = (valor: unknown, min: number, max: number): valor is number =>
+  typeof valor === "number" && Number.isFinite(valor) && valor >= min && valor <= max;
+
+export function esUbicacionValida(lugar: Partial<PuntoGeo>): lugar is PuntoGeo {
+  return enRango(lugar.lat, -90, 90) && enRango(lugar.lon, -180, 180);
+}
+
+export const esVelocidadValida = (kmh: unknown): kmh is number =>
+  enRango(kmh, LIMITES_VIAJE.velocidadMinKmh, LIMITES_VIAJE.velocidadMaxKmh);
+
+export const esMinutosValidos = (minutos: unknown): minutos is number =>
+  enRango(minutos, 0, LIMITES_VIAJE.minutosMax);
+
+export const esInstanteValido = (ms: unknown): ms is number =>
+  enRango(ms, -INSTANTE_MAXIMO_MS, INSTANTE_MAXIMO_MS);
+
+/** Para datos de origen no confiable, como lo guardado en el navegador. */
+export function esViajeValido(viaje: Partial<ViajeSimulado>): viaje is ViajeSimulado {
+  return (
+    typeof viaje.id === "string" &&
+    typeof viaje.patente === "string" &&
+    viaje.patente !== "" &&
+    typeof viaje.fincaId === "string" &&
+    esInstanteValido(viaje.salidaMs) &&
+    esVelocidadValida(viaje.velocidadKmh) &&
+    esMinutosValidos(viaje.retrasoMin)
+  );
+}
 
 export interface PuntoGeo {
   lat: number;

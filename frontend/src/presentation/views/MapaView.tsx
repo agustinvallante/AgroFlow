@@ -1,4 +1,4 @@
-import type { EstadoViaje, ViajeCalculado } from "../../domain/services/simulacionViajes";
+import { esInstanteValido, type EstadoViaje, type ViajeCalculado } from "../../domain/services/simulacionViajes";
 import { FormularioFinca, FormularioIngenio, FormularioViaje } from "../components/mapa/FormulariosMapa";
 import { MapaRutas } from "../components/mapa/MapaRutas";
 import { MULTIPLICADORES, useMapaSimulado } from "../hooks/useMapaSimulado";
@@ -14,7 +14,8 @@ const ESTADO_LABEL: Record<EstadoViaje, string> = {
 /** Orden de la cola: primero lo que está por llegar. */
 const ORDEN_ESTADO: Record<EstadoViaje, number> = { demora: 0, "en-ruta": 1, programado: 2, "en-playa": 3 };
 
-const hora = (ms: number) => horaEnZonaIngenio(new Date(ms).toISOString());
+/** Un instante no representable muestra un guion en lugar de desmontar la vista. */
+const hora = (ms: number) => (esInstanteValido(ms) ? horaEnZonaIngenio(new Date(ms).toISOString()) : "--:--");
 const minutos = (ms: number) => Math.max(Math.round(ms / 60_000), 0);
 
 function detalleTiempo({ situacion, llegadaEstimadaMs, llegadaMs, viaje }: ViajeCalculado, ahoraMs: number): string {

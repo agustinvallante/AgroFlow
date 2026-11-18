@@ -35,6 +35,8 @@ Los datos viven en `agroflow.mapa-simulado.v2` de localStorage. Cada navegador, 
 
 El reloj a x1 sigue el tiempo real. Las velocidades x10 y x60 acumulan un adelanto únicamente mientras el mapa está abierto. Al regresar tras recargar o cambiar de sección, se conserva ese adelanto y se agrega el tiempo real transcurrido. El reloj visible usa la zona de la demo, America/Argentina/Tucuman.
 
+El formulario admite velocidades de 1 a 120 km/h y salidas y retrasos de 0 a 1440 minutos. Si lo guardado contiene valores fuera de esos límites, por ejemplo por una versión anterior o una edición manual, el mapa los descarta al abrirse en lugar de dejar de funcionar. Con x10 y x60 el adelanto se guarda cada pocos segundos y al cambiar de velocidad, de sección o cerrar la página.
+
 Se pueden quitar viajes desde la cola y fincas desde la lista. Quitar una finca elimina sus viajes. Para reiniciar únicamente esta simulación, abrir las herramientas del navegador y eliminar la clave `agroflow.mapa-simulado.v2` del origen actual, y recargar.
 
 ## Interpretación de la demostración
@@ -51,7 +53,8 @@ Las coordenadas, viajes y llegadas no se envían a la API. Los datos operativos 
 |---|---|
 | Vacío, formularios y duplicados | `frontend/src/presentation/views/MapaView.test.tsx` |
 | Movimiento, llegada, retraso y x1/x60 | El mismo archivo y `frontend/src/domain/services/simulacionViajes.test.ts` |
-| Regreso a la pestaña y eliminación de finca | `MapaView.test.tsx` |
+| Regreso a la pestaña, adelanto tras recarga y eliminación de finca | `MapaView.test.tsx` |
+| Límites de entrada, datos guardados inválidos y almacenamiento bloqueado | `MapaView.test.tsx` y `simulacionViajes.test.ts` |
 | Trayectorias y etiquetas | `geometriaMapa.test.ts` y `curvasDeNivel.test.ts` en componentes/mapa |
 | API desconectada y recarga real | Guion de navegador descrito arriba y evidencia publicada en la PR |
 

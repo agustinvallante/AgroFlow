@@ -1,6 +1,12 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
-import type { FincaMapa } from "../../../domain/services/simulacionViajes";
+import {
+  esMinutosValidos,
+  esUbicacionValida,
+  esVelocidadValida,
+  LIMITES_VIAJE,
+  type FincaMapa,
+} from "../../../domain/services/simulacionViajes";
 import type { DatosFinca, DatosViaje, IngenioMapa } from "../../hooks/useMapaSimulado";
 
 const texto = (datos: FormData, campo: string) => String(datos.get(campo) ?? "").trim();
@@ -12,10 +18,12 @@ function numero(datos: FormData, campo: string): number {
 }
 
 function errorDeUbicacion(lat: number, lon: number): string | null {
-  if (!(Math.abs(lat) <= 90)) return "La latitud debe estar entre -90 y 90.";
-  if (!(Math.abs(lon) <= 180)) return "La longitud debe estar entre -180 y 180.";
+  if (!esUbicacionValida({ lat, lon: 0 })) return "La latitud debe estar entre -90 y 90.";
+  if (!esUbicacionValida({ lat, lon })) return "La longitud debe estar entre -180 y 180.";
   return null;
 }
+
+const { velocidadMinKmh, velocidadMaxKmh, minutosMax } = LIMITES_VIAJE;
 
 interface CamposLugarProps {
   prefijo: string;
@@ -143,9 +151,10 @@ export function FormularioViaje({ hayIngenio, fincas, patentesEnViaje, onAgregar
     if (!fincaId) return setError("Primero agregá una finca.");
     if (!patente) return setError("Ingresá la patente del camión.");
     if (patentesEnViaje.includes(patente)) return setError("Ese camión ya tiene un viaje sin terminar.");
-    if (!(velocidadKmh > 0)) return setError("La velocidad debe ser mayor a 0.");
-    if (!(saleEnMin >= 0)) return setError("La salida debe ser 0 o más minutos.");
-    if (!(retrasoMin >= 0)) return setError("El retraso debe ser 0 o más minutos.");
+    if (!esVelocidadValida(velocidadKmh))
+      return setError(`La velocidad debe estar entre ${velocidadMinKmh} y ${velocidadMaxKmh} km/h.`);
+    if (!esMinutosValidos(saleEnMin)) return setError(`La salida debe estar entre 0 y ${minutosMax} minutos.`);
+    if (!esMinutosValidos(retrasoMin)) return setError(`El retraso debe estar entre 0 y ${minutosMax} minutos.`);
 
     onAgregar({ patente, fincaId, velocidadKmh, saleEnMin, retrasoMin });
     setError(null);
