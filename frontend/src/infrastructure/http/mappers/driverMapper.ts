@@ -9,6 +9,7 @@ export function mapDriver(dto: DriverDto): Transportista {
     telefono: dto.whatsApp,
     // Camiones asociados (sólo lectura); la API no publica cómo asociarlos.
     patente: dto.activeTruckPlates.length > 0 ? dto.activeTruckPlates.join(", ") : null,
+    patentes: dto.activeTruckPlates,
     activo: dto.isActive,
     puedeSolicitarTurnos: dto.canRequestAppointments,
   };

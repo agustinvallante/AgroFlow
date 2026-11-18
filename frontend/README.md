@@ -15,9 +15,9 @@ recorridos del MVP.
 
 | Sección | Fuente |
 |---|---|
-| Cola de turnos | `/api/v1/appointments` ([`openapi.yaml`](../docs/contracts/openapi.yaml)): alta, listado, filtros, detalle, transiciones y cancelación. |
-| Transportistas | `/api/v1/drivers`: lista, registra (WhatsApp E.164) e inhabilita. |
-| Chatbot WhatsApp | `/api/v1/conversations`: conversaciones y mensajes persistidos, con remitente y estado de envío informados por la API; se refresca cada 15 s. Métricas y plantillas no tienen endpoint: conservan su lugar, sin datos ni acciones. |
+| Cola de turnos | `/api/v1/appointments` ([`openapi.yaml`](../docs/contracts/openapi.yaml)): alta, listado, filtros, detalle, transiciones y cancelación. El alta ofrece transportistas habilitados y sus patentes (`/api/v1/drivers`) y fincas activas (`/api/v1/farms`). |
+| Transportistas | `/api/v1/drivers`: lista, registra (WhatsApp E.164), edita activos e inhabilita. |
+| Chatbot WhatsApp | `/api/v1/conversations`: conversaciones y mensajes persistidos, con remitente y estado de envío informados por la API, recorridos por cursor hasta 1000 por lectura; una lectura incompleta se muestra con aviso. Se refresca cada 15 s. Métricas y plantillas no tienen endpoint: conservan su lugar, sin datos ni acciones. |
 | Panel general | Camiones en curso mediante `/api/v1/appointments?active=true`, de cualquier fecha. Franjas y cupos mediante `/api/v1/windows` (LocalDemo), con fecha opcional y refresco cada 4 segundos. Indicadores, feed del chatbot, molienda y avisos siguen sin datos ni acciones. |
 | Reportes y configuración | Conservan su diseño, sin datos y con las acciones deshabilitadas. |
 
