@@ -101,9 +101,15 @@ jobs:
       - name: Install frontend dependencies
         working-directory: frontend
         run: npm ci
-      - name: Reject high or critical npm advisories, including transitive dev dependencies
+      - name: Audit frontend dependencies and enforce the temporary Picomatch exception
         working-directory: frontend
-        run: npm audit --audit-level=high
+        shell: bash
+        run: |
+          audit_report="$RUNNER_TEMP/frontend-audit.json"
+          audit_exit=0
+          npm audit --audit-level=high --json > "$audit_report" || audit_exit=$?
+          cat "$audit_report"
+          node ../.github/scripts/check-frontend-audit.mjs "$audit_report" "$audit_exit"
       - name: Type-check frontend
         working-directory: frontend
         run: npm run typecheck
@@ -142,6 +148,8 @@ jobs:
           package-manager-cache: false
       - name: Test integration validation rules
         run: node --test .github/scripts/tests/integrations.test.mjs
+      - name: Test the frontend audit exception
+        run: node --test .github/scripts/tests/frontend-audit.test.mjs
       - name: Simulate the chatbot workflow with synthetic Evolution fixtures
         # In-memory doubles for AgroFlow API, Evolution and the agent: no live or paid calls.
         run: node --test chatbot/tests/workflow.test.mjs
