@@ -502,3 +502,5 @@ Registrá para cada ejecución:
 - defectos observados.
 
 Ejecutá ambos recorridos dos veces desde datos controlados. La demo está lista sólo si también pasan las validaciones OpenSpec, OpenAPI y Markdown disponibles y si la evidencia declara que login/registro, despliegue, CRUD de datos maestros, interrupciones, mapa y reportes están fuera de alcance.
+
+El alcance anterior corresponde al recorrido local original. Para la presentación acordada el 2026-11-14 se suma un [mapa de viajes ficticios](mapa-simulado-presentacion.md), con su propio guion y [cambio OpenSpec](../../openspec/changes/mapa-simulado-presentacion/proposal.md). La simulación permanece identificada en su pestaña y las operaciones de este runbook conservan a la API como fuente de estado.

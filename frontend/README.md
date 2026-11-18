@@ -9,9 +9,10 @@ Next.js y sus librerías asociadas no son decisiones vigentes; véanse los
 
 ## Estado y alcance actual
 
-El dashboard muestra **únicamente datos de la API**; no hay repositorios mock ni
-datos de ejemplo. Esto acredita únicamente la integración de demo, no todos los
-recorridos del MVP.
+Las vistas operativas del dashboard muestran datos de AgroFlow API.
+La pestaña Mapa ofrece una simulación independiente con datos cargados a mano
+para la presentación. Su alcance y prueba reproducible están en la
+[guía del mapa](../docs/development/mapa-simulado-presentacion.md).
 
 | Sección | Fuente |
 |---|---|
@@ -19,6 +20,7 @@ recorridos del MVP.
 | Transportistas | `/api/v1/drivers`: lista, registra (WhatsApp E.164), edita activos e inhabilita. |
 | Chatbot WhatsApp | `/api/v1/conversations`: conversaciones y mensajes persistidos, con remitente y estado de envío informados por la API, recorridos por cursor hasta 1000 por lectura; una lectura incompleta se muestra con aviso. Se refresca cada 15 s. Métricas y plantillas no tienen endpoint: conservan su lugar, sin datos ni acciones. |
 | Panel general | Camiones en curso mediante `/api/v1/appointments?active=true`, de cualquier fecha. Franjas y cupos mediante `/api/v1/windows` (LocalDemo), con fecha opcional y refresco cada 4 segundos. Indicadores, feed del chatbot, molienda y avisos siguen sin datos ni acciones. |
+| Mapa | Fincas de `/api/v1/farms`, ubicadas de forma aproximada alrededor de un ingenio de referencia (la API no publica coordenadas). Viajes ficticios guardados en el navegador, recorridos sobre una red vial simulada y detalle de cada camión. |
 | Reportes y configuración | Conservan su diseño, sin datos y con las acciones deshabilitadas. |
 
 No hay requisito de conectar todas las pantallas ahora. El backend sigue siendo
