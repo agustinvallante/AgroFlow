@@ -54,6 +54,12 @@ La mera existencia de proyectos, de un job o de una CI verde no demuestra cobert
 
 `Dependency review` bloquea nuevas dependencias vulnerables altas/críticas. Además, `npm audit --audit-level=high` comprueba todas las dependencias frontend, incluidas las transitivas de desarrollo: una vulnerabilidad heredada también impide CI verde. La auditoría programada revisa el lockfile cada lunes a las 09:00 de Argentina, sin instalar, cambiar archivos, abrir issues ni hacer merges. Los schedules de GitHub pueden ejecutarse con demora; el control por PR también sigue activo. Dependabot alerts, security updates y secret scanning/push protection permanecen habilitados.
 
+### Excepción temporal para Picomatch
+
+Hasta el **2 de diciembre de 2026 a las 00:00 de Argentina (03:00 UTC)**, el control de frontend admite únicamente [GHSA-fc5q-39xc-vjpf](https://github.com/advisories/GHSA-fc5q-39xc-vjpf) en la instalación transitiva de desarrollo `picomatch@4.0.7` que ya está en el lockfile. Incluye los hallazgos que npm atribuye a ese mismo aviso en los paquetes que dependen de Picomatch. La CI publica el informe completo y muestra una advertencia explícita al aplicar la excepción. Cualquier otro hallazgo alto o crítico sigue bloqueando y el frontend tiene que pasar el chequeo de tipos, el lint, las pruebas y la compilación.
+
+La auditoría programada y `Dependency review` conservan sus controles estrictos. Si el parche oficial está disponible antes del vencimiento, actualizar el lockfile, verificar la auditoría estricta y retirar la excepción en la misma PR. Si vence mientras el aviso sigue vigente, el control vuelve a bloquear automáticamente.
+
 ## Integraciones y privacidad
 
 El bot de la PR #79 ya está integrado en `main`. El job comprueba sus archivos reales: `chatbot/workflows/Chatbot.json`, `chatbot/README.md`, `infra/compose.yaml` e `infra/env.example`. Una incorporación parcial falla; si la base ya tenía el componente, tampoco se permite que desaparezca silenciosamente. Los tests conservan cobertura para estados previos sin bot, pero ese caso ya no describe el candidato actual.
