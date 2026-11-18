@@ -6,7 +6,7 @@ La copia inicial de ICS2026-backend todavía publicaba controladores de producto
 
 ## What Changes
 
-- Renombrar solución, cinco proyectos, namespaces, referencias y rutas de CI a `ZafraFlow.*`.
+- Renombrar solución, cinco proyectos, namespaces, referencias y rutas de CI a `AgroFlow.*`.
 - Retirar la superficie HTTP, el modelo y la migración de comercio electrónico; no cargar `customers.json` ni administradores desde un archivo de contraseñas.
 - Conservar la API de turnos, sus migraciones/seed y pruebas; conservar Identity/JWT sólo como andamiaje no integrado al MVP.
 - Preservar la continuidad del archivo SQLite ignorado durante el renombre: resolución relativa contra la raíz de la API, protección de arranque ante archivos históricos y selección absoluta explícita con respaldo documentado.

@@ -12,7 +12,7 @@ Los estados siguientes son una fotografía, no un monitor automático.
 
 | Aporte | Estado en este corte | Consecuencia para las issues |
 |---|---|---|
-| #76/#77; B01 #8 | Integrados; B01 cerrada | Usar `AgroFlow.sln` y `ZafraFlow.*`. No repetir renombre/retiro de e-commerce ni recuperar Customer/registro público. Preservar detector y continuidad de SQLite anterior. |
+| #76/#77; B01 #8 | Integrados; B01 cerrada | Usar `AgroFlow.sln` y `AgroFlow.*`. No repetir renombre/retiro de e-commerce ni recuperar Customer/registro público. Preservar detector y continuidad de SQLite anterior. |
 | API y frontend de demo | Integrados | Reutilizar appointments/transitions, migraciones/seed y cola HTTP React/Vite. Faltan perfil seguro/segregado, contratos y capacidades del MVP. |
 | [PR #47](https://github.com/agustinvallante/AgroFlow/pull/47), `efe8c7c` | Draft, no integrada | Coordinar adopción de entidades, servicio/repositorio de maestros, contexto de identidad y pruebas. `MasterDataController` tiene `[NonController]`: no publica CRUD. Su descripción conserva referencias antiguas; las guías actuales ya marcan Next.js como propuesta supersedida. |
 | [PR #79](https://github.com/agustinvallante/AgroFlow/pull/79), `15944f4` | Abierta, no integrada | Ruta objetivo del bot: `chatbot/workflows/Chatbot.json`; Compose/ejemplo en `infra/`. No hacer otra importación ni mantener dos copias operativas. Empaquetado/saludo/conectividad no acreditan E2E de turnos. |

@@ -6,7 +6,7 @@
 
 **Seguimiento vigente al 2026-10-15:** [actualización del backlog y aportes pendientes](mvp-backlog-sync-2026-10-15.md). #76/#77 ya se integraron y B01 #8 está cerrada. La tabla de este documento conserva el relevamiento histórico de `ef4cc5b`; no usarla para volver a planificar código retirado. Las PRs #47/#79/#80 se consideran aportes condicionales, y #88 sólo una propuesta documental no implementada.
 
-Actualización de integración (2026-10-07): la PR #76 se revisa sobre la rama de #77 para reconciliar la documentación sin perder las decisiones de este corte. El orden previsto es #77 primero, luego #76 hacia `main`. El resultado combinado usa `AgroFlow.sln` y `ZafraFlow.*`, retira el e-commerce y protege la continuidad de la SQLite anterior según el [runbook](../development/local-demo-runbook.md#actualización-desde-la-demo-anterior-sin-perder-turnos). La tabla siguiente conserva el relevamiento histórico de `ef4cc5b`; las guías actuales reflejan el resultado reconciliado, no presentan el e-commerce como código aún pendiente de retiro.
+Actualización de integración (2026-10-07): la PR #76 se revisa sobre la rama de #77 para reconciliar la documentación sin perder las decisiones de este corte. El orden previsto es #77 primero, luego #76 hacia `main`. El resultado combinado usa `AgroFlow.sln` y `AgroFlow.*`, retira el e-commerce y protege la continuidad de la SQLite anterior según el [runbook](../development/local-demo-runbook.md#actualización-desde-la-demo-anterior-sin-perder-turnos). La tabla siguiente conserva el relevamiento histórico de `ef4cc5b`; las guías actuales reflejan el resultado reconciliado, no presentan el e-commerce como código aún pendiente de retiro.
 
 ## Qué quedó reutilizable
 

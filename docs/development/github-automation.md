@@ -101,7 +101,7 @@ CI no inicia n8n/Evolution, no vincula WhatsApp, no utiliza credenciales reales 
 
 ## Política de mantenimiento de dependencias
 
-- **Mensual, no actualización continua:** GitHub Actions, NuGet en los proyectos actuales `ZafraFlow.*` y npm en `/frontend` generan lotes de minor/patch, con un máximo de dos PRs rutinarias por ecosistema. El lote .NET abarca proyectos juntos para evitar cambios aislados de EF/proveedores/Logging.
+- **Mensual, no actualización continua:** GitHub Actions, NuGet en los proyectos actuales `AgroFlow.*` y npm en `/frontend` generan lotes de minor/patch, con un máximo de dos PRs rutinarias por ecosistema. El lote .NET abarca proyectos juntos para evitar cambios aislados de EF/proveedores/Logging.
 - **Versiones principales estables:** Dependabot ignora propuestas rutinarias major. No migra .NET, EF, Identity, React, Vite o TypeScript de generación por sorpresa. Un salto major requiere decisión explícita, notas de incompatibilidad y PR separado; también para Actions se revisa el runtime del runner.
 - **Sin auto-merge:** cada actualización necesita revisión y CI del candidato sobre main actual. Minor/patch tampoco garantiza compatibilidad: revisar diferencias, restauración, build, tests, migraciones y contratos afectados.
 - **Seguridad prioritaria:** las alertas y reparaciones urgentes no esperan la ventana mensual. Si un filtro de versión impide una reparación necesaria, crear una excepción manual revisada; no conservar una versión vulnerable o sin soporte por aplicar esta política mecánicamente.
