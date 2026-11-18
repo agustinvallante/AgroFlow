@@ -1,6 +1,8 @@
 # Ejecutar la demo local desde el monorepo
 
-La API y el frontend integrado se ejecutan en el host; n8n, Evolution API, PostgreSQL y Redis se ejecutan en Docker. Esta guía empaqueta la demo existente: no habilita un despliegue productivo ni nuevas rutas de registro de transportistas. El backend sigue siendo la fuente operativa de verdad.
+La API y el frontend integrado se ejecutan en el host. n8n, Evolution API,
+PostgreSQL y Redis se ejecutan en Docker. Esta guía explica cómo preparar
+`LocalDemo` y su canal de WhatsApp con AgroFlow API como fuente de verdad.
 
 ## Antes de iniciar: conservar la SQLite existente
 
@@ -134,11 +136,48 @@ Usar un **número prescindible** para el bot: Evolution/Baileys es un cliente no
 
 La URL usa el servicio `n8n` dentro de Docker, no `localhost`. `/webhook/` requiere el workflow publicado/activo. `/webhook-test/` sólo sirve durante una escucha de prueba en el editor; no dejar esa ruta en Evolution como configuración normal. Cada instancia mantiene su propia sesión; no vincular el mismo bot desde varias computadoras simultáneamente.
 
-## Qué se verificó y qué falta
+## Preparar un transportista para WhatsApp real
 
-Antes de este cambio sólo se había confirmado en vivo una respuesta al **saludo** con Agent 3.1 / GPT-5.4-mini. La persistencia de conversaciones se verificó **sin Docker**: el workflow exportado se ejecutó con un simulador y fixtures sintéticos de Evolution contra la API real y SQLite temporal (`node chatbot/tests/acceptance.mjs`), con Evolution, WhatsApp y el agente simulados. **No se verificó en vivo** el workflow importado en n8n, Evolution, WhatsApp ni OpenAI con este cambio, ni el E2E de turnos con las tres herramientas.
+Usá un remitente de prueba consentido, distinto del número vinculado al bot.
+Configurá [las dos claves de AgroFlow](local-demo-runbook.md#canal-de-whatsapp-conversaciones-y-transportistas)
+antes de iniciar la API y Vite. La clave del dashboard se configura en Vite
+con `AGROFLOW_DASHBOARD_KEY`, sin prefijo `VITE_`.
 
-El seed contiene únicamente transportistas ficticios. Un número de prueba consentido se registra desde la vista **Transportistas** del frontend (o `POST /api/v1/drivers`) en formato E.164; un remitente no identificado recibe la plantilla fija sin invocar al agente. **Un transportista registrado así es reconocido por el canal, pero no puede solicitar turnos**: un turno exige una asociación activa con un camión, y la gestión de asociaciones sigue pendiente (OD-002, OD-013) sin ruta publicada. La vista Transportistas lo indica como "sin camión asociado". Para el recorrido de turnos usar los transportistas del seed (`+5493815550101` con `AF123BC`, `+5493815550102` con `AF456DE`), cuyo WhatsApp puede editarse sin perder la asociación. **No editar teléfonos del código ni borrar SQLite para registrar usuarios o reiniciar ensayos.** No confirmar un turno si la API lo rechaza. La [guía de demostración](local-demo-runbook.md#demostración-conversación-persistida-en-el-dashboard) muestra el recorrido completo.
+1. Abrí **Transportistas**. Si el remitente ya existe, verificá que su fila
+   esté activa y tenga un camión habilitado asociado. Si falta, usá
+   **+ Nuevo transportista**, ingresá nombre y DNI ficticios para el ensayo,
+   el número de prueba en formato E.164 y pulsá **Guardar transportista**.
+2. En la columna **Camión asociado**, elegí **Asociar camión**, seleccioná
+   una patente libre y pulsá **Asociar**. El camión debe existir, estar activo
+   y no tener otro transportista activo. La vista lista camiones existentes.
+3. Verificá que la patente aparezca en la fila y desaparezca
+   **sin camión asociado · no puede solicitar turnos**. La API lo refleja en
+   `GET /api/v1/drivers/{id}` con `canRequestAppointments: true` y la patente
+   en `activeTruckPlates`.
+
+Si **Asociar camión** está deshabilitado porque el seed ya asignó todos los
+camiones, usá sólo la base de ensayo descrita en el runbook. En una base de
+ensayo nueva, **Transportista Demo Cinco** tiene `AH303AB`. Comprobá en
+**Cola de turnos** que esa patente no tenga un turno activo, pulsá
+**Desasociar** junto a ella y confirmá. Luego asociá esa misma patente al
+remitente de prueba. Así siguen disponibles las parejas del seed
+`AF123BC` y `AF456DE` para el otro guion. **Desasociar** conserva el historial
+de la asociación y deja los turnos existentes como estaban, por lo que un
+turno activo previo seguiría impidiendo una nueva reserva para esa patente.
+
+Si ya había otra asociación activa al confirmar, la API responde
+`409 DUPLICATE_ASSOCIATION`. Pulsá **Actualizar** y elegí un camión libre.
+Las rutas de [asociaciones de LocalDemo](../contracts/openapi.yaml) y el
+[cambio OpenSpec de la #124](../../openspec/changes/gestionar-asociaciones-transportista-camion/proposal.md)
+describen las reglas aplicadas por la API.
+
+## Verificación del canal
+
+La prueba automatizada `node chatbot/tests/acceptance.mjs` usa API y SQLite
+reales con Evolution, WhatsApp y agente simulados. El equipo también registró
+pruebas en vivo parciales. Para verificar la versión que se va a presentar,
+seguí el [ensayo con WhatsApp real](local-demo-runbook.md#ensayo-con-whatsapp-real)
+y registrá sus dos pasadas en la hoja de evidencia del runbook.
 
 Referencias autoritativas, sin duplicar DTOs ni reglas:
 
@@ -154,12 +193,14 @@ Referencias autoritativas, sin duplicar DTOs ni reglas:
 | No hay respuesta | Workflow publicado, evento y URL de Evolution; buscar una ejecución en n8n. |
 | El filtro detiene el mensaje | Remitente distinto del bot, mensaje de texto, no grupo. |
 | Herramienta sin conexión | API iniciada, puertos coordinados y listener alcanzable desde Docker en Linux. |
-| `REFERENCE_NOT_FOUND` | Identidad o referencia fuera del seed; no implica un problema de credenciales. |
+| `REFERENCE_NOT_FOUND` | Revisar remitente, finca activa y que la patente esté asociada al transportista activo. |
+| `401` sólo en `Lookup Farms` | Vincular `AgroFlow Service Key account` también en esa herramienta. |
+| Mensaje de remitente no identificado con número registrado | Verificar el formato E.164 y si Evolution entregó un remitente `@lid`. Ese tipo de dirección no se vincula a la ficha del transportista. |
 | Webhook responde `503 not_persisted` | API detenida, credencial `AgroFlow Service Key account` ausente o distinta, o instancia distinta de `LocalDemo:WhatsAppInstance`. |
 | Webhook responde `200 ignored` | Mensaje propio, de grupo, sin texto o de una instancia distinta de `EVOLUTION_INSTANCE`. |
 | Dashboard muestra error de clave | Falta `AGROFLOW_DASHBOARD_KEY` en el entorno de Vite o no coincide con `Dashboard__ApiKey`. |
 | `NO_CAPACITY` | Rechazo operativo de la API; no borrar la base ni prometer asignación. |
-| Respuesta con `401` | Credencial Header Auth vinculada y coherente con la clave local de Evolution. |
+| `401` en `Send WhatsApp reply` | Credencial Header Auth vinculada y coherente con la clave local de Evolution. |
 
 Detener API y Vite con `Ctrl+C`. Desde la raíz, detener Docker sin borrar datos:
 
