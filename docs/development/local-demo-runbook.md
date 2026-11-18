@@ -415,7 +415,7 @@ En Windows PowerShell 5.1, guardar el resultado antes de filtrar (encadenar `Ven
 
 **Escenario A: turno hasta FINALIZADO**
 
-1. Abrir **Panel general → Cola del día**: 20 franjas con 0 ocupados y 2 disponibles.
+1. Abrir **Panel general → Cola del día**: en una base nueva, 20 franjas con 0 ocupados y 2 disponibles. Al repetir el guion, esos valores no se cumplen: antes de crear el turno anotar la ocupación de cada franja (`$antes = Ventanas $fecha`) y usarla como referencia.
 2. `$a = Turno '+5493815550101' 'AF123BC' 'FINCA-NORTE'` → `status` `ASIGNADO`. Guardar la fecha asignada: `$fechaA = ([DateTimeOffset]$a.window.startAt).ToString('yyyy-MM-dd')`.
 3. `$todas = Ventanas $fechaA; $todas | Where-Object { $_.startAt -eq $a.window.startAt }` → en la primera pasada, `occupied` 1 y `available` 1 (en otras pasadas, `N`+1). En **Panel general** y **Cola de turnos** seleccionar `$fechaA`; el panel lo refleja en hasta 4 segundos y la Cola muestra `AF123BC`.
 4. `Pasar $a.id 'INGRESADO'` → `409`: no se saltan estados (PowerShell lo muestra como error).
@@ -425,7 +425,7 @@ En Windows PowerShell 5.1, guardar el resultado antes de filtrar (encadenar `Ven
 
 **Escenario B: cancelación y reutilización**
 
-1. `$b = Turno '+5493815550102' 'AF456DE' 'FINCA-SUR'` → `ASIGNADO`. Guardar `$fechaB` igual que `$fechaA`, con `$b.window.startAt`, y consultar con `Ventanas $fechaB` (filtrando por `$b.window.startAt`). En la primera pasada en base nueva cae en la misma ventana que A, que queda en 2/2 y el panel la marca **Sin cupos**. En pasadas posteriores la ventana de A ya está llena y B cae en la siguiente: allí la ocupación pasa de 0 a 1.
+1. `$b = Turno '+5493815550102' 'AF456DE' 'FINCA-SUR'` → `ASIGNADO`. Guardar `$fechaB` igual que `$fechaA`, con `$b.window.startAt`, y consultar con `Ventanas $fechaB` (filtrando por `$b.window.startAt`). B comparte la ventana de A si esa franja sigue siendo futura y conserva cupo, es decir, si A no tomó el último. En la primera pasada en base nueva es así: queda en 2/2 y el panel la marca **Sin cupos**. Si la franja de A se llenó con A, la API asigna la próxima franja futura con lugar, y allí la ocupación sube +1 respecto de lo que tenía. Comparar siempre con la ocupación previa de la franja que efectivamente recibió B.
 2. Repetir el comando anterior → `409`: el camión ya tiene un turno activo.
 3. `Pasar $b.id 'CANCELADO'` → `CANCELADO`; la ventana de B baja −1 (primera pasada: 1/2 con 1 disponible).
 4. `$b2 = Turno '+5493815550102' 'AF456DE' 'FINCA-SUR'` → `ASIGNADO`; `$b2.window.startAt -eq $b.window.startAt` da `True`: reutilizó el cupo liberado. La ventana de B vuelve a subir +1 (primera pasada: 2/2).
@@ -436,7 +436,7 @@ En Windows PowerShell 5.1, guardar el resultado antes de filtrar (encadenar `Ven
 1. Detener la API con `Ctrl+C` y volver a iniciarla **en la misma terminal** (mismas variables, mismo archivo).
 2. `Invoke-RestMethod "$api/api/v1/appointments/$($a.id)"` → `FINALIZADO`; `$b2` sigue `ASIGNADO` (o `CANCELADO` si ejecutaste el paso 5); `Ventanas $fechaA` y `Ventanas $fechaB` conservan las mismas ocupaciones que antes de reiniciar. Panel y Cola de turnos muestran lo mismo tras actualizar.
 
-**Repetición**: volver a ejecutar A y B sobre la misma base es válido. Cada pasada consume un cupo (el turno finalizado de A), así que las ventanas se llenan en orden y la API asigna la siguiente con lugar; nunca debe haber una ventana con más ocupados que capacidad. Los valores esperados de cada pasada se calculan con la regla de cupos de arriba, no con los números de la primera.
+**Repetición**: volver a ejecutar A y B sobre la misma base es válido. Cada pasada consume un cupo (el turno finalizado de A), así que las ventanas se llenan en orden y la API asigna la próxima franja futura con lugar. Según la ocupación de partida, A y B pueden compartir franja (por ejemplo, 08:00 en la primera pasada y 08:30 en la tercera) o quedar en franjas consecutivas (A llena las 08:00 y B pasa a las 08:30 en la segunda); nunca debe haber una ventana con más ocupados que capacidad. Los valores esperados de cada pasada se calculan con la regla de cupos de arriba, no con los números de la primera.
 
 ### Respaldo si fallan WhatsApp, Evolution u OpenAI
 
