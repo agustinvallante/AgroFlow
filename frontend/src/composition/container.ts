@@ -3,6 +3,8 @@ import { HttpTransportistaRepository } from "../infrastructure/http/repositories
 import { HttpConversacionRepository } from "../infrastructure/http/repositories/HttpConversacionRepository";
 import { HttpVentanaRepository } from "../infrastructure/http/repositories/HttpVentanaRepository";
 import { HttpAsociacionRepository } from "../infrastructure/http/repositories/HttpAsociacionRepository";
+import { HttpFincaRepository } from "../infrastructure/http/repositories/HttpFincaRepository";
+import { ObtenerFincas } from "../application/usecases/fincas/ObtenerFincas";
 import { ObtenerVentanas } from "../application/usecases/ventanas/ObtenerVentanas";
 
 import {
@@ -37,7 +39,7 @@ import {
  * (vite.config.ts) lo reenvía a VITE_API_URL, por defecto
  * http://localhost:5000. Así no interviene CORS.
  *
- * Transportistas, asociaciones, camiones, conversaciones y ventanas exigen la clave del dashboard, que el
+ * Transportistas, asociaciones, camiones, fincas, conversaciones y ventanas exigen la clave del dashboard, que el
  * proxy agrega del lado servidor (server/dashboardProxy.ts). Métricas del
  * panel y del chatbot, plantillas, reportes y configuración no tienen
  * endpoint en openapi.yaml: sus vistas conservan el diseño, sin datos.
@@ -51,6 +53,7 @@ function crearContainer() {
   const conversacionRepository = new HttpConversacionRepository("");
   const ventanaRepository = new HttpVentanaRepository("");
   const asociacionRepository = new HttpAsociacionRepository("");
+  const fincaRepository = new HttpFincaRepository("");
 
   return {
     apiUrl,
@@ -69,6 +72,9 @@ function crearContainer() {
       obtenerTransportistas: new ObtenerTransportistas(transportistaRepository),
       crearTransportista: new CrearTransportista(transportistaRepository),
       cambiarEstadoActivoTransportista: new CambiarEstadoActivoTransportista(transportistaRepository),
+    },
+    fincas: {
+      obtenerFincas: new ObtenerFincas(fincaRepository),
     },
     asociaciones: {
       obtenerFlotaAsociada: new ObtenerFlotaAsociada(asociacionRepository),

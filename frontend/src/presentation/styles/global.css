@@ -1198,18 +1198,50 @@ table.datos-desactualizados tbody {
   width: 100%;
   height: auto;
 }
-.mapa-topo-base {
-  fill: #0f1d13;
+/* Fondo simulado: ríos y red vial, ilustrativos. */
+.mapa-lienzo {
+  position: relative;
 }
-.mapa-curva-nivel {
+.mapa-fondo {
+  fill: #0e1611;
+}
+.mapa-rio,
+.mapa-rio-borde,
+.mapa-camino {
   fill: none;
-  stroke: var(--azucar);
-  stroke-opacity: 0.17;
-  stroke-width: 1;
   stroke-linecap: round;
+  stroke-linejoin: round;
 }
-.mapa-curva-nivel.maestra {
-  stroke-opacity: 0.32;
+.mapa-rio-borde {
+  stroke: #1d3b40;
+  stroke-width: 11;
+}
+.mapa-rio {
+  stroke: #2f6167;
+  stroke-width: 4;
+}
+.mapa-rio-borde.arroyo {
+  stroke-width: 6;
+}
+.mapa-rio.arroyo {
+  stroke-width: 2;
+}
+.mapa-camino.ruta-borde {
+  stroke: #1a201d;
+  stroke-width: 7;
+}
+.mapa-camino.ruta {
+  stroke: #47524c;
+  stroke-width: 3.5;
+}
+.mapa-camino.secundario {
+  stroke: #333c37;
+  stroke-width: 2;
+}
+.mapa-camino.acceso {
+  stroke: #4a5650;
+  stroke-width: 1.5;
+  stroke-dasharray: 4 3;
 }
 .mapa-vacio {
   font-size: 14px;
@@ -1285,6 +1317,20 @@ table.datos-desactualizados tbody {
 }
 .mapa-texto.ingenio {
   fill: var(--ok);
+}
+.mapa-camion {
+  cursor: pointer;
+}
+.mapa-camion rect {
+  stroke: var(--cana-900);
+  stroke-width: 2;
+}
+.mapa-camion.seleccionado rect,
+.mapa-camion:focus-visible rect {
+  stroke: var(--tinta);
+}
+.mapa-camion:focus {
+  outline: none;
 }
 .mapa-camion.en-ruta rect {
   fill: var(--ok);
@@ -1372,4 +1418,58 @@ table.datos-desactualizados tbody {
   .mapa-formularios {
     grid-template-columns: 1fr;
   }
+}
+
+/* Detalle del camión tocado en el mapa. */
+.mapa-detalle {
+  position: absolute;
+  z-index: 2;
+  width: 270px;
+  max-width: calc(100% - 16px);
+  padding: 12px 14px;
+  background: var(--cana-900);
+  border: 1px solid var(--linea);
+  border-radius: 4px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  font-size: 12.5px;
+}
+.mapa-detalle-cabeza {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.mapa-detalle-cabeza strong {
+  font-size: 15px;
+  letter-spacing: 0.03em;
+}
+.mapa-detalle dl div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 3px 0;
+  border-bottom: 1px solid var(--linea);
+}
+.mapa-detalle dt {
+  color: var(--tinta-suave);
+}
+.mapa-detalle dd {
+  text-align: right;
+}
+.mapa-detalle .mapa-estado.en-ruta {
+  color: var(--ok);
+}
+.mapa-detalle .mapa-estado.demora {
+  color: var(--alerta);
+}
+.mapa-detalle p,
+.mapa-nota {
+  margin-top: 8px;
+  font-size: 11.5px;
+  color: var(--tinta-suave);
+}
+.mapa-aviso {
+  margin-bottom: 14px;
+  color: var(--alerta);
+  font-size: 13px;
 }

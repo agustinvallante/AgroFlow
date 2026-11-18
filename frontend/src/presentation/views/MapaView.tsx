@@ -1,22 +1,11 @@
-import { esInstanteValido, type EstadoViaje, type ViajeCalculado } from "../../domain/services/simulacionViajes";
-import { FormularioFinca, FormularioIngenio, FormularioViaje } from "../components/mapa/FormulariosMapa";
+import type { EstadoViaje, ViajeCalculado } from "../../domain/services/simulacionViajes";
+import { FormularioIngenio, FormularioViaje } from "../components/mapa/FormulariosMapa";
 import { MapaRutas } from "../components/mapa/MapaRutas";
+import { ESTADO_LABEL, hora, minutos } from "../components/mapa/formatoMapa";
 import { MULTIPLICADORES, useMapaSimulado } from "../hooks/useMapaSimulado";
-import { horaEnZonaIngenio } from "../../shared/utils/date";
-
-const ESTADO_LABEL: Record<EstadoViaje, string> = {
-  "en-ruta": "En ruta",
-  demora: "Demora",
-  programado: "Programado",
-  "en-playa": "Llegó",
-};
 
 /** Orden de la cola: primero lo que está por llegar. */
 const ORDEN_ESTADO: Record<EstadoViaje, number> = { demora: 0, "en-ruta": 1, programado: 2, "en-playa": 3 };
-
-/** Un instante no representable muestra un guion en lugar de desmontar la vista. */
-const hora = (ms: number) => (esInstanteValido(ms) ? horaEnZonaIngenio(new Date(ms).toISOString()) : "--:--");
-const minutos = (ms: number) => Math.max(Math.round(ms / 60_000), 0);
 
 function detalleTiempo({ situacion, llegadaEstimadaMs, llegadaMs, viaje }: ViajeCalculado, ahoraMs: number): string {
   switch (situacion.estado) {
@@ -37,12 +26,13 @@ export function MapaView() {
     adelantoMs,
     ingenio,
     fincas,
+    cargandoFincas,
+    errorFincas,
+    reintentarFincas,
     viajes,
     multiplicador,
     setMultiplicador,
     guardarIngenio,
-    agregarFinca,
-    quitarFinca,
     agregarViaje,
     quitarViaje,
   } = useMapaSimulado();
@@ -60,7 +50,9 @@ export function MapaView() {
       <div className="topbar">
         <div>
           <h1>Mapa de camiones</h1>
-          <div className="zafra">Predicción con datos cargados a mano · No proviene de AgroFlow API</div>
+          <div className="zafra">
+            Fincas de la API · Ubicaciones, rutas y viajes simulados en el navegador, sin GPS
+          </div>
         </div>
         <div className="mapa-controles">
           <span className="mapa-reloj">{hora(ahoraMs)}</span>
@@ -78,6 +70,15 @@ export function MapaView() {
         </div>
       </div>
 
+      {errorFincas && (
+        <div role="alert" className="mapa-aviso">
+          <strong>No se pudieron cargar las fincas.</strong> {errorFincas}{" "}
+          <button className="btn-mini" onClick={reintentarFincas}>
+            Reintentar
+          </button>
+        </div>
+      )}
+
       <div className="mapa-layout">
         <div className="mapa-panel">
           <div className="mapa-contadores">
@@ -86,7 +87,8 @@ export function MapaView() {
             <span className="mapa-contador demora">Demora {contar("demora")}</span>
             <span className="mapa-contador">Programados {contar("programado")}</span>
           </div>
-          <MapaRutas ingenio={ingenio} fincas={fincas} viajes={viajes} />
+          <MapaRutas ingenio={ingenio} fincas={fincas} viajes={viajes} ahoraMs={ahoraMs} />
+          <p className="mapa-nota">Tocá un camión para ver su detalle.</p>
         </div>
 
         <div className="mapa-panel">
@@ -121,43 +123,36 @@ export function MapaView() {
       <div className="mapa-formularios">
         <section>
           <div className="section-head">
-            <h2>Ingenio</h2>
+            <h2>Cargar viaje</h2>
           </div>
-          <FormularioIngenio onGuardar={guardarIngenio} />
-          {ingenio && (
-            <p className="mapa-actual">
-              {ingenio.nombre} · {ingenio.lat}, {ingenio.lon}
-            </p>
-          )}
+          <FormularioViaje fincas={fincas} patentesEnViaje={patentesEnViaje} onAgregar={agregarViaje} />
         </section>
         <section>
           <div className="section-head">
-            <h2>Cargar finca</h2>
+            <h2>Fincas</h2>
           </div>
-          <FormularioFinca fincas={fincas} onAgregar={agregarFinca} />
+          {cargandoFincas && <div className="loading-state">Cargando fincas de la API...</div>}
           <ul className="mapa-fincas">
             {fincas.map((f) => (
               <li key={f.id}>
-                <span>
-                  {f.nombre} · {f.lat}, {f.lon}
-                </span>
-                <button className="btn-mini" aria-label={`Quitar ${f.nombre}`} onClick={() => quitarFinca(f.id)}>
-                  ×
-                </button>
+                <span>{f.nombre}</span>
               </li>
             ))}
           </ul>
+          <p className="mapa-nota">
+            Catálogo de la API. La API no publica coordenadas: el mapa las ubica de forma aproximada alrededor del
+            ingenio, como medida temporal.
+          </p>
         </section>
         <section>
           <div className="section-head">
-            <h2>Cargar viaje</h2>
+            <h2>Ingenio</h2>
           </div>
-          <FormularioViaje
-            hayIngenio={ingenio !== null}
-            fincas={fincas}
-            patentesEnViaje={patentesEnViaje}
-            onAgregar={agregarViaje}
-          />
+          <p className="mapa-actual">
+            {ingenio.nombre} · {ingenio.lat}, {ingenio.lon}
+          </p>
+          <p className="mapa-nota">Ubicación de referencia hasta que la API la publique. Podés cambiarla:</p>
+          <FormularioIngenio onGuardar={guardarIngenio} />
         </section>
       </div>
     </div>

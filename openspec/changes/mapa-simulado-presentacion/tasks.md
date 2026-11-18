@@ -25,6 +25,13 @@
 - [x] Probar adelanto tras recarga, almacenamiento bloqueado, coordenadas fuera de rango, límites del viaje, Programado y datos guardados inválidos.
 - [ ] Enlazar la minuta o el comentario del acuerdo del 2026-11-14.
 
+## Fincas de la API, red vial y detalle del camión
+
+- [x] Leer el catálogo de fincas de la API y ubicarlas de forma determinista alrededor de un ingenio de referencia, como medida temporal.
+- [x] Reemplazar el relieve por un fondo de rutas, accesos y ríos simulados, y hacer que cada recorrido siga esos caminos.
+- [x] Dibujar los camiones como cuadrados seleccionables y mostrar su detalle en un recuadro.
+- [x] Adaptar las pruebas de la vista y de la red, y agregar las del detalle y la falla de fincas.
+
 ## Cierre
 
 - [ ] Consolidar la capacidad después de aceptar la revisión.

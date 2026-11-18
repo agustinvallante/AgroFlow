@@ -1,13 +1,15 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { container } from "../../composition/container";
+import type { Finca } from "../../domain/entities/Finca";
 import {
   calcularViaje,
   esUbicacionValida,
   esViajeValido,
-  type FincaMapa,
   type PuntoGeo,
   type ViajeCalculado,
   type ViajeSimulado,
 } from "../../domain/services/simulacionViajes";
+import { INGENIO_TEMPORAL, ubicarFincasTemporalmente } from "../../domain/services/ubicacionTemporal";
 
 /** x1 es el tiempo real; las otras velocidades sólo sirven para probar un viaje largo. */
 export const MULTIPLICADORES = [1, 10, 60] as const;
@@ -17,8 +19,8 @@ export type IngenioMapa = PuntoGeo & { nombre: string };
 
 const INTERVALO_MS = 100;
 const MS_POR_MINUTO = 60_000;
-/** v2: descarta los datos de prueba que quedaron guardados con la clave anterior. */
-export const CLAVE_ALMACENAMIENTO = "agroflow.mapa-simulado.v2";
+/** v3: las fincas ya no se guardan, vienen de la API; se descartan los escenarios anteriores. */
+export const CLAVE_ALMACENAMIENTO = "agroflow.mapa-simulado.v3";
 /**
  * Con x10/x60 el adelanto cambia en cada tick; se guarda como mucho con esta
  * frecuencia, además de al cambiar la velocidad, salir de la pestaña o cerrar la página.
@@ -26,8 +28,6 @@ export const CLAVE_ALMACENAMIENTO = "agroflow.mapa-simulado.v2";
 export const INTERVALO_GUARDADO_ADELANTO_MS = 5_000;
 /** Tope del adelanto: unos 30 años, lejos de cualquier ensayo. */
 const ADELANTO_MAXIMO_MS = 1e12;
-
-export type DatosFinca = IngenioMapa;
 
 export interface DatosViaje {
   patente: string;
@@ -37,10 +37,12 @@ export interface DatosViaje {
   retrasoMin: number;
 }
 
-/** Lo que el operador carga. */
+/**
+ * Lo que el operador carga. Ingenio y viajes son una medida temporal del
+ * frontend: la API todavía no publica la ubicación del ingenio ni los viajes.
+ */
 interface Escenario {
-  ingenio: IngenioMapa | null;
-  fincas: FincaMapa[];
+  ingenio: IngenioMapa;
   viajes: ViajeSimulado[];
   siguienteId: number;
 }
@@ -51,7 +53,7 @@ interface DatosCargados extends Escenario {
   adelantoMs: number;
 }
 
-const SIN_DATOS: DatosCargados = { ingenio: null, fincas: [], viajes: [], siguienteId: 1, adelantoMs: 0 };
+const SIN_DATOS: DatosCargados = { ingenio: { ...INGENIO_TEMPORAL }, viajes: [], siguienteId: 1, adelantoMs: 0 };
 
 const esLugarValido = (lugar: Partial<IngenioMapa> | null | undefined): lugar is IngenioMapa =>
   !!lugar && typeof lugar.nombre === "string" && lugar.nombre !== "" && esUbicacionValida(lugar);
@@ -61,16 +63,10 @@ const esLugarValido = (lugar: Partial<IngenioMapa> | null | undefined): lugar is
  * descarta lo inválido en lugar de dejar que una fecha imposible rompa la vista.
  */
 function sanear(guardado: Partial<DatosCargados>): DatosCargados {
-  const fincas = (Array.isArray(guardado.fincas) ? guardado.fincas : []).filter(
-    (f): f is FincaMapa => esLugarValido(f) && typeof f.id === "string",
-  );
-  const viajes = (Array.isArray(guardado.viajes) ? guardado.viajes : []).filter(
-    (v) => esViajeValido(v) && fincas.some((f) => f.id === v.fincaId),
-  );
+  const viajes = (Array.isArray(guardado.viajes) ? guardado.viajes : []).filter((v) => esViajeValido(v));
   const { adelantoMs, siguienteId } = guardado;
   return {
-    ingenio: esLugarValido(guardado.ingenio) ? guardado.ingenio : null,
-    fincas,
+    ingenio: esLugarValido(guardado.ingenio) ? guardado.ingenio : { ...INGENIO_TEMPORAL },
     viajes,
     siguienteId: typeof siguienteId === "number" && Number.isSafeInteger(siguienteId) && siguienteId > 0 ? siguienteId : 1,
     adelantoMs:
@@ -95,12 +91,39 @@ function guardarDatos(datos: DatosCargados) {
   }
 }
 
+/** Catálogo de fincas de la API; el mapa sigue disponible si falla. */
+function useFincasApi() {
+  const [fincas, setFincas] = useState<Finca[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [intento, setIntento] = useState(0);
+
+  useEffect(() => {
+    let vigente = true;
+    container.fincas.obtenerFincas
+      .execute()
+      .then((f) => {
+        if (!vigente) return;
+        setFincas(f);
+        setError(null);
+      })
+      .catch((e: unknown) => {
+        if (vigente) setError(e instanceof Error && e.message ? e.message : "No se pudieron cargar las fincas de la API.");
+      });
+    return () => {
+      vigente = false;
+    };
+  }, [intento]);
+
+  return { fincas, error, reintentar: useCallback(() => setIntento((i) => i + 1), []) };
+}
+
 export function useMapaSimulado() {
   const [{ adelantoMs: adelantoInicial, ...escenarioInicial }] = useState(leerDatos);
   const [escenario, setEscenario] = useState<Escenario>(escenarioInicial);
   const [adelantoMs, setAdelantoMs] = useState(adelantoInicial);
   const [ahoraMs, setAhoraMs] = useState(() => Date.now() + adelantoInicial);
   const [multiplicador, setMultiplicador] = useState<Multiplicador>(1);
+  const fincasApi = useFincasApi();
   // El intervalo y los guardados leen el último valor sin volver a suscribirse.
   const escenarioRef = useRef(escenario);
   const adelantoRef = useRef(adelantoInicial);
@@ -146,23 +169,11 @@ export function useMapaSimulado() {
     };
   }, [multiplicador, guardar]);
 
-  const guardarIngenio = useCallback((ingenio: IngenioMapa) => setEscenario((e) => ({ ...e, ingenio })), []);
+  const { ingenio } = escenario;
+  // Las fincas se ubican alrededor del ingenio: al moverlo, se mueven con él.
+  const fincas = useMemo(() => ubicarFincasTemporalmente(ingenio, fincasApi.fincas ?? []), [ingenio, fincasApi.fincas]);
 
-  const agregarFinca = useCallback((finca: DatosFinca) => {
-    setEscenario((e) => ({
-      ...e,
-      siguienteId: e.siguienteId + 1,
-      fincas: [...e.fincas, { id: `f${e.siguienteId}`, ...finca }],
-    }));
-  }, []);
-
-  const quitarFinca = useCallback((id: string) => {
-    setEscenario((e) => ({
-      ...e,
-      fincas: e.fincas.filter((f) => f.id !== id),
-      viajes: e.viajes.filter((v) => v.fincaId !== id),
-    }));
-  }, []);
+  const guardarIngenio = useCallback((nuevo: IngenioMapa) => setEscenario((e) => ({ ...e, ingenio: nuevo })), []);
 
   const agregarViaje = useCallback(({ saleEnMin, ...viaje }: DatosViaje) => {
     const salidaMs = Date.now() + adelantoRef.current + saleEnMin * MS_POR_MINUTO;
@@ -177,25 +188,24 @@ export function useMapaSimulado() {
     setEscenario((e) => ({ ...e, viajes: e.viajes.filter((v) => v.id !== id) }));
   }, []);
 
-  const { ingenio } = escenario;
-  const viajes: ViajeCalculado[] = ingenio
-    ? escenario.viajes.flatMap((viaje) => {
-        const finca = escenario.fincas.find((f) => f.id === viaje.fincaId);
-        return finca ? [calcularViaje(viaje, finca, ingenio, ahoraMs)] : [];
-      })
-    : [];
+  // Un viaje de una finca que la API ya no publica no se muestra, pero se conserva por si vuelve.
+  const viajes: ViajeCalculado[] = escenario.viajes.flatMap((viaje) => {
+    const finca = fincas.find((f) => f.id === viaje.fincaId);
+    return finca ? [calcularViaje(viaje, finca, ingenio, ahoraMs)] : [];
+  });
 
   return {
     ahoraMs,
     adelantoMs,
     ingenio,
-    fincas: escenario.fincas,
+    fincas,
+    cargandoFincas: fincasApi.fincas === null && !fincasApi.error,
+    errorFincas: fincasApi.error,
+    reintentarFincas: fincasApi.reintentar,
     viajes,
     multiplicador,
     setMultiplicador,
     guardarIngenio,
-    agregarFinca,
-    quitarFinca,
     agregarViaje,
     quitarViaje,
   };
