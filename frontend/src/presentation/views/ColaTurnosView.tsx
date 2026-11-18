@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { container } from "../../composition/container";
 import { useColaTurnos } from "../hooks/useColaTurnos";
+import { useOpcionesTurno } from "../hooks/useOpcionesTurno";
 import { MetricCard } from "../components/common/MetricCard";
 import { EstadoBadge } from "../components/common/Badges";
 import { EmptyState, ErrorState, LoadingState } from "../components/common/StatusStates";
@@ -52,9 +53,17 @@ export function ColaTurnosView() {
   const [guardando, setGuardando] = useState(false);
   const [form, setForm] = useState(FORM_VACIO);
   const [creado, setCreado] = useState<Turno | null>(null);
+  const { opciones, error: errorOpciones, reintentar: reintentarOpciones } = useOpcionesTurno(mostrarForm);
+  const elegido = opciones?.transportistas.find((t) => t.telefono === form.telefono);
 
   const actualizarCampo = (campo: keyof typeof form, valor: string) => {
     setForm((prev) => ({ ...prev, [campo]: valor }));
+  };
+
+  /** La patente depende del transportista: con un solo camión queda elegida. */
+  const elegirTransportista = (telefono: string) => {
+    const patentes = opciones?.transportistas.find((t) => t.telefono === telefono)?.patentes ?? [];
+    setForm((prev) => ({ ...prev, telefono, patente: patentes.length === 1 ? patentes[0] : "" }));
   };
 
   const cambiarFiltro = (actualizar: () => void) => {
@@ -65,6 +74,12 @@ export function ColaTurnosView() {
   const guardarTurno = async () => {
     setFormError(null);
     setCreado(null);
+    // Un campo vacío no se envía como 0: la API lo rechazaría sin señalar qué faltó.
+    const cargaTon = Number(form.cargaTon);
+    if (!(cargaTon > 0)) {
+      setFormError("Ingresá la carga estimada en toneladas, mayor que cero.");
+      return;
+    }
     setGuardando(true);
     try {
       const confirmado = await crearTurno({
@@ -73,7 +88,7 @@ export function ColaTurnosView() {
         codigoFinca: form.codigoFinca,
         // datetime-local no trae zona: se envía con el desplazamiento explícito.
         corteEn: datetimeLocalARfc3339(form.corteEn),
-        cargaTon: Number(form.cargaTon) || 0,
+        cargaTon,
       });
       setCreado(confirmado);
       setForm(FORM_VACIO);
@@ -108,7 +123,7 @@ export function ColaTurnosView() {
         <div>
           <h1>Cola de turnos</h1>
           <div className="zafra">
-            Turnos programados · AgroFlow API ({container.apiUrl})
+            Turnos programados · ZafraFlow API ({container.apiUrl})
           </div>
         </div>
         <button className="btn-primary" onClick={() => setMostrarForm((v) => !v)}>
@@ -126,20 +141,41 @@ export function ColaTurnosView() {
       {mostrarForm && (
         <div className="alert-card" style={{ marginBottom: 22, maxWidth: 640 }}>
           <h3>Cargar turno manual</h3>
-          <p>La API asigna la primera ventana futura con cupo. Usá datos existentes en el seed.</p>
+          <p>La API asigna la primera ventana futura con cupo. Sólo aparecen transportistas habilitados y fincas activas.</p>
           {formError && <ErrorState message={formError} />}
+          {errorOpciones && (
+            <div style={{ marginBottom: 12 }}>
+              <ErrorState message={errorOpciones} />
+              <button className="btn-mini" onClick={reintentarOpciones}>Reintentar</button>
+            </div>
+          )}
           <div className="form-grid">
             <div className="form-field">
-              <label>Teléfono del transportista</label>
-              <input value={form.telefono} onChange={(e) => actualizarCampo("telefono", e.target.value)} placeholder="+5493815550101" />
+              <label htmlFor="turno-transportista">Transportista</label>
+              <select id="turno-transportista" value={form.telefono} disabled={!opciones} onChange={(e) => elegirTransportista(e.target.value)}>
+                <option value="">{opciones ? "Elegí un transportista" : "Cargando..."}</option>
+                {opciones?.transportistas.map((t) => (
+                  <option key={t.id} value={t.telefono}>{t.nombre} · {t.telefono}</option>
+                ))}
+              </select>
             </div>
             <div className="form-field">
-              <label>Patente</label>
-              <input value={form.patente} onChange={(e) => actualizarCampo("patente", e.target.value)} placeholder="AF123BC" />
+              <label htmlFor="turno-patente">Patente</label>
+              <select id="turno-patente" value={form.patente} disabled={!elegido} onChange={(e) => actualizarCampo("patente", e.target.value)}>
+                <option value="">Elegí un camión</option>
+                {elegido?.patentes.map((p) => (
+                  <option key={p} value={p}>{p}</option>
+                ))}
+              </select>
             </div>
             <div className="form-field">
-              <label>Código de finca</label>
-              <input value={form.codigoFinca} onChange={(e) => actualizarCampo("codigoFinca", e.target.value)} placeholder="FINCA-NORTE" />
+              <label htmlFor="turno-finca">Finca</label>
+              <select id="turno-finca" value={form.codigoFinca} disabled={!opciones} onChange={(e) => actualizarCampo("codigoFinca", e.target.value)}>
+                <option value="">{opciones ? "Elegí una finca" : "Cargando..."}</option>
+                {opciones?.fincas.map((f) => (
+                  <option key={f.id} value={f.codigo}>{f.nombre}</option>
+                ))}
+              </select>
             </div>
             <div className="form-field">
               <label>Momento de corte</label>

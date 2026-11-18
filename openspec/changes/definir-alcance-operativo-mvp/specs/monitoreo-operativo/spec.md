@@ -2,7 +2,7 @@
 
 ### Requirement: Cola de ventanas y cupos del MVP
 
-AgroFlow SHALL ofrecer al dashboard las ventanas de recepción del ingenio consultado para la fecha operativa, incluidas las franjas sin turnos, junto con su cupo configurado, ocupación vigente y cupos restantes. El frontend SHALL representar esos datos recibidos del backend sin recalcular la disponibilidad como una regla independiente. La interpretación exacta de la fecha operativa y el calendario continúa sujeta a `OD-004` y `OD-012`.
+ZafraFlow SHALL ofrecer al dashboard las ventanas de recepción del ingenio consultado para la fecha operativa, incluidas las franjas sin turnos, junto con su cupo configurado, ocupación vigente y cupos restantes. El frontend SHALL representar esos datos recibidos del backend sin recalcular la disponibilidad como una regla independiente. La interpretación exacta de la fecha operativa y el calendario continúa sujeta a `OD-004` y `OD-012`.
 
 #### Scenario: Franja vacía
 

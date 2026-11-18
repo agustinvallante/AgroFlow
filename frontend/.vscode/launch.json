@@ -4,7 +4,7 @@
     {
       "type": "chrome",
       "request": "launch",
-      "name": "Debug AgroFlow (Chrome)",
+      "name": "Debug ZafraFlow (Chrome)",
       "url": "http://localhost:5173",
       "webRoot": "${workspaceFolder}/src",
       "sourceMapPathOverrides": {

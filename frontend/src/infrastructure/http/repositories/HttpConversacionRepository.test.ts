@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { HttpConversacionRepository } from "./HttpConversacionRepository";
 import { HttpTransportistaRepository } from "./HttpTransportistaRepository";
 import { ApiError } from "../ApiClient";
+import { ListadoIncompleto } from "../../../domain/errors/ListadoIncompleto";
 import { CrearTransportista } from "../../../application/usecases/transportistas/TransportistaUseCases";
 
 const respuesta = (status: number, body: unknown) =>
@@ -59,6 +60,17 @@ describe("repositorios HTTP del dashboard", () => {
 
     expect(mensajes.map((m) => m.id)).toEqual(["m1", "m2", "m3"]);
     expect(String(fetchMock.mock.calls[1][0])).toContain("cursor=cursor-1");
+  });
+
+  it("si falla una página posterior conserva lo leído en ListadoIncompleto", async () => {
+    fetchMock
+      .mockResolvedValueOnce(respuesta(200, { items: [mensaje("m1")], nextCursor: "cursor-1" }))
+      .mockResolvedValueOnce(respuesta(500, {}));
+
+    const error = await new HttpConversacionRepository("").obtenerMensajes("c1").catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(ListadoIncompleto);
+    expect((error as ListadoIncompleto<{ id?: string }>).parciales.map((m) => m.id)).toEqual(["m1"]);
   });
 
   it("informa la falta de clave del dashboard con un mensaje accionable", async () => {

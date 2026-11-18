@@ -2,15 +2,15 @@
 
 ## Propósito
 
-Este documento ubica a AgroFlow dentro de su entorno y fija los límites de responsabilidad entre sus partes. Describe la arquitectura prevista para el MVP sin reemplazar las especificaciones funcionales de OpenSpec ni el contrato de la API.
+Este documento ubica a ZafraFlow dentro de su entorno y fija los límites de responsabilidad entre sus partes. Describe la arquitectura prevista para el MVP sin reemplazar las especificaciones funcionales de OpenSpec ni el contrato de la API.
 
 ## Problema que resuelve
 
-AgroFlow coordina la asignación y el seguimiento de turnos para el ingreso de camiones a un ingenio durante la zafra. Busca reducir la llegada desordenada, las esperas y la pérdida de calidad asociada, manteniendo una operación trazable y aislada por ingenio.
+ZafraFlow coordina la asignación y el seguimiento de turnos para el ingreso de camiones a un ingenio durante la zafra. Busca reducir la llegada desordenada, las esperas y la pérdida de calidad asociada, manteniendo una operación trazable y aislada por ingenio.
 
 ## Personas y sistemas relacionados
 
-| Actor o sistema | Relación con AgroFlow |
+| Actor o sistema | Relación con ZafraFlow |
 |---|---|
 | Transportista | Solicita y consulta turnos e informa `EN_CAMINO` mediante WhatsApp/n8n. La cancelación por ese canal no es obligatoria en el MVP. |
 | Operador | Gestiona los tres catálogos, crea y cancela turnos de su ingenio desde la interfaz interna y ejecuta las transiciones operativas autorizadas. |
@@ -26,7 +26,7 @@ AgroFlow coordina la asignación y el seguimiento de turnos para el ingreso de c
 flowchart LR
     T[Transportista] --> W[WhatsApp / proveedor]
     W --> N[n8n<br/>adaptador]
-    N --> A[API AgroFlow<br/>backend .NET]
+    N --> A[API ZafraFlow<br/>backend .NET]
     U[Usuarios internos] --> F[Frontend web]
     F --> A
     A --> D[(Persistencia)]
@@ -43,14 +43,14 @@ flowchart LR
 
 ### Backend .NET
 
-- Expone la API de AgroFlow.
+- Expone la API de ZafraFlow.
 - Autentica y autoriza las operaciones internas.
 - Aplica las reglas del dominio y valida las transiciones.
 - Persiste el estado antes de confirmar una operación.
 - Aísla los datos por ingenio y genera la trazabilidad requerida.
 - Es la fuente operativa de verdad; esta decisión se desarrolla en [ADR-003](decisions/ADR-003-backend-fuente-de-verdad.md).
 
-La solución actual es una base reutilizada y todavía contiene nombres y modelos del proyecto anterior. Su estructura no representa por sí misma el modelo final de AgroFlow.
+La solución actual es una base reutilizada y todavía contiene nombres y modelos del proyecto anterior. Su estructura no representa por sí misma el modelo final de ZafraFlow.
 
 ### n8n
 

@@ -1,6 +1,6 @@
-# Chatbot de AgroFlow
+# Chatbot de ZafraFlow
 
-Workflow de n8n para conversar por WhatsApp mediante Evolution API: registra cada mensaje en AgroFlow API, reúne datos y consume la API; no asigna turnos, no decide identidad ni deduplica, y no mantiene estado operativo propio. El [contrato HTTP canónico](../docs/contracts/openapi.yaml) y la [especificación de integración](../openspec/specs/integracion-whatsapp-n8n/spec.md) son la referencia.
+Workflow de n8n para conversar por WhatsApp mediante Evolution API: registra cada mensaje en ZafraFlow API, reúne datos y consume la API; no asigna turnos, no decide identidad ni deduplica, y no mantiene estado operativo propio. El [contrato HTTP canónico](../docs/contracts/openapi.yaml) y la [especificación de integración](../openspec/specs/integracion-whatsapp-n8n/spec.md) son la referencia.
 
 ## Ejecutar e importar
 
@@ -45,6 +45,7 @@ Webhook → Is Supported Text Message ──no──→ Acknowledge Ignored Even
 
 - `node --test chatbot/tests/workflow.test.mjs` (CI): ejecuta el JSON exportado con un [simulador](tests/n8n-simulator.mjs) y [fixtures sintéticos](tests/fixtures/) de Evolution, con API, Evolution y agente en memoria. El doble del agente puede invocar las herramientas HTTP con los argumentos que elegiría el modelo; el modelo en sí no se simula.
 - `node chatbot/tests/acceptance.mjs`: aceptación local contra la API real con SQLite temporal y el proxy del frontend (requiere `dotnet build` y `npm ci`; no corre en CI).
+- `node chatbot/tests/demo-rehearsal.mjs`: ensayo reproducible del guion de la presentación (turno hasta `FINALIZADO`, cancelación con cupo reutilizado, `GET /api/v1/windows` y reinicio con la misma SQLite, dos ejecuciones). Canal y agente simulados; ver el [guion](../docs/development/local-demo-runbook.md#guion-de-presentación-reproducible-dos-actores-persistencia-y-respaldo-111). No corre en CI.
 - `node chatbot/tests/simulate-message.mjs --from +549… --text "…"`: simula un mensaje contra una API levantada para la demo.
 
 El simulador interpreta sólo los nodos y expresiones de este workflow; no reemplaza una prueba en n8n. Falta confirmar en vivo el envío de respuestas a direcciones `@lid` y la forma real de `extendedTextMessage` en la versión fijada de Evolution. El webhook Evolution → n8n no está autenticado: ver mitigaciones en la [guía de la demo](../docs/development/local-demo.md#webhook-evolution--n8n-sin-autenticación).

@@ -1,6 +1,6 @@
 /**
  * Tipos del JSON tal como lo define docs/contracts/openapi.yaml del
- * repositorio AgroFlow (fuente de verdad). No se usan fuera de la capa
+ * repositorio ZafraFlow (fuente de verdad). No se usan fuera de la capa
  * HTTP: los mappers los traducen a entidades del dominio.
  */
 

@@ -4,7 +4,7 @@
 
 ### Requirement: Gestión de asociaciones en la demo local
 
-En `LocalDemo`, AgroFlow SHALL publicar, protegidas por la clave del dashboard, operaciones para listar asociaciones transportista-camión, asociar un camión a un transportista e inhabilitar una asociación. Asociar MUST exigir un transportista y un camión existentes en el ingenio y habilitados, y MUST rechazar con `409 DUPLICATE_ASSOCIATION` un camión que ya tiene un transportista activo, sin cambiar la autorización vigente. Un transportista SHALL poder tener varios camiones activos. Inhabilitar una asociación MUST conservarla como historial y MUST NOT modificar turnos existentes. Volver a asociar un par con una asociación inactiva SHALL reactivar esa asociación. Las mutaciones MUST exigir `Idempotency-Key`. Las operaciones MUST NOT existir fuera de `LocalDemo`.
+En `LocalDemo`, ZafraFlow SHALL publicar, protegidas por la clave del dashboard, operaciones para listar asociaciones transportista-camión, asociar un camión a un transportista e inhabilitar una asociación. Asociar MUST exigir un transportista y un camión existentes en el ingenio y habilitados, y MUST rechazar con `409 DUPLICATE_ASSOCIATION` un camión que ya tiene un transportista activo, sin cambiar la autorización vigente. Un transportista SHALL poder tener varios camiones activos. Inhabilitar una asociación MUST conservarla como historial y MUST NOT modificar turnos existentes. Volver a asociar un par con una asociación inactiva SHALL reactivar esa asociación. Las mutaciones MUST exigir `Idempotency-Key`. Las operaciones MUST NOT existir fuera de `LocalDemo`.
 
 #### Scenario: Asociar un camión libre
 

@@ -44,7 +44,7 @@ public class Program
         builder.Services.AddEndpointsApiExplorer();
         builder.Services.AddSwaggerGen(options =>
         {
-            options.SwaggerDoc("v1", new OpenApiInfo { Title = "AgroFlow API", Version = "v1" });
+            options.SwaggerDoc("v1", new OpenApiInfo { Title = "ZafraFlow API", Version = "v1" });
             if (!isLocalDemo)
             {
                 options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme

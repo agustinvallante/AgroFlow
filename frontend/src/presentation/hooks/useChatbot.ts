@@ -1,6 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { container } from "../../composition/container";
 import type { Conversacion, MensajeChat } from "../../domain/entities/Conversacion";
+import { ListadoIncompleto } from "../../domain/errors/ListadoIncompleto";
+
+/** Un listado incompleto se muestra igual, con su aviso; cualquier otro error se propaga. */
+async function conAviso<T>(pedido: Promise<T[]>): Promise<{ items: T[]; aviso: string | null }> {
+  try {
+    return { items: await pedido, aviso: null };
+  } catch (e) {
+    if (e instanceof ListadoIncompleto) return { items: e.parciales as T[], aviso: e.message };
+    throw e;
+  }
+}
 
 /** La lista y la conversación abierta se refrescan solas. */
 const INTERVALO_REFRESCO_MS = 15_000;
@@ -18,6 +29,7 @@ export function useChatbot() {
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [errorRefresco, setErrorRefresco] = useState<string | null>(null);
+  const [avisoConversaciones, setAvisoConversaciones] = useState<string | null>(null);
   const [revisionMensajes, setRevisionMensajes] = useState(0);
   const activaRef = useRef<string | null>(null);
   const cargaValida = useRef(false);
@@ -48,10 +60,11 @@ export function useChatbot() {
       setError(null);
     }
     try {
-      const convs = await container.conversaciones.obtenerConversaciones.execute();
+      const { items: convs, aviso } = await conAviso(container.conversaciones.obtenerConversaciones.execute());
       if (consulta !== ultimaConsulta.current) return;
       cargaValida.current = true;
       setConversaciones(convs);
+      setAvisoConversaciones(aviso);
       setError(null);
       setErrorRefresco(null);
       const seleccionVigente = convs.some((c) => c.id === activaRef.current);
@@ -84,12 +97,11 @@ export function useChatbot() {
     const pedido = ++ultimoPedidoMensajes.current;
     const sigueVigente = () => pedido === ultimoPedidoMensajes.current && activaRef.current === conversacionActivaId;
     setCargandoMensajes(true);
-    container.conversaciones.obtenerMensajesConversacion
-      .execute(conversacionActivaId)
-      .then((m) => {
+    conAviso(container.conversaciones.obtenerMensajesConversacion.execute(conversacionActivaId))
+      .then(({ items, aviso }) => {
         if (!sigueVigente()) return;
-        setMensajes(m);
-        setErrorMensajes(null);
+        setMensajes(items);
+        setErrorMensajes(aviso);
       })
       .catch((e) => sigueVigente() && setErrorMensajes(mensajeDeError(e, "No se pudieron cargar los mensajes.")))
       .finally(() => sigueVigente() && setCargandoMensajes(false));
@@ -115,5 +127,6 @@ export function useChatbot() {
     cargando,
     error,
     errorRefresco,
+    avisoConversaciones,
   };
 }

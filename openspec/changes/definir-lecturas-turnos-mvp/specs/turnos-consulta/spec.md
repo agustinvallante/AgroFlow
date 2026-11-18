@@ -4,7 +4,7 @@
 
 ### Requirement: Permisos y aislamiento de las lecturas internas del MVP
 
-El listado y el detalle internos del MVP MUST exigir un JWT válido de usuario interno con ámbito de ingenio verificable. AgroFlow MUST autorizar a operador y supervisor de ese ingenio y MUST aplicar el ámbito antes de filtrar, contar o proyectar datos. Un identificador de recurso, filtro de consulta o clave de LocalDemo MUST NOT reemplazar ese ámbito.
+El listado y el detalle internos del MVP MUST exigir un JWT válido de usuario interno con ámbito de ingenio verificable. ZafraFlow MUST autorizar a operador y supervisor de ese ingenio y MUST aplicar el ámbito antes de filtrar, contar o proyectar datos. Un identificador de recurso, filtro de consulta o clave de LocalDemo MUST NOT reemplazar ese ámbito.
 
 #### Scenario: Operador y supervisor del ingenio
 
@@ -16,13 +16,13 @@ El listado y el detalle internos del MVP MUST exigir un JWT válido de usuario i
 
 - **GIVEN** una lectura sin token, con token inválido o vencido o sin identidad de ingenio utilizable
 - **WHEN** se solicita listado o detalle
-- **THEN** AgroFlow responde `401 UNAUTHENTICATED` sin consultar turnos
+- **THEN** ZafraFlow responde `401 UNAUTHENTICATED` sin consultar turnos
 
 #### Scenario: Rol sin permiso
 
 - **GIVEN** un usuario autenticado con ingenio válido y un rol que no permite la lectura
 - **WHEN** solicita listado o detalle
-- **THEN** AgroFlow responde `403 FORBIDDEN` sin consultar turnos
+- **THEN** ZafraFlow responde `403 FORBIDDEN` sin consultar turnos
 
 #### Scenario: Detalle ajeno o inexistente
 
@@ -32,7 +32,7 @@ El listado y el detalle internos del MVP MUST exigir un JWT válido de usuario i
 
 ### Requirement: Fecha operativa y paginación de la cola interna
 
-AgroFlow SHALL interpretar la fecha del listado en la zona horaria configurada para el ingenio autenticado. El inicio de la ventana MUST caer en el intervalo entre la medianoche local de esa fecha incluida y la medianoche local siguiente excluida. Sin fecha explícita, SHALL usar el día calendario actual en esa zona. La consulta MUST combinar los filtros aprobados, ordenar por instante de inicio y luego por identificador ascendente, y paginar en la base de datos. Los parámetros, sus límites y la estructura de respuesta SHALL seguir el [contrato HTTP](../../../../../docs/contracts/openapi.mvp-appointment-reads.yaml).
+ZafraFlow SHALL interpretar la fecha del listado en la zona horaria configurada para el ingenio autenticado. El inicio de la ventana MUST caer en el intervalo entre la medianoche local de esa fecha incluida y la medianoche local siguiente excluida. Sin fecha explícita, SHALL usar el día calendario actual en esa zona. La consulta MUST combinar los filtros aprobados, ordenar por instante de inicio y luego por identificador ascendente, y paginar en la base de datos. Los parámetros, sus límites y la estructura de respuesta SHALL seguir el [contrato HTTP](../../../../../docs/contracts/openapi.mvp-appointment-reads.yaml).
 
 #### Scenario: Ventanas en el límite del día local
 
@@ -56,7 +56,7 @@ AgroFlow SHALL interpretar la fecha del listado en la zona horaria configurada p
 
 - **GIVEN** un listado válido sin coincidencias o con una página posterior a la última
 - **WHEN** el usuario autorizado solicita el listado
-- **THEN** AgroFlow responde `200` con `items` vacío y el total de turnos que cumplen los filtros
+- **THEN** ZafraFlow responde `200` con `items` vacío y el total de turnos que cumplen los filtros
 
 #### Scenario: Parámetros inválidos
 

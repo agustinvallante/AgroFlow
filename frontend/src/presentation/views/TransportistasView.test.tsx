@@ -2,7 +2,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-libra
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Transportista } from "../../domain/entities/Transportista";
 
-const mocks = vi.hoisted(() => ({ obtener: vi.fn(), flota: vi.fn(), asociar: vi.fn(), desasociar: vi.fn() }));
+const mocks = vi.hoisted(() => ({ obtener: vi.fn(), editar: vi.fn(), flota: vi.fn(), asociar: vi.fn(), desasociar: vi.fn() }));
 
 vi.mock("../../composition/container", () => ({
   container: {
@@ -10,6 +10,7 @@ vi.mock("../../composition/container", () => ({
     transportistas: {
       obtenerTransportistas: { execute: mocks.obtener },
       crearTransportista: { execute: vi.fn() },
+      editarTransportista: { execute: mocks.editar },
       cambiarEstadoActivoTransportista: { execute: vi.fn() },
     },
     asociaciones: {
@@ -27,6 +28,7 @@ const activo: Transportista = {
   nombre: "Transportista Sintético",
   dni: "20555555555",
   patente: "AF123BC",
+  patentes: ["AF123BC"],
   telefono: "+5493815550155",
   activo: true,
   puedeSolicitarTurnos: true,
@@ -55,6 +57,20 @@ describe("TransportistasView", () => {
     expect(screen.getByText("AF123BC")).toBeTruthy();
     expect(screen.queryByText(/Flota|Finca|Turnos este mes|San Ramón/)).toBeNull();
     expect(screen.getByRole("button", { name: "Dar de baja" })).toBeTruthy();
+  });
+
+  it("edita un transportista activo con sus datos precargados", async () => {
+    mocks.obtener.mockResolvedValue([activo]);
+    mocks.editar.mockReset().mockResolvedValue({ ...activo, nombre: "Nombre Corregido" });
+    render(<TransportistasView />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Editar Transportista Sintético" }));
+    fireEvent.change(screen.getByDisplayValue("Transportista Sintético"), { target: { value: "Nombre Corregido" } });
+    fireEvent.click(screen.getByRole("button", { name: "Guardar transportista" }));
+
+    expect(await screen.findByText("Nombre Corregido")).toBeTruthy();
+    expect(mocks.editar).toHaveBeenCalledWith("d1", { nombre: "Nombre Corregido", dni: "20555555555", telefono: "+5493815550155" });
+    expect(screen.queryByText("Editar transportista")).toBeNull();
   });
 
   it("no ofrece reactivar: la API solo publica la inhabilitación", async () => {

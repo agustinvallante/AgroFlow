@@ -107,7 +107,7 @@ describe("PanelGeneralView", () => {
     await esperar();
 
     expect(screen.getByText(SIN_ACTIVOS)).toBeTruthy();
-    expect(screen.queryByText(/Ingenio San Ramón|Operando|Detenida|zafra/i)).toBeNull();
+    expect(screen.queryByText(/Ingenio San Ramón|Operando|Detenida|zafra(?!flow)/i)).toBeNull();
     // Los indicadores conservan su lugar, sin valor.
     expect(screen.getByText("Estado de la molienda").parentElement?.textContent).toContain("—");
     expect((screen.getByRole("button", { name: "Enviar aviso a la flota" }) as HTMLButtonElement).disabled).toBe(true);
