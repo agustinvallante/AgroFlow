@@ -6,7 +6,7 @@ import type { ProxyOptions } from "vite";
  * dashboard vive sólo en el proceso de Node de Vite (`AGROFLOW_DASHBOARD_KEY`,
  * sin prefijo VITE_): nunca llega al bundle, al navegador ni a su
  * almacenamiento. El proxy la agrega únicamente a las rutas de conversaciones,
- * transportistas y asociaciones, y a la lectura de ventanas y camiones, sólo
+ * transportistas y asociaciones, y a las lecturas de catálogos, ventanas e ingenio, sólo
  * para solicitudes locales del mismo origen.
  *
  * Limitación: cualquier proceso o pestaña local que pueda hablar con el
@@ -24,7 +24,7 @@ const TRUCKS_ROUTE = "/api/v1/trucks";
 /** Catálogo de fincas: el backend lo comparte entre el dashboard y n8n. */
 const FARMS_ROUTE = "/api/v1/farms";
 /** Rutas de sólo lectura: únicamente GET sobre la colección, sin subrutas. */
-const READ_ONLY_ROUTES = [WINDOWS_ROUTE, TRUCKS_ROUTE, FARMS_ROUTE];
+const READ_ONLY_ROUTES = [WINDOWS_ROUTE, TRUCKS_ROUTE, FARMS_ROUTE, "/api/v1/mill"];
 export const DASHBOARD_ROUTES = ["/api/v1/conversations", "/api/v1/drivers", "/api/v1/associations", ...READ_ONLY_ROUTES];
 /** Rutas de n8n: el navegador nunca las alcanza a través del proxy. */
 export const CHANNEL_ROUTES = ["/api/v1/conversation-events", "/api/v1/conversation-reply-intents"];

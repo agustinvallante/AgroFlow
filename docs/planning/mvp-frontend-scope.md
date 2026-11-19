@@ -9,8 +9,10 @@
 
 El dashboard React/TypeScript/Vite está en `frontend/` y muestra solo datos de la
 API. Turnos, transportistas y conversaciones tienen adaptador HTTP para la demo.
-Indicadores, métricas y plantillas del chatbot, reportes y configuración conservan
-su diseño, sin datos ni acciones.
+La presentación LocalDemo incluye un reporte por día y la consulta de la
+configuración efectiva de recepción. Su alcance se define en el
+[cambio de OpenSpec](../../openspec/changes/reportes-y-configuracion-demo/proposal.md).
+Las métricas y plantillas del chatbot siguen pendientes.
 
 La base incluye `composition/container.ts`, `ApiClient`, DTOs/mappers,
 `HttpTurnoRepository`, hooks, vistas y pruebas. Se preserva y evoluciona lo que

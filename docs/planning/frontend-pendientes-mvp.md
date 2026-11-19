@@ -39,7 +39,8 @@ El frontend todavía no cubre el MVP. El mayor bloqueo es **acceso y sesión**.
 | Panel general | 🟡 | Solo camiones en curso; indicadores y franjas sin datos |
 | Interrupciones | ❌ | Sin rutas ni pantalla |
 | Chatbot | 🟡 | Conversaciones reales; métricas y plantillas sin datos |
-| Reportes, configuración, mapa | ⛔ | Diseño vacío o sin desarrollar |
+| Reportes y configuración | 🟡 | Reporte diario y configuración efectiva de solo lectura en LocalDemo |
+| Mapa | 🟡 | Viajes simulados basados en eventos de la API en LocalDemo |
 
 ## 1. Inventario completo
 
@@ -160,8 +161,8 @@ El [corte de backlog](mvp-backlog-sync-2026-10-15.md) indica que reportes, mapa 
 
 | Sección | Estado | Qué necesitaría |
 |---|---|---|
-| **Reportes** | ⛔ Diseño vacío | Rango, espera promedio, reducción frente a asignación manual, turnos totales, % por bot, espera por día, distribución de flota, fincas con mayor espera y exportación |
-| **Configuración** | ⛔ Diseño vacío | Ingenio, reglas, notificaciones, integración n8n y usuarios. OD-004 define duración y cupo por datos iniciales, no desde esta pantalla |
+| **Reportes** | 🟡 Turnos por fecha de franja, estado y cupos informados por la API | Rangos, espera promedio, reducción frente a asignación manual, % por bot, distribución de flota, fincas con mayor espera y exportación |
+| **Configuración** | 🟡 Nombre, zona horaria y franjas persistidas de solo lectura | Edición de reglas, notificaciones, integración n8n y usuarios. OD-004 define duración y cupo por datos iniciales |
 | **Mapa simulado** | ⛔ No existe | Coordenadas de fincas e ingenio, tiempo de viaje, hora de salida y llegada estimada. `Finca.LocationReference` es texto y `Turno` no guarda la hora de sus cambios de estado. Antes hay que aclarar qué tramo representa `EN_CAMINO`: el chatbot lo describe como salida *hacia la finca* |
 
 ### 1.10 Calidad y publicación (F09 #75)
@@ -215,7 +216,7 @@ El proxy bloquea estas rutas para el navegador. El #97 también cambia `chatbot/
 | Función | Pantalla | Archivos | Efecto |
 |---|---|---|---|
 | Quitar mocks y `VITE_DATA_SOURCE` | Todas | `infrastructure/mock` (eliminado), `composition/container.ts` | El dashboard siempre usa la API |
-| Mantener el diseño sin datos | Panel, Chatbot, Reportes, Configuración | Vistas, `components/common/sinDatos.ts` | `—`, listas vacías y acciones deshabilitadas |
+| Mantener el diseño de los indicadores pendientes | Panel y Chatbot | Vistas, `components/common/sinDatos.ts` | `—`, listas vacías y acciones deshabilitadas |
 | Camiones en curso con estados de carga | Panel | `PanelGeneralView.tsx` | Si la API falla, no muestra "0 activos" |
 | Dejar en Transportistas solo lo del contrato | Transportistas | `TransportistasView.tsx`, `Transportista.ts`, `useTransportistas.ts`, `driverMapper.ts` | Sin finca, flota ni turnos del mes |
 | Dejar en Chatbot solo lo de la API | Chatbot | `ChatbotView.tsx`, `useChatbot.ts`, `ConversacionRepository.ts`, `HttpConversacionRepository.ts` | Métricas y plantillas sin datos |

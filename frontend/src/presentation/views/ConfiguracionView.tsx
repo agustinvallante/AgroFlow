@@ -1,112 +1,89 @@
-import { EmptyState } from "../components/common/StatusStates";
-import { AVISO_SIN_API } from "../components/common/sinDatos";
+import { useEffect, useState } from "react";
+import { container } from "../../composition/container";
+import { ventanaDeRfc3339 } from "../../shared/utils/date";
+import { EmptyState, ErrorState, LoadingState } from "../components/common/StatusStates";
+import { useVentanas } from "../hooks/useVentanas";
 
-/** Interruptor sin valor: ni encendido ni apagado, porque la API no lo informa. */
-function OpcionSinDato({ titulo, detalle }: { titulo: string; detalle: string }) {
-  return (
-    <div className="toggle-row">
-      <div className="txt">
-        <strong>{titulo}</strong>
-        <span>{detalle}</span>
-      </div>
-      <div className="toggle sin-dato" aria-disabled="true" />
-    </div>
-  );
-}
-
-function CampoSinDato({ etiqueta }: { etiqueta: string }) {
-  return (
-    <div className="form-field">
-      <label>{etiqueta}</label>
-      <input disabled />
-    </div>
-  );
-}
+type Ingenio = Awaited<ReturnType<typeof container.ingenio.obtener>>;
 
 export function ConfiguracionView() {
+  const franjas = useVentanas();
+  const [ingenio, setIngenio] = useState<Ingenio | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [revision, setRevision] = useState(0);
+
+  useEffect(() => {
+    let vigente = true;
+    container.ingenio.obtener().then(
+      (datos) => { if (vigente) setIngenio(datos); },
+      (fallo: unknown) => {
+        if (vigente) setError(fallo instanceof Error ? fallo.message : "No se pudo consultar el ingenio.");
+      },
+    );
+    return () => { vigente = false; };
+  }, [revision]);
+
+  function actualizar() {
+    setError(null);
+    setIngenio(null);
+    setRevision((actual) => actual + 1);
+    franjas.recargar();
+  }
+
   return (
     <div className="view">
       <div className="topbar">
         <div>
           <h1>Configuración</h1>
-          <div className="zafra">{AVISO_SIN_API}</div>
+          <div className="zafra">Configuración de recepción · Solo lectura</div>
         </div>
       </div>
 
       <div className="config-grid">
-        <div className="config-card">
-          <h3>Datos del ingenio</h3>
-          <div className="form-grid">
-            <CampoSinDato etiqueta="Nombre del ingenio" />
-            <CampoSinDato etiqueta="Capacidad de molienda (tn/h)" />
-            <CampoSinDato etiqueta="Duración de la zafra (días)" />
-            <CampoSinDato etiqueta="Horario operativo" />
-          </div>
-          <button className="btn-primary" style={{ alignSelf: "flex-start" }} disabled>
-            Guardar cambios
-          </button>
-        </div>
+        <section className="config-card" aria-labelledby="config-ingenio">
+          <h2 id="config-ingenio">Datos del ingenio</h2>
+          {error
+            ? <ErrorState message={error} />
+            : ingenio
+              ? (
+                <dl className="config-datos">
+                  <div><dt>Nombre</dt><dd>{ingenio.name}</dd></div>
+                  <div><dt>Zona horaria</dt><dd>{ingenio.timeZoneId}</dd></div>
+                </dl>
+              )
+              : <LoadingState label="Cargando datos del ingenio..." />}
+        </section>
 
-        <div className="config-card">
-          <h3>Reglas de negocio</h3>
-          <div className="sub">Definen cómo el bot arma la cola de turnos</div>
-          <div className="form-grid">
-            <CampoSinDato etiqueta="Duración de la ventana de turno" />
-            <CampoSinDato etiqueta="Prioridad alta a partir de (hs. de corte)" />
+        <section className="config-card" aria-labelledby="config-franjas">
+          <h2 id="config-franjas">Franjas configuradas</h2>
+          <div className="franjas-filtros">
+            <label>Fecha de franjas <input type="date" value={franjas.fecha} onChange={(e) => franjas.setFecha(e.target.value)} /></label>
+            <button className="btn-mini" onClick={() => franjas.setFecha("")}>Hoy del ingenio</button>
+            <button className="btn-mini" onClick={actualizar}>Actualizar configuración</button>
           </div>
-          <div className="toggle-list">
-            <OpcionSinDato titulo="Priorizar flota propia" detalle="Ante turnos empatados, se asigna primero a la flota propia." />
-            <OpcionSinDato titulo="Reasignación automática" detalle="Si un camión no llega a tiempo, el turno se libera solo." />
-          </div>
-          <button className="btn-primary" style={{ alignSelf: "flex-start" }} disabled>
-            Guardar reglas
-          </button>
-        </div>
-
-        <div className="config-card">
-          <h3>Integración WhatsApp / n8n</h3>
-          <div className="form-field">
-            <label>URL del webhook (n8n)</label>
-            <div className="webhook-box">
-              <input type="text" readOnly disabled />
-              <button className="btn-mini" disabled>Copiar</button>
-            </div>
-          </div>
-          <button className="btn-mini" style={{ alignSelf: "flex-start" }} disabled>
-            Probar conexión
-          </button>
-        </div>
-
-        <div className="config-card">
-          <h3>Notificaciones</h3>
-          <div className="toggle-list">
-            <OpcionSinDato titulo="Aviso automático de demora" detalle="Notifica a la flota si la molienda se detiene." />
-            <OpcionSinDato titulo="Resumen diario por correo" detalle="Envía un resumen de la jornada a la gerencia." />
-            <OpcionSinDato titulo="Alertas de espera prolongada" detalle="Avisa cuando un camión supera el tiempo de espera." />
-          </div>
-          <button className="btn-primary" style={{ alignSelf: "flex-start" }} disabled>
-            Guardar notificaciones
-          </button>
-        </div>
-
-        <div className="config-card full">
-          <h3>Usuarios y permisos</h3>
-          <table>
-            <thead>
-              <tr>
-                <th>Nombre</th>
-                <th>Rol</th>
-                <th>Turno</th>
-                <th>Estado</th>
-                <th></th>
-              </tr>
-            </thead>
-          </table>
-          <EmptyState message="Sin usuarios." />
-          <button className="btn-primary" style={{ alignSelf: "flex-start" }} disabled>
-            + Invitar usuario
-          </button>
-        </div>
+          {franjas.cargando && <LoadingState label="Cargando franjas..." />}
+          {franjas.error && (franjas.desactualizado
+            ? <div className="aviso-desactualizado" role="alert">Franjas desactualizadas. {franjas.error}</div>
+            : <ErrorState message={franjas.error} />)}
+          {!franjas.cargando && !franjas.error && franjas.ventanas.length === 0 &&
+            <EmptyState message="No hay franjas configuradas para esta fecha." />}
+          {franjas.ventanas.length > 0 && (
+            <table aria-label="Franjas efectivas de recepción" className={franjas.desactualizado ? "datos-desactualizados" : undefined}>
+              <thead>
+                <tr><th scope="col">Horario</th><th scope="col">Duración (min)</th><th scope="col">Capacidad (camiones)</th></tr>
+              </thead>
+              <tbody>
+                {franjas.ventanas.map((ventana) => (
+                  <tr key={ventana.id}>
+                    <td>{ventanaDeRfc3339(ventana.startAt, ventana.endAt)}</td>
+                    <td>{(Date.parse(ventana.endAt) - Date.parse(ventana.startAt)) / 60_000}</td>
+                    <td>{ventana.capacity}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </section>
       </div>
     </div>
   );

@@ -23,6 +23,7 @@ namespace AgroFlow.Tests;
 public sealed class WindowsHttpTests : IDisposable
 {
     private const string Route = "/api/v1/windows";
+    private const string MillRoute = "/api/v1/mill";
     private const string ChannelKey = "test-only-channel-service-key-0123456789abcdef";
     private const string DashboardKey = "test-only-dashboard-api-key-0123456789abcdef";
     private const string Today = "2026-09-28";
@@ -34,6 +35,47 @@ public sealed class WindowsHttpTests : IDisposable
     private sealed class FixedClock : TimeProvider
     {
         public override DateTimeOffset GetUtcNow() => Now;
+    }
+
+    [Fact]
+    public async Task Mill_read_returns_the_persisted_identity_and_date_in_its_zone()
+    {
+        using var factory = CreateFactory();
+        var client = factory.CreateClient();
+        await using (var db = CreateContext())
+        {
+            var ingenio = await db.Ingenios.SingleAsync();
+            ingenio.Update("Ingenio para la prueba");
+            ingenio.UpdateTimeZone("Pacific/Pago_Pago");
+            await db.SaveChangesAsync();
+        }
+
+        using var response = await Dashboard(client, MillRoute);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var data = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(["localDate", "name", "timeZoneId"],
+            data.EnumerateObject().Select(p => p.Name).Order(StringComparer.Ordinal));
+        Assert.Equal("Ingenio para la prueba", data.GetProperty("name").GetString());
+        Assert.Equal("Pacific/Pago_Pago", data.GetProperty("timeZoneId").GetString());
+        // El reloj de la prueba está a las 10:00 UTC, todavía es la víspera en el ingenio.
+        Assert.Equal("2026-09-27", data.GetProperty("localDate").GetString());
+    }
+
+    [Fact]
+    public async Task Mill_read_requires_dashboard_access_and_rejects_query_parameters()
+    {
+        using var factory = CreateFactory();
+        var client = factory.CreateClient();
+        using var anonymous = await client.GetAsync(MillRoute);
+        using var channel = await Send(client, MillRoute, ApiKeySchemes.ChannelHeader, ChannelKey);
+        using var unknownQuery = await Dashboard(client, MillRoute + "?ingenioId=otro");
+
+        Assert.Equal(HttpStatusCode.Unauthorized, anonymous.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, channel.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, unknownQuery.StatusCode);
+        var body = await unknownQuery.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("VALIDATION_ERROR", body.GetProperty("code").GetString());
+        Assert.True(body.GetProperty("errors").TryGetProperty("ingenioId", out _));
     }
 
     [Fact]
@@ -269,12 +311,16 @@ public sealed class WindowsHttpTests : IDisposable
 
         using var response = await Dashboard(client, Route);
         using var withDate = await Dashboard(client, $"{Route}?date={Today}");
+        using var mill = await Dashboard(client, MillRoute);
         using var swagger = await client.GetAsync("/swagger/v1/swagger.json");
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, withDate.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, mill.StatusCode);
         Assert.Equal(HttpStatusCode.OK, swagger.StatusCode);
-        Assert.DoesNotContain("/windows", await swagger.Content.ReadAsStringAsync());
+        var swaggerBody = await swagger.Content.ReadAsStringAsync();
+        Assert.DoesNotContain(Route, swaggerBody);
+        Assert.DoesNotContain(MillRoute, swaggerBody);
     }
 
     [Fact]
@@ -286,8 +332,11 @@ public sealed class WindowsHttpTests : IDisposable
         using var swagger = await client.GetAsync("/swagger/v1/swagger.json");
 
         using var document = JsonDocument.Parse(await swagger.Content.ReadAsStringAsync());
-        var operations = document.RootElement.GetProperty("paths").GetProperty(Route).EnumerateObject();
-        Assert.Equal(["get"], operations.Select(o => o.Name));
+        var paths = document.RootElement.GetProperty("paths");
+        foreach (var route in new[] { Route, MillRoute })
+        {
+            Assert.Equal(["get"], paths.GetProperty(route).EnumerateObject().Select(o => o.Name));
+        }
     }
 
     private static (int Occupied, int Available) Cupos(JsonElement window) =>

@@ -352,6 +352,31 @@ del ingenio. Se relee cada cuatro segundos y con **Actualizar franjas**.
 Seguir el [recorrido de alta, cancelación, fechas y recuperación](dashboard-windows-demo.md).
 Es un corte parcial de #73; indicadores e interrupciones permanecen pendientes.
 
+## Reportes y configuración de recepción
+
+Con la API y Vite en LocalDemo y la clave del dashboard configurada, se pueden
+verificar ambas pantallas sobre la misma base de ensayo.
+
+1. Pedí un turno por WhatsApp o crealo desde el dashboard con un actor ficticio.
+   Anotá el día de la ventana que confirmó la API, que puede ser mañana.
+2. Abrí **Reportes** y seleccioná ese día. Verificá que el turno cuente en el
+   total y en su estado actual. Los cupos se muestran como totales del día,
+   a partir de los valores que informa la API para cada franja.
+3. Cancelá el turno desde la cola. Volvé al mismo día en **Reportes** y pulsá
+   **Actualizar reporte**. El total conserva el turno, sube el contador de
+   cancelados y se refleja el cupo liberado. Si repetís el flujo con otro turno
+   hasta **Finalizado**, comprobá el contador de finalizados.
+4. Elegí un día sin turnos ni franjas y comprobá ambos avisos de ausencia.
+   Si falla una consulta, la pantalla muestra el error y permite reintentar.
+5. Abrí **Configuración** y elegí el mismo día. Verificá el nombre y la zona
+   horaria del ingenio, y los horarios, duración y capacidad de las franjas
+   contra el Panel general. La vista es de solo lectura.
+
+**Hoy del ingenio** usa la fecha local de recepción. El reporte muestra el
+estado actual de cada turno asignado a la fecha, incluidos los cancelados y
+finalizados. Las métricas históricas de espera, los rangos y la exportación no
+forman parte de esta prueba.
+
 ## Recuperación de las vistas después de una falla
 
 Chatbot y Transportistas muestran **Reintentar** ante una falla inicial.
@@ -708,4 +733,4 @@ Registrá para cada ejecución:
 - consumidor usado: frontend, n8n o cliente HTTP;
 - defectos observados.
 
-Ejecutá ambos recorridos dos veces con datos controlados y las validaciones de CI. Para la presentación, el guion incluye turnos, franjas y cupos, WhatsApp real con respaldo simulado y el [mapa de viajes ficticios](mapa-simulado-presentacion.md). El alta, edición y asociación de transportistas de LocalDemo permiten preparar el ensayo. Login, despliegue, gestión integral de catálogos, interrupciones y reportes quedan para otras entregas.
+Ejecutá ambos recorridos dos veces con datos controlados y las validaciones de CI. Para la presentación, el guion incluye turnos, franjas y cupos, WhatsApp real con respaldo simulado y el [mapa de viajes ficticios](mapa-simulado-presentacion.md). El alta, edición y asociación de transportistas de LocalDemo permiten preparar el ensayo. El [reporte diario y la configuración de recepción](#reportes-y-configuración-de-recepción) se pueden verificar sobre la misma base. Login, despliegue, gestión integral de catálogos, interrupciones y reportes históricos quedan para otras entregas.
