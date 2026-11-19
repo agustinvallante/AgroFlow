@@ -173,8 +173,9 @@ public sealed class EfAppointmentStore : IAppointmentStore, IAppointmentReader, 
         var camiones = await _db.Camiones.AsNoTracking()
             .Where(c => camionIds.Contains(c.Id))
             .ToDictionaryAsync(c => c.Id, cancellationToken);
-        var openIncidents = await LoadOpenIncidentsAsync(
-            matches.Select(x => x.Turno.Id).ToArray(), timeZone, cancellationToken);
+        var turnoIds = matches.Select(x => x.Turno.Id).ToArray();
+        var openIncidents = await LoadOpenIncidentsAsync(turnoIds, timeZone, cancellationToken);
+        var stops = await LoadStopsAsync(turnoIds, timeZone, cancellationToken);
 
         return matches.Select(x => new AppointmentSummary(
             x.Turno.Id,
@@ -183,7 +184,9 @@ public sealed class EfAppointmentStore : IAppointmentStore, IAppointmentReader, 
                 TimeZoneInfo.ConvertTime(x.Ventana.StartAt, timeZone),
                 TimeZoneInfo.ConvertTime(x.Ventana.EndAt, timeZone)),
             AppointmentStatusMapper.ToApplication(x.Turno.Status),
-            openIncidents.GetValueOrDefault(x.Turno.Id)))
+            openIncidents.GetValueOrDefault(x.Turno.Id),
+            ToLocal(x.Turno.DepartedAtUtc, timeZone),
+            stops.GetValueOrDefault(x.Turno.Id, [])))
             .ToArray();
     }
 
@@ -317,13 +320,18 @@ public sealed class EfAppointmentStore : IAppointmentStore, IAppointmentReader, 
         var nextDomain = AppointmentStatusMapper.ToDomain(nextStatus);
         var isTerminal = nextDomain is TurnoEstado.Finalizado or TurnoEstado.Cancelado;
 
+        // Entering EN_CAMINO records the departure in the same conditional UPDATE;
+        // any other transition keeps the stored value (COALESCE with null).
+        DateTime? departedAtUtc = nextDomain == TurnoEstado.EnCamino ? _timeProvider.GetUtcNow().UtcDateTime : null;
+
         await using var transaction = await _db.Database.BeginTransactionAsync(cancellationToken);
 
         var updatedRows = await _db.Turnos
             .Where(t => t.Id == id && t.Status == expectedDomain)
             .ExecuteUpdateAsync(setters => setters
                 .SetProperty(t => t.Status, nextDomain)
-                .SetProperty(t => t.IsActive, !isTerminal), cancellationToken);
+                .SetProperty(t => t.IsActive, !isTerminal)
+                .SetProperty(t => t.DepartedAtUtc, t => departedAtUtc ?? t.DepartedAtUtc), cancellationToken);
 
         if (updatedRows == 0)
         {
@@ -451,6 +459,37 @@ public sealed class EfAppointmentStore : IAppointmentStore, IAppointmentReader, 
         return incidents.ToDictionary(i => i.TurnoId, i => ToRouteIncident(i, timeZone));
     }
 
+    /// <summary>Resolved incidents per appointment as stops, ordered by their start.</summary>
+    private async Task<Dictionary<Guid, IReadOnlyList<AppointmentStop>>> LoadStopsAsync(
+        IReadOnlyCollection<Guid> turnoIds, TimeZoneInfo timeZone, CancellationToken cancellationToken)
+    {
+        if (turnoIds.Count == 0)
+        {
+            return [];
+        }
+
+        var resolved = await _db.IncidentesRuta.AsNoTracking()
+            .Where(i => turnoIds.Contains(i.TurnoId) && i.ResolvedAtUtc != null)
+            .Select(i => new { i.TurnoId, i.ReportedAtUtc, i.ResolvedAtUtc })
+            .ToListAsync(cancellationToken);
+        return resolved
+            .GroupBy(i => i.TurnoId)
+            .ToDictionary(
+                group => group.Key,
+                group => (IReadOnlyList<AppointmentStop>)group
+                    .OrderBy(i => i.ReportedAtUtc)
+                    .Select(i => new AppointmentStop(
+                        ToLocal(i.ReportedAtUtc, timeZone),
+                        ToLocal(i.ResolvedAtUtc!.Value, timeZone)))
+                    .ToArray());
+    }
+
+    private static DateTimeOffset ToLocal(DateTime utc, TimeZoneInfo timeZone) =>
+        TimeZoneInfo.ConvertTime(new DateTimeOffset(DateTime.SpecifyKind(utc, DateTimeKind.Utc)), timeZone);
+
+    private static DateTimeOffset? ToLocal(DateTime? utc, TimeZoneInfo timeZone) =>
+        utc is { } value ? ToLocal(value, timeZone) : null;
+
     private static RouteIncident ToRouteIncident(IncidenteRuta incident, TimeZoneInfo timeZone) =>
         new(
             incident.Id,
@@ -514,9 +553,14 @@ public sealed class EfAppointmentStore : IAppointmentStore, IAppointmentReader, 
         var finca = await _db.Fincas.AsNoTracking().FirstAsync(f => f.Id == turno.FincaId, cancellationToken);
         var ventana = await _db.Ventanas.AsNoTracking().FirstAsync(v => v.Id == turno.VentanaId, cancellationToken);
         var openIncidents = await LoadOpenIncidentsAsync([turno.Id], timeZone, cancellationToken);
+        var stops = await LoadStopsAsync([turno.Id], timeZone, cancellationToken);
 
         return ToSnapshot(turno, transportista, camion, finca, ventana, timeZone,
-            openIncidents.GetValueOrDefault(turno.Id));
+            openIncidents.GetValueOrDefault(turno.Id)) with
+        {
+            DepartedAt = ToLocal(turno.DepartedAtUtc, timeZone),
+            Stops = stops.GetValueOrDefault(turno.Id, [])
+        };
     }
 
     private static AppointmentSnapshot ToSnapshot(Turno turno, Transportista transportista, Camion camion,

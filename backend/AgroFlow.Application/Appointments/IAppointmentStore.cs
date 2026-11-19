@@ -104,7 +104,8 @@ public interface IAppointmentStore
     /// Compara el estado persistido con expectedStatus y, solo si coincide, persiste
     /// nextStatus. En CANCELADO libera cupo de forma atómica; conserva el turno para
     /// futuras lecturas. Con resolveOpenIncident, resuelve el incidente abierto en la
-    /// misma transacción. StateChanged indica conflicto concurrente, no éxito.
+    /// misma transacción. Al pasar a EN_CAMINO registra la hora de partida en la misma
+    /// actualización. StateChanged indica conflicto concurrente, no éxito.
     /// </summary>
     Task<AppointmentTransitionResult> TryTransitionAsync(
         Guid id,

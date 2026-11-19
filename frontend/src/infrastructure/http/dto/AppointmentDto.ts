@@ -40,6 +40,12 @@ export interface OpenIncidentDto {
   reportedAt: string;
 }
 
+/** Problema en ruta resuelto: el camión estuvo detenido entre ambos instantes. */
+export interface StopDto {
+  startedAt: string;
+  endedAt: string;
+}
+
 /** Elemento de GET /api/v1/appointments. */
 export interface AppointmentSummaryDto {
   id: string;
@@ -48,6 +54,9 @@ export interface AppointmentSummaryDto {
   status: AppointmentStatusDto;
   /** Opcional: una API anterior a los incidentes no lo envía. */
   openIncident?: OpenIncidentDto | null;
+  /** Opcional: una API anterior a la salida informada no lo envía. */
+  departedAt?: string | null;
+  stops?: StopDto[];
 }
 
 /** Respuesta de POST, GET /{id} y POST /{id}/transitions. */
@@ -63,6 +72,9 @@ export interface AppointmentDto {
   createdAt: string;
   /** Opcional: una API anterior a los incidentes no lo envía. */
   openIncident?: OpenIncidentDto | null;
+  /** Opcional: una API anterior a la salida informada no lo envía. */
+  departedAt?: string | null;
+  stops?: StopDto[];
 }
 
 export interface CreateAppointmentRequestDto {

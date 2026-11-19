@@ -673,6 +673,9 @@ namespace AgroFlow.Data.Migrations.Appointments
                     b.Property<DateTimeOffset>("CutAt")
                         .HasColumnType("TEXT");
 
+                    b.Property<DateTime?>("DepartedAtUtc")
+                        .HasColumnType("TEXT");
+
                     b.Property<double>("EstimatedLoadTons")
                         .HasColumnType("REAL");
 

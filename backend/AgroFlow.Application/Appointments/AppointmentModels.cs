@@ -63,12 +63,24 @@ public sealed record RouteIncident(
     string? Description,
     DateTimeOffset ReportedAt);
 
+/// <summary>
+/// A resolved route incident seen as a stop: from its report to its resolution,
+/// both with the mill's offset.
+/// </summary>
+public sealed record AppointmentStop(DateTimeOffset StartedAt, DateTimeOffset EndedAt);
+
+/// <summary>
+/// DepartedAt (EN_CAMINO instant) and Stops (resolved incidents ordered by start)
+/// are LocalDemo read fields; null Stops means "not loaded" and maps to an empty list.
+/// </summary>
 public sealed record AppointmentSummary(
     Guid Id,
     AppointmentTruckReference Truck,
     AppointmentWindow Window,
     AppointmentStatus Status,
-    RouteIncident? OpenIncident = null);
+    RouteIncident? OpenIncident = null,
+    DateTimeOffset? DepartedAt = null,
+    IReadOnlyList<AppointmentStop>? Stops = null);
 
 public sealed record AppointmentSnapshot(
     Guid Id,
@@ -80,4 +92,6 @@ public sealed record AppointmentSnapshot(
     AppointmentWindow Window,
     AppointmentStatus Status,
     DateTimeOffset CreatedAt,
-    RouteIncident? OpenIncident = null);
+    RouteIncident? OpenIncident = null,
+    DateTimeOffset? DepartedAt = null,
+    IReadOnlyList<AppointmentStop>? Stops = null);

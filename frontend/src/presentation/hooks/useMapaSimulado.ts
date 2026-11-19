@@ -10,6 +10,15 @@ import {
   type ViajeCalculado,
   type ViajeSimulado,
 } from "../../domain/services/simulacionViajes";
+import {
+  ADELANTO_MAXIMO_MS,
+  agregarTramo,
+  cerrarTramos,
+  horaMapaDe,
+  sanearTramos,
+  saltarReloj,
+  type TramoReloj,
+} from "../../domain/services/relojMapa";
 import { INGENIO_TEMPORAL, ubicarFincasTemporalmente } from "../../domain/services/ubicacionTemporal";
 import { calcularViajeDeTurno, fincaDelTurno } from "../../domain/services/viajesDesdeTurnos";
 
@@ -20,8 +29,8 @@ export type Multiplicador = (typeof MULTIPLICADORES)[number];
 export type IngenioMapa = PuntoGeo & { nombre: string };
 
 const INTERVALO_MS = 100;
-/** La cola cambia por el chatbot o el panel de turnos: se vuelve a leer cada tanto. */
-export const INTERVALO_TURNOS_MS = 10_000;
+/** La cola cambia por el chatbot o el panel de turnos: se vuelve a leer seguido para seguir sus eventos. */
+export const INTERVALO_TURNOS_MS = 3_000;
 const MS_POR_MINUTO = 60_000;
 /** v3: las fincas ya no se guardan, vienen de la API; se descartan los escenarios anteriores. */
 export const CLAVE_ALMACENAMIENTO = "agroflow.mapa-simulado.v3";
@@ -30,8 +39,6 @@ export const CLAVE_ALMACENAMIENTO = "agroflow.mapa-simulado.v3";
  * frecuencia, además de al cambiar la velocidad, salir de la pestaña o cerrar la página.
  */
 export const INTERVALO_GUARDADO_ADELANTO_MS = 5_000;
-/** Tope del adelanto: unos 30 años, lejos de cualquier ensayo. */
-const ADELANTO_MAXIMO_MS = 1e12;
 
 export interface DatosViaje {
   patente: string;
@@ -55,9 +62,17 @@ interface Escenario {
 interface DatosCargados extends Escenario {
   /** Tiempo que el reloj se adelantó por las velocidades de prueba. */
   adelantoMs: number;
+  /** Tramos del reloj de este navegador, para llevar los instantes de la API a la hora del mapa. */
+  tramosReloj: TramoReloj[];
 }
 
-const SIN_DATOS: DatosCargados = { ingenio: { ...INGENIO_TEMPORAL }, viajes: [], siguienteId: 1, adelantoMs: 0 };
+const SIN_DATOS: DatosCargados = {
+  ingenio: { ...INGENIO_TEMPORAL },
+  viajes: [],
+  siguienteId: 1,
+  adelantoMs: 0,
+  tramosReloj: [],
+};
 
 const esLugarValido = (lugar: Partial<IngenioMapa> | null | undefined): lugar is IngenioMapa =>
   !!lugar && typeof lugar.nombre === "string" && lugar.nombre !== "" && esUbicacionValida(lugar);
@@ -75,6 +90,7 @@ function sanear(guardado: Partial<DatosCargados>): DatosCargados {
     siguienteId: typeof siguienteId === "number" && Number.isSafeInteger(siguienteId) && siguienteId > 0 ? siguienteId : 1,
     adelantoMs:
       typeof adelantoMs === "number" && adelantoMs >= 0 && adelantoMs <= ADELANTO_MAXIMO_MS ? adelantoMs : 0,
+    tramosReloj: sanearTramos(guardado.tramosReloj),
   };
 }
 
@@ -121,15 +137,25 @@ function useFincasApi() {
   return { fincas, error, reintentar: useCallback(() => setIntento((i) => i + 1), []) };
 }
 
+/** Agrega la hora del mapa a las claves que todavía no la tienen. */
+function registrarVistos(vistos: Record<string, number>, claves: string[], ahoraMs: number) {
+  const nuevas = claves.filter((clave) => !(clave in vistos));
+  return nuevas.length > 0 ? { ...vistos, ...Object.fromEntries(nuevas.map((clave) => [clave, ahoraMs])) } : vistos;
+}
+
+const limitar = (vistos: Record<string, number>, hastaMs: number) =>
+  Object.fromEntries(Object.entries(vistos).map(([clave, ms]) => [clave, Math.min(ms, hastaMs)]));
+
 /**
  * Turnos activos de la cola. Ante una falla se conserva la última lectura.
- * También registra la hora del mapa (`relojMapa`) en que llega cada incidente nuevo: con x10 o x60 el reloj del
- * mapa va adelantado, y la hora real del reporte haría retroceder al camión.
+ * También registra la hora del mapa (`relojMapa`) en que ve por primera vez cada incidente abierto y cada turno en
+ * camino: si la API no informa la salida, el camión sale cuando el mapa lo vio en camino.
  */
 function useTurnosActivos(relojMapa: () => number) {
   const [turnos, setTurnos] = useState<Turno[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [detenidos, setDetenidos] = useState<Record<string, number>>({});
+  const [salidas, setSalidas] = useState<Record<string, number>>({});
 
   useEffect(() => {
     let vigente = true;
@@ -141,10 +167,10 @@ function useTurnosActivos(relojMapa: () => number) {
           setTurnos(t);
           setError(null);
           const ahora = relojMapa();
-          setDetenidos((d) => {
-            const nuevos = t.flatMap((turno) => (turno.incidente && !(turno.incidente.id in d) ? [turno.incidente.id] : []));
-            return nuevos.length > 0 ? { ...d, ...Object.fromEntries(nuevos.map((id) => [id, ahora])) } : d;
-          });
+          const incidentes = t.flatMap((turno) => (turno.incidente ? [turno.incidente.id] : []));
+          setDetenidos((d) => registrarVistos(d, incidentes, ahora));
+          const enCamino = t.flatMap((turno) => (turno.estado === "viaje" ? [turno.id] : []));
+          setSalidas((s) => registrarVistos(s, enCamino, ahora));
         })
         .catch((e: unknown) => {
           if (vigente) setError(e instanceof Error && e.message ? e.message : "No se pudo leer la cola de turnos.");
@@ -157,29 +183,58 @@ function useTurnosActivos(relojMapa: () => number) {
     };
   }, [relojMapa]);
 
-  /** Al volver el reloj atrás, ningún camión puede quedar detenido en una hora posterior. */
-  const limitarDetenidos = useCallback((hastaMs: number) => {
-    setDetenidos((d) => Object.fromEntries(Object.entries(d).map(([id, ms]) => [id, Math.min(ms, hastaMs)])));
+  /** Al volver el reloj atrás, ningún camión puede quedar detenido ni salir en una hora posterior. */
+  const limitarVistos = useCallback((hastaMs: number) => {
+    setDetenidos((d) => limitar(d, hastaMs));
+    setSalidas((s) => limitar(s, hastaMs));
   }, []);
 
-  return { turnos, error, detenidos, limitarDetenidos };
+  return { turnos, error, detenidos, salidas, limitarVistos };
 }
 
 export function useMapaSimulado() {
-  const [{ adelantoMs: adelantoInicial, ...escenarioInicial }] = useState(leerDatos);
+  const [{ adelantoMs: adelantoInicial, tramosReloj: tramosIniciales, ...escenarioInicial }] = useState(leerDatos);
   const [escenario, setEscenario] = useState<Escenario>(escenarioInicial);
   const [adelantoMs, setAdelantoMs] = useState(adelantoInicial);
   const [ahoraMs, setAhoraMs] = useState(() => Date.now() + adelantoInicial);
-  const [multiplicador, setMultiplicador] = useState<Multiplicador>(1);
+  const [multiplicador, setMultiplicadorActual] = useState<Multiplicador>(1);
+  // Al abrir, la velocidad es x1: si lo guardado terminaba acelerado, desde ahora sigue a x1.
+  const [tramos, setTramos] = useState(() => cerrarTramos(tramosIniciales, Date.now(), adelantoInicial));
   const fincasApi = useFincasApi();
   // El intervalo y los guardados leen el último valor sin volver a suscribirse.
   const escenarioRef = useRef(escenario);
   const adelantoRef = useRef(adelantoInicial);
+  const tramosRef = useRef(tramos);
   const cola = useTurnosActivos(useCallback(() => Date.now() + adelantoRef.current, []));
 
+  // Se guarda como si el mapa se cerrara ahora: el tiempo que quede cerrado no se cuenta acelerado.
   const guardar = useCallback(
-    () => guardarDatos({ ...escenarioRef.current, adelantoMs: adelantoRef.current }),
+    () =>
+      guardarDatos({
+        ...escenarioRef.current,
+        adelantoMs: adelantoRef.current,
+        tramosReloj: cerrarTramos(tramosRef.current, Date.now(), adelantoRef.current),
+      }),
     [],
+  );
+
+  /** Cada cambio de velocidad y cada salto de reloj abre un tramo nuevo desde este instante. */
+  const registrarTramo = useCallback((velocidad: Multiplicador) => {
+    tramosRef.current = agregarTramo(tramosRef.current, {
+      realInicioMs: Date.now(),
+      adelantoInicioMs: adelantoRef.current,
+      multiplicador: velocidad,
+    });
+    setTramos(tramosRef.current);
+  }, []);
+
+  const setMultiplicador = useCallback(
+    (velocidad: Multiplicador) => {
+      if (velocidad === multiplicador) return;
+      registrarTramo(velocidad);
+      setMultiplicadorActual(velocidad);
+    },
+    [multiplicador, registrarTramo],
   );
 
   useEffect(() => {
@@ -238,40 +293,49 @@ export function useMapaSimulado() {
   }, []);
 
   /**
-   * Los turnos nuevos (por ejemplo, de WhatsApp) usan la hora real: con el reloj adelantado parecerían del pasado.
-   * Los viajes de prueba se borran porque su salida se calculó con el reloj adelantado.
+   * Vuelve a la hora real: los turnos de la cola se ubican con las horas reales de la API, como en cualquier otra
+   * pantalla sin adelanto. Los viajes de prueba se borran porque su salida se calculó con el reloj adelantado.
    */
-  const { limitarDetenidos } = cola;
+  const { limitarVistos } = cola;
   const volverAHoraReal = useCallback(() => {
     const ahora = Date.now();
     adelantoRef.current = 0;
     setAdelantoMs(0);
     setAhoraMs(ahora);
-    setMultiplicador(1);
-    limitarDetenidos(ahora);
+    setMultiplicadorActual(1);
+    // Sin adelanto los instantes de la API ya están en la hora del mapa: el registro de tramos sobra.
+    tramosRef.current = [];
+    setTramos([]);
+    limitarVistos(ahora);
     // Cambiar el escenario lo guarda, ya con el adelanto en cero.
     setEscenario((e) => ({ ...e, viajes: [] }));
-  }, [limitarDetenidos]);
+  }, [limitarVistos]);
 
   /** Salto de reloj para la demo: adelanta el mapa sin esperar, como x10 o x60 pero de una vez. */
   const adelantar = useCallback(
     (ms: number) => {
       const extraMs = Math.min(ms, ADELANTO_MAXIMO_MS - adelantoRef.current);
       if (extraMs <= 0) return;
+      tramosRef.current = saltarReloj(tramosRef.current, Date.now(), adelantoRef.current, extraMs, multiplicador);
+      setTramos(tramosRef.current);
       adelantoRef.current += extraMs;
       setAdelantoMs(adelantoRef.current);
       setAhoraMs((previo) => previo + extraMs);
       guardar();
     },
-    [guardar],
+    [guardar, multiplicador],
   );
 
   // Viajes de la cola de turnos: los agrega el mapa solo, sin intervención del operador.
+  const aHoraMapa = (realMs: number) => horaMapaDe(tramos, realMs, adelantoMs);
   const deTurnos: ViajeCalculado[] = cola.turnos.flatMap((turno) => {
     const finca = fincaDelTurno(turno, fincas);
     if (!finca) return [];
-    const detenidoEnMs = turno.incidente ? (cola.detenidos[turno.incidente.id] ?? ahoraMs) : undefined;
-    const viaje = calcularViajeDeTurno(turno, finca, ingenio, ahoraMs, detenidoEnMs);
+    const viaje = calcularViajeDeTurno(turno, finca, ingenio, ahoraMs, {
+      aHoraMapa,
+      salidaVistaMs: cola.salidas[turno.id],
+      detenidoVistoMs: turno.incidente ? cola.detenidos[turno.incidente.id] : undefined,
+    });
     return viaje ? [viaje] : [];
   });
   // Un viaje de la demo de una finca que la API ya no publica no se muestra, pero se conserva por si vuelve.

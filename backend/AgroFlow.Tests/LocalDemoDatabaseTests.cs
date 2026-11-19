@@ -203,7 +203,7 @@ public sealed class LocalDemoDatabaseTests : IDisposable
             var appointment = new Turno(window.IngenioId, carrier.Id, truck.Id, farm.Id, windowId,
                 Now.AddHours(-2), 20, Now);
             appointment.SetStatus(TurnoEstado.EnCamino);
-            db.Turnos.Add(appointment);
+            await LegacyTurnoRows.InsertAsync(db, appointment);
             await db.Ventanas.Where(v => v.Id == windowId)
                 .ExecuteUpdateAsync(setters => setters.SetProperty(v => v.Occupied, 1));
             await db.SaveChangesAsync();

@@ -52,12 +52,16 @@ public sealed record RouteIncidentResponse(
     string? Description,
     DateTimeOffset ReportedAt);
 
+public sealed record AppointmentStopResponse(DateTimeOffset StartedAt, DateTimeOffset EndedAt);
+
 public sealed record AppointmentSummaryResponse(
     Guid Id,
     AppointmentTruckResponse Truck,
     AppointmentWindowResponse Window,
     string Status,
-    RouteIncidentResponse? OpenIncident);
+    RouteIncidentResponse? OpenIncident,
+    DateTimeOffset? DepartedAt,
+    IReadOnlyList<AppointmentStopResponse> Stops);
 
 public sealed record AppointmentResponse(
     Guid Id,
@@ -73,7 +77,7 @@ public sealed record AppointmentResponse(
 /// <summary>
 /// LocalDemo representation of <c>Appointment</c> (openapi.yaml): the MVP one
 /// (<see cref="AppointmentResponse"/>, openapi.mvp-appointment-reads.yaml) has no
-/// openIncident and keeps its shape.
+/// openIncident, departedAt or stops and keeps its shape.
 /// </summary>
 public sealed record LocalDemoAppointmentResponse(
     Guid Id,
@@ -85,7 +89,9 @@ public sealed record LocalDemoAppointmentResponse(
     AppointmentWindowResponse Window,
     string Status,
     DateTimeOffset CreatedAt,
-    RouteIncidentResponse? OpenIncident);
+    RouteIncidentResponse? OpenIncident,
+    DateTimeOffset? DepartedAt,
+    IReadOnlyList<AppointmentStopResponse> Stops);
 
 public sealed record AppointmentPageResponse(
     IReadOnlyList<AppointmentResponse> Items, int Page, int PageSize, long TotalCount);
@@ -125,14 +131,21 @@ public static class AppointmentHttpMapper
         new AppointmentWindowResponse(snapshot.Window.StartAt, snapshot.Window.EndAt),
         ToWireStatus(snapshot.Status),
         snapshot.CreatedAt,
-        ToResponse(snapshot.OpenIncident));
+        ToResponse(snapshot.OpenIncident),
+        snapshot.DepartedAt,
+        ToResponse(snapshot.Stops));
 
     public static AppointmentSummaryResponse ToResponse(AppointmentSummary summary) => new(
         summary.Id,
         new AppointmentTruckResponse(summary.Truck.Id, summary.Truck.Plate),
         new AppointmentWindowResponse(summary.Window.StartAt, summary.Window.EndAt),
         ToWireStatus(summary.Status),
-        ToResponse(summary.OpenIncident));
+        ToResponse(summary.OpenIncident),
+        summary.DepartedAt,
+        ToResponse(summary.Stops));
+
+    private static IReadOnlyList<AppointmentStopResponse> ToResponse(IReadOnlyList<AppointmentStop>? stops) =>
+        stops is null ? [] : stops.Select(stop => new AppointmentStopResponse(stop.StartedAt, stop.EndedAt)).ToArray();
 
     private static RouteIncidentResponse? ToResponse(RouteIncident? incident) => incident is null
         ? null
