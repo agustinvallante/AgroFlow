@@ -84,7 +84,7 @@ Cada viaje SHALL representar un único recorrido desde su finca hasta el ingenio
 
 ### Requirement: Detalle de un camión en el mapa
 
-Los camiones en movimiento SHALL representarse como círculos, y las fincas y el ingenio como cuadrados. Al seleccionar uno con el puntero o el teclado, el mapa SHALL mostrar un recuadro junto a él con patente, estado, finca de salida, hora de salida, hora de llegada estimada o real, distancia del recorrido, distancia restante, velocidad y, según el origen, la ventana del turno o el retraso simulado, e indicar que son estimaciones sin GPS. El recuadro SHALL cerrarse con su botón, con Escape o al tocar otro punto del mapa.
+Los camiones en movimiento SHALL representarse como círculos, y las fincas y el ingenio como cuadrados. Al seleccionar uno con el puntero o el teclado, el mapa SHALL mostrar un recuadro junto a él con patente, estado, finca de salida, hora de salida, hora de llegada estimada o real, distancia del recorrido, distancia restante, velocidad y, según el origen, el transportista y la ventana del turno o el retraso simulado, e indicar que son estimaciones sin GPS. El recuadro SHALL cerrarse con su botón, con Escape o al tocar otro punto del mapa.
 
 #### Scenario: Consultar un camión
 

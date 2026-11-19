@@ -103,6 +103,7 @@ export function calcularViajeDeTurno(
       id: turno.id,
       ventana: turno.ventana,
       estado: turno.estado,
+      transportista: turno.chofer,
       ...(turno.incidente ? { incidente: turno.incidente } : {}),
     },
   };

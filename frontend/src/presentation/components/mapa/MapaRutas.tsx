@@ -78,6 +78,8 @@ function DetalleCamion({ viaje: v, ahoraMs, ancla, onCerrar }: DetalleCamionProp
   const filas: [string, string][] = [
     ["Estado", ESTADO_LABEL[estado]],
     ...(incidente && estado !== "en-playa" ? ([["Problema", textoIncidenteCorto(incidente)]] as [string, string][]) : []),
+    // Los viajes de la demo no tienen transportista.
+    ...(v.turno ? ([["Transportista", v.turno.transportista]] as [string, string][]) : []),
     ["Sale de", v.finca.nombre],
     ["Salida", hora(v.viaje.salidaMs)],
     ["Llegada", llegada],

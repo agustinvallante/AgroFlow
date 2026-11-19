@@ -23,6 +23,7 @@ vi.mock("../../composition/container", () => ({
 import { PanelGeneralView } from "./PanelGeneralView";
 import { INTERVALO_POLLING_MS } from "../hooks/useColaTurnos";
 import { INTERVALO_VENTANAS_MS } from "../hooks/useVentanas";
+import { registrarTurnoManual } from "../hooks/medidasTemporalesPanel";
 
 const turno = (id: string, patente: string, estado: Turno["estado"]): Turno => ({
   id,
@@ -37,6 +38,7 @@ const turno = (id: string, patente: string, estado: Turno["estado"]): Turno => (
 });
 
 const SIN_ACTIVOS = "No hay camiones en curso.";
+const metrica = (etiqueta: string) => screen.getByText(etiqueta).parentElement?.querySelector(".value")?.textContent;
 const esperar = (ms = 0) => act(() => vi.advanceTimersByTimeAsync(ms));
 const ventana = (datos: Partial<VentanaRecepcion> = {}): VentanaRecepcion => ({
   id: "v1", startAt: "2026-09-28T23:15:00-03:00", endAt: "2026-09-29T00:00:00-03:00",
@@ -47,6 +49,7 @@ const cupos = (slot: HTMLElement) => within(slot).getAllByRole("definition").map
 describe("PanelGeneralView", () => {
   beforeEach(() => {
     vi.useFakeTimers();
+    localStorage.clear();
     mocks.obtenerTurnos.mockReset();
     mocks.obtenerDia.mockReset();
     mocks.cambiarEstado.mockReset();
@@ -69,6 +72,7 @@ describe("PanelGeneralView", () => {
     expect(screen.getByRole("button", { name: "Reintentar" })).toBeTruthy();
     expect(screen.queryByText(SIN_ACTIVOS)).toBeNull();
     expect(screen.queryByText(/activos/)).toBeNull();
+    expect(metrica("Camiones en espera ahora")).toBe("—");
   });
 
   it("muestra solo los turnos en curso que devuelve la API", async () => {
@@ -100,21 +104,25 @@ describe("PanelGeneralView", () => {
     expect(screen.getByText(/Datos desactualizados/)).toBeTruthy();
   });
 
-  it("no muestra datos que la API no expone", async () => {
+  it("no muestra datos que la API no expone y simula la molienda", async () => {
     mocks.obtenerTurnos.mockResolvedValue([]);
 
     render(<PanelGeneralView />);
     await esperar();
 
     expect(screen.getByText(SIN_ACTIVOS)).toBeTruthy();
-    expect(screen.queryByText(/Ingenio San Ramón|Operando|Detenida|zafra(?!flow)/i)).toBeNull();
-    // Los indicadores conservan su lugar, sin valor.
-    expect(screen.getByText("Estado de la molienda").parentElement?.textContent).toContain("—");
+    expect(screen.queryByText(/Ingenio San Ramón|zafra(?!flow)/i)).toBeNull();
+    // Los indicadores sin API conservan su lugar, sin valor.
+    expect(metrica("Espera promedio en canchón")).toBe("—");
+    expect(metrica("Estado de la molienda")).toBe("Operando");
+    fireEvent.click(screen.getByRole("switch", { name: "Molienda en funcionamiento" }));
+    expect(metrica("Estado de la molienda")).toBe("Detenida");
     expect((screen.getByRole("button", { name: "Enviar aviso a la flota" }) as HTMLButtonElement).disabled).toBe(true);
   });
 
   it("consulta activos de cualquier fecha y muestra sus ventanas sin usar la cola diaria", async () => {
     vi.setSystemTime(new Date("2026-09-28T12:00:00Z"));
+    registrarTurnoManual("ayer");
     mocks.obtenerTurnos.mockResolvedValue([
       { ...turno("ayer", "AA111BB", "viaje"), ventana: {
         inicio: "2026-09-27T23:30:00-03:00", fin: "2026-09-28T00:00:00-03:00",
@@ -128,6 +136,10 @@ describe("PanelGeneralView", () => {
     expect(mocks.obtenerTurnos).toHaveBeenCalledWith();
     expect(mocks.obtenerDia).not.toHaveBeenCalled();
     expect(screen.getByText("2 activos")).toBeTruthy();
+    // Sólo el turno en espera (cancha) cuenta, aunque su ventana sea de otro día.
+    expect(metrica("Camiones en espera ahora")).toBe("1");
+    // El turno cargado desde el dashboard no cuenta como del bot.
+    expect(metrica("Turnos gestionados por el bot")).toBe("1");
     expect(screen.getByText("27/09/2026 23:30 (UTC-03:00) – 28/09/2026 00:00 (UTC-03:00)")).toBeTruthy();
     expect(screen.getByText("29/09/2026 08:00 – 08:30 (UTC-03:00)")).toBeTruthy();
   });

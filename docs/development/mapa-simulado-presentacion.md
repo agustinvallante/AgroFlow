@@ -31,12 +31,13 @@ Iniciar también el backend y configurar las claves según la [guía de demo loc
 8. Recargar el mismo origen. Deben conservarse el ingenio y el viaje. La velocidad vuelve a x1 y el adelanto acumulado se conserva.
 9. Quitar el viaje, cargar otro con retraso de 10 minutos y usar x60. Al superar la llegada estimada debe pasar a Demora y, tras completar el retraso, a Llegó.
 10. Para observar Programado, cargar otro viaje con una salida de 5 minutos. También puede verificarse que se rechaza un segundo viaje sin terminar de la misma patente.
+11. Con el reloj adelantado, tocar **Hora real** junto al adelanto. El mapa vuelve a x1 y a «Tiempo real», los viajes de prueba se borran y los turnos de la cola recuperan el estado que les corresponde a la hora real. Usarlo antes de pedir un turno por WhatsApp: el turno nuevo usa la hora real y, con el mapa adelantado, figuraría como del pasado.
 
 ## Datos y reloj
 
 Ingenio, viajes de prueba y adelanto viven en `agroflow.mapa-simulado.v3` de localStorage; las fincas y los turnos se vuelven a leer de la API. Con x10 o x60 también se adelantan los viajes de la cola: para la demo importa mostrar el recorrido, no la precisión. Cada navegador, perfil y origen tiene su escenario propio. Abrir otro puerto u otra dirección, aunque apunten al mismo equipo, usa otro almacenamiento. Para mostrarlo al grupo conviene compartir una sola pantalla.
 
-El reloj a x1 sigue el tiempo real. Las velocidades x10 y x60 acumulan un adelanto únicamente mientras el mapa está abierto. Al regresar tras recargar o cambiar de sección, se conserva ese adelanto y se agrega el tiempo real transcurrido. El reloj visible usa la zona de la demo, America/Argentina/Tucuman.
+El reloj a x1 sigue el tiempo real. Las velocidades x10 y x60 acumulan un adelanto únicamente mientras el mapa está abierto. Al regresar tras recargar o cambiar de sección, se conserva ese adelanto y se agrega el tiempo real transcurrido. El botón **Hora real**, visible sólo con adelanto, lo quita: borra los viajes de prueba porque su salida se calculó con el reloj adelantado, y un camión con problema en ruta queda detenido en la posición que le corresponde a la hora real. El reloj visible usa la zona de la demo, America/Argentina/Tucuman.
 
 El formulario admite velocidades de 1 a 120 km/h y salidas y retrasos de 0 a 1440 minutos. Si lo guardado contiene valores fuera de esos límites, por ejemplo por una versión anterior o una edición manual, el mapa los descarta al abrirse en lugar de dejar de funcionar. Con x10 y x60 el adelanto se guarda cada pocos segundos y al cambiar de velocidad, de sección o cerrar la página.
 
@@ -56,7 +57,7 @@ Las coordenadas, viajes y llegadas no se envían a la API; sólo se lee el catá
 |---|---|
 | Fincas de la API, falla de carga, formularios y duplicados | `frontend/src/presentation/views/MapaView.test.tsx` |
 | Movimiento, llegada, retraso y x1/x60 | El mismo archivo y `frontend/src/domain/services/simulacionViajes.test.ts` |
-| Regreso a la pestaña, adelanto tras recarga y detalle del camión | `MapaView.test.tsx` |
+| Regreso a la pestaña, adelanto tras recarga, vuelta a la hora real y detalle del camión | `MapaView.test.tsx` |
 | Problema en ruta: demora, posición detenida, detalle y resolución | `MapaView.test.tsx` y `frontend/src/domain/services/viajesDesdeTurnos.test.ts` |
 | Límites de entrada, datos guardados inválidos y almacenamiento bloqueado | `MapaView.test.tsx` y `simulacionViajes.test.ts` |
 | Red vial, recorridos y etiquetas | `geometriaMapa.test.ts` en componentes/mapa |
