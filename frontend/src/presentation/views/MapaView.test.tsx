@@ -104,7 +104,10 @@ describe("MapaView", () => {
 
     // A x60 el turno también avanza: 90 minutos simulados en 90 segundos.
     clic("x60");
-    avanzar(90_000);
+    avanzar(75_000);
+    clic("Ver camión AF123BC");
+    expect(screen.getByText("Juan Pérez")).toBeTruthy();
+    avanzar(15_000);
     expect(contador(/Llegaron (\d+)/)).toBe("1");
   });
 
