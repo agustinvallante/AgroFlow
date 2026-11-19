@@ -45,6 +45,14 @@ El formulario admite velocidades de 1 a 120 km/h y salidas y retrasos de 0 a 144
 
 Se pueden quitar viajes desde la cola. Un viaje de una finca que la API deja de publicar no se muestra. Para reiniciar únicamente esta simulación, abrir las herramientas del navegador y eliminar la clave `agroflow.mapa-simulado.v3` del origen actual, y recargar.
 
+## Notas para la presentación
+
+Observaciones de la revisión del guion:
+
+- **Un reloj por navegador.** x10, x60 y **+1 h** cambian sólo la pantalla donde se tocan; otra pantalla con el mapa abierto sigue con su propio reloj y muestra los camiones en otra posición. Antes de comparar pantallas, tocar **Hora real** en cada una para alinearlas.
+- **«Llegué» por WhatsApp es una medida de la demo.** Sirve para que el mapa y la cola coincidan durante la presentación. En el MVP la llegada la confirma el operador (RN-027).
+- **Retroceso leve a x60 al aparecer un problema.** El camión se detiene en el punto donde estaba cuando se reportó el problema. Como el mapa lee la cola cada 3 segundos, a x60 puede haber avanzado unos minutos del mapa antes de ver el reporte y, al verlo, retrocede un poco hasta ese punto. A x1 la diferencia no se nota.
+
 ## Interpretación de la demostración
 
 La API publica el catálogo de fincas, pero no coordenadas: como medida temporal, el frontend ubica cada finca de forma determinista entre 14 y 30 km del ingenio, hacia el rumbo que indique su nombre. Las posiciones proceden de la distancia haversine multiplicada por 1,3 y de una velocidad constante. Las rutas, accesos y ríos del fondo son simulados; cada recorrido los sigue, pero no son caminos reales. El retraso es un dato ficticio que difiere la llegada local.
