@@ -1,0 +1,67 @@
+# VPS override for the demo stack (see docs/operations/vps-deploy.md).
+# Use together with compose.yaml:
+#   docker compose --env-file infra/.env -f infra/compose.yaml -f infra/compose.vps.yaml up -d --build
+# Adds the ZafraFlow API and the dashboard as containers. Nothing publishes a
+# public port: n8n and Evolution keep their 127.0.0.1 ports (SSH tunnel only),
+# the API is internal, and the dashboard is reached through the shared proxy
+# on castel_network.
+services:
+  api:
+    build:
+      context: ../backend
+    image: agroflow-api:vps
+    container_name: agroflow_api
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_FORWARDEDHEADERS_ENABLED: "true"
+      TZ: ${TIMEZONE}
+      LocalDemo__Enabled: "true"
+      LocalDemo__WhatsAppInstance: ${EVOLUTION_INSTANCE}
+      # Absolute path + ReadWrite: the API refuses to start instead of
+      # creating an empty database when the file was not copied in.
+      ConnectionStrings__AgroFlowDb: Data Source=/app/data/agroflow-demo.db;Mode=ReadWrite;Default Timeout=5
+      ChannelIntegration__ServiceKey: ${AGROFLOW_SERVICE_KEY:?set AGROFLOW_SERVICE_KEY in infra/.env}
+      Dashboard__ApiKey: ${AGROFLOW_DASHBOARD_KEY:?set AGROFLOW_DASHBOARD_KEY in infra/.env}
+    volumes:
+      - api_data:/app/data
+    networks:
+      - agroflow_backend
+    mem_limit: 384m
+    cpus: "0.50"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  web:
+    build:
+      context: ../frontend
+    image: agroflow-web:vps
+    container_name: agroflow_web
+    restart: unless-stopped
+    environment:
+      AGROFLOW_DASHBOARD_KEY: ${AGROFLOW_DASHBOARD_KEY:?set AGROFLOW_DASHBOARD_KEY in infra/.env}
+      # "user:hash" from `openssl passwd -apr1`; single-quote it in infra/.env.
+      WEB_BASIC_AUTH: ${WEB_BASIC_AUTH:?set WEB_BASIC_AUTH in infra/.env}
+    depends_on:
+      - api
+    networks:
+      - agroflow_backend
+      - castel_network
+    mem_limit: 64m
+    cpus: "0.20"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  api_data:
+    name: agroflow_demo_api_data
+
+networks:
+  castel_network:
+    external: true
