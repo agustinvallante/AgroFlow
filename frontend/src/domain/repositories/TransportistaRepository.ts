@@ -5,5 +5,5 @@ export interface TransportistaRepository {
   crear(datos: NuevoTransportista): Promise<Transportista>;
   /** Corrige nombre, DNI o WhatsApp de un transportista activo. */
   actualizar(id: string, datos: NuevoTransportista): Promise<Transportista>;
-  cambiarEstadoActivo(id: string): Promise<Transportista>;
+  cambiarEstadoActivo(id: string, activo: boolean): Promise<Transportista>;
 }

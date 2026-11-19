@@ -75,10 +75,11 @@ export function useTransportistas() {
     setTransportistas((prev) => prev.map((t) => (t.id === id ? actualizado : t)));
   }, []);
 
-  const cambiarEstado = useCallback(async (id: string) => {
-    const actualizado = await container.transportistas.cambiarEstadoActivoTransportista.execute(id);
+  const cambiarEstado = useCallback(async (id: string, activo: boolean) => {
+    const actualizado = await container.transportistas.cambiarEstadoActivoTransportista.execute(id, activo);
+    invalidarConsulta();
     setTransportistas((prev) => prev.map((t) => (t.id === id ? actualizado : t)));
-  }, []);
+  }, [invalidarConsulta]);
 
   return {
     transportistas: listaFiltrada,

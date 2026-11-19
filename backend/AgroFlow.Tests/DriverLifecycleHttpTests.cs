@@ -120,6 +120,86 @@ public sealed class DriverLifecycleHttpTests : IDisposable
         Assert.Equal(HttpStatusCode.NotFound, rejected.StatusCode);
     }
 
+    [Fact]
+    public async Task Reactivation_is_idempotent_and_restores_booking_for_the_same_driver_after_restart()
+    {
+        const string phone = "+5493815550102";
+        const string plate = "AF456DE";
+        const string key = "fixture-reactivate-1";
+        Guid driverId;
+        using (var factory = CreateFactory())
+        {
+            var client = factory.CreateClient();
+            driverId = (await Drivers(client)).Single(d => d.GetProperty("whatsApp").GetString() == phone)
+                .GetProperty("id").GetGuid();
+            using var inactivated = await Send(client, HttpMethod.Post,
+                $"/api/v1/drivers/{driverId}/inactivation", null, "fixture-inactivate-2");
+            Assert.Equal(HttpStatusCode.OK, inactivated.StatusCode);
+
+            var route = $"/api/v1/drivers/{driverId}/reactivation";
+            using var reactivated = await Send(client, HttpMethod.Post, route, null, key);
+            using var repeated = await Send(client, HttpMethod.Post, route, null, key);
+            Assert.Equal(HttpStatusCode.OK, reactivated.StatusCode);
+            Assert.Equal(HttpStatusCode.OK, repeated.StatusCode);
+            var receipt = await reactivated.Content.ReadFromJsonAsync<JsonElement>();
+            Assert.Equal(driverId, receipt.GetProperty("resourceId").GetGuid());
+            Assert.Equal("reactivated", receipt.GetProperty("outcome").GetString());
+            Assert.Equal(receipt.GetRawText(), (await repeated.Content.ReadFromJsonAsync<JsonElement>()).GetRawText());
+
+            await using var db = CreateContext();
+            Assert.Equal(1, await db.AuditEvents.CountAsync(e => e.Action == $"drivers.reactivate:{driverId:D}"));
+        }
+
+        using var restarted = CreateFactory();
+        var restartedClient = restarted.CreateClient();
+        var driver = (await Drivers(restartedClient)).Single(d => d.GetProperty("whatsApp").GetString() == phone);
+        Assert.Equal(driverId, driver.GetProperty("id").GetGuid());
+        Assert.True(driver.GetProperty("isActive").GetBoolean());
+        Assert.True(driver.GetProperty("canRequestAppointments").GetBoolean());
+        Assert.Equal([plate], driver.GetProperty("activeTruckPlates").EnumerateArray().Select(p => p.GetString()));
+
+        using var appointment = await restartedClient.PostAsJsonAsync("/api/v1/appointments", Appointment(phone, plate));
+        Assert.Equal(HttpStatusCode.Created, appointment.StatusCode);
+        var body = await appointment.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(driverId, body.GetProperty("carrier").GetProperty("id").GetGuid());
+    }
+
+    [Fact]
+    public async Task Reactivation_requires_dashboard_key_and_leaves_an_unassociated_driver_without_booking()
+    {
+        using var factory = CreateFactory();
+        var client = factory.CreateClient();
+        const string phone = "+5493815550155";
+        using var created = await Send(client, HttpMethod.Post, "/api/v1/drivers",
+            new { name = "Transportista sin camión", dni = "20555000155", whatsApp = phone }, "fixture-create-2");
+        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+        var driverId = (await created.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("resourceId").GetGuid();
+        using var inactivated = await Send(client, HttpMethod.Post,
+            $"/api/v1/drivers/{driverId}/inactivation", null, "fixture-inactivate-3");
+        Assert.Equal(HttpStatusCode.OK, inactivated.StatusCode);
+
+        var route = $"/api/v1/drivers/{driverId}/reactivation";
+        using var unauthorizedRequest = new HttpRequestMessage(HttpMethod.Post, route);
+        unauthorizedRequest.Headers.Add(ApiKeySchemes.ChannelHeader, ChannelKey);
+        unauthorizedRequest.Headers.Add("Idempotency-Key", "fixture-reactivate-2");
+        using var unauthorized = await client.SendAsync(unauthorizedRequest);
+        using var missingKey = await Send(client, HttpMethod.Post, route, null, null);
+        Assert.Equal(HttpStatusCode.Unauthorized, unauthorized.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, missingKey.StatusCode);
+        var inactive = (await Drivers(client)).Single(d => d.GetProperty("id").GetGuid() == driverId);
+        Assert.False(inactive.GetProperty("isActive").GetBoolean());
+
+        using var reactivated = await Send(client, HttpMethod.Post, route, null, "fixture-reactivate-2");
+        Assert.Equal(HttpStatusCode.OK, reactivated.StatusCode);
+        var active = (await Drivers(client)).Single(d => d.GetProperty("id").GetGuid() == driverId);
+        Assert.True(active.GetProperty("isActive").GetBoolean());
+        Assert.Empty(active.GetProperty("activeTruckPlates").EnumerateArray());
+        Assert.False(active.GetProperty("canRequestAppointments").GetBoolean());
+        using var rejected = await client.PostAsJsonAsync("/api/v1/appointments", Appointment(phone, "AF456DE"));
+        Assert.Equal(HttpStatusCode.NotFound, rejected.StatusCode);
+        Assert.Equal("REFERENCE_NOT_FOUND", (await rejected.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("code").GetString());
+    }
+
     private static object Appointment(string phone, string plate) => new
     {
         carrierPhone = phone,
