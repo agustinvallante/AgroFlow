@@ -45,15 +45,20 @@ export function fincaDelTurno(turno: Turno, fincas: FincaMapa[]): FincaMapa | nu
   return fincas.find((f) => normalizar(f.nombre) === nombre) ?? null;
 }
 
-/** El camión se detuvo al reportar el problema: no avanza más allá de donde estaba, ni llega sin confirmación. */
+/**
+ * El camión se detuvo al reportar el problema: no avanza más allá de donde estaba, ni llega sin confirmación.
+ * `detenidoEnMs` es la hora del mapa en que se vio el incidente por primera vez; sin ella se usa la hora real
+ * del reporte, que con x10 o x60 queda atrás del reloj del mapa y haría retroceder al camión.
+ */
 function situacionConIncidente(
   incidente: IncidenteEnRuta,
   salidaMs: number,
   duracionMs: number,
   llegadaEstimadaMs: number,
   ahoraMs: number,
+  detenidoEnMs: number | undefined,
 ): SituacionViaje {
-  const reportadoMs = Date.parse(incidente.reportadoEn);
+  const reportadoMs = detenidoEnMs ?? Date.parse(incidente.reportadoEn);
   const hastaMs = Number.isFinite(reportadoMs) ? Math.min(reportadoMs, ahoraMs) : ahoraMs;
   const { progreso } = calcularSituacion(salidaMs, duracionMs, llegadaEstimadaMs, hastaMs);
   return { estado: "demora", progreso: Math.min(progreso, PROGRESO_MAXIMO_SIN_CONFIRMAR) };
@@ -64,6 +69,7 @@ export function calcularViajeDeTurno(
   finca: FincaMapa,
   ingenio: PuntoGeo,
   ahoraMs: number,
+  detenidoEnMs?: number,
 ): ViajeCalculado | null {
   if (TERMINADOS.includes(turno.estado)) return null;
   const llegadaEstimadaMs = Date.parse(turno.ventana.inicio);
@@ -91,7 +97,7 @@ export function calcularViajeDeTurno(
     situacion: enIngenio
       ? { estado: "en-playa", progreso: 1 }
       : turno.incidente
-        ? situacionConIncidente(turno.incidente, salidaMs, duracionMs, llegadaEstimadaMs, ahoraMs)
+        ? situacionConIncidente(turno.incidente, salidaMs, duracionMs, llegadaEstimadaMs, ahoraMs, detenidoEnMs)
         : calcularSituacion(salidaMs, duracionMs, llegadaEstimadaMs, ahoraMs),
     turno: {
       id: turno.id,

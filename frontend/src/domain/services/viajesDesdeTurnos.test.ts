@@ -68,6 +68,19 @@ describe("viajes desde la cola de turnos", () => {
       }
     });
 
+    it("con el reloj del mapa adelantado queda donde estaba cuando el mapa vio el incidente", () => {
+      // El mapa acelerado vio el reporte cuando su reloj ya iba por detrás de la llegada, no en la hora real.
+      const vistoEnMs = inicio - 120_000;
+      const mostrado = calcularViajeDeTurno(enViaje, finca, ingenio, vistoEnMs)!.situacion.progreso;
+      expect(mostrado).toBeGreaterThan(calcularViajeDeTurno(enViaje, finca, ingenio, reportadoMs)!.situacion.progreso);
+
+      const viaje = calcularViajeDeTurno(conIncidente, finca, ingenio, inicio + 3_600_000, vistoEnMs)!;
+      expect(viaje.situacion).toEqual({ estado: "demora", progreso: Math.min(mostrado, PROGRESO_MAXIMO_SIN_CONFIRMAR) });
+      // Nunca llega sin confirmación, aunque el mapa lo viera después de la llegada estimada.
+      const tarde = calcularViajeDeTurno(conIncidente, finca, ingenio, inicio + 7_200_000, inicio + 3_600_000)!;
+      expect(tarde.situacion.progreso).toBe(PROGRESO_MAXIMO_SIN_CONFIRMAR);
+    });
+
     it("si la API ya lo informa en el ingenio, figura como llegado", () => {
       for (const estado of ["cancha", "ingresado", "descargando"] as const) {
         const viaje = calcularViajeDeTurno({ ...conIncidente, estado }, finca, ingenio, reportadoMs + 60_000)!;
