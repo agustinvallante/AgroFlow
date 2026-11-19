@@ -62,10 +62,15 @@ dotnet run --launch-profile http --urls http://localhost:5000
   | Transportista 3 (`demo-tres`) | `+5493815550121` → camión `AH301AB` |
   | Transportista 4 (`demo-cuatro`) | `+5493815550122` → camión `AH302AB` |
   | Transportista 5 (`demo-cinco`) | `+5493815550123` → camión `AH303AB` |
+  | Camiones para invitados | `AP001AA` a `AP040AA`, flota `TERCEROS`, habilitados y sin asociación al sembrarlos |
   | Fincas | `FINCA-NORTE`, `FINCA-SUR` |
   | Ventanas | 30 minutos, cupo **2** camiones, de 08:00 a 18:00 hora local, para hoy y mañana |
 
   Las cinco asociaciones están activas: los cinco transportistas pueden solicitar turnos. Una base existente con dos transportistas incorpora las tres posiciones nuevas al arrancar, sin perder datos.
+
+  Al reiniciar la API con la misma SQLite se incorporan los camiones para
+  invitados. Sus asociaciones posteriores se conservan. Seguí el
+  [recorrido para reutilizar una patente](#reutilizar-el-camión-de-un-invitado).
 
 - **Precarga privada del equipo**: si existe `config/local-demo/transportistas.private.json` (ignorado por Git), al arrancar asigna a cada posición el nombre y el WhatsApp autorizado de un integrante. Conserva el DNI, el camión y la asociación de cada posición. Ver la [guía de la precarga](../../config/local-demo/README.md).
 
@@ -323,6 +328,21 @@ Comprobar:
 3. Consultarlo y comprobar que permanece como `CANCELADO`.
 4. Crear un turno que pueda usar el cupo liberado.
 5. Comprobar que una cancelación desde `INGRESADO`, `EN_DESCARGA`, `FINALIZADO` o `CANCELADO` responde `409`.
+
+### Reutilizar el camión de un invitado
+
+Desde **Transportistas → Asociar camión**, elegí una patente del rango
+`AP001AA`–`AP040AA` que esté libre de asociación y de turno activo.
+
+1. Al terminar la prueba, abrí el turno del invitado en **Cola de turnos**.
+   Seleccioná la fecha asignada por la API si el turno quedó para otro día.
+2. Si está `ASIGNADO`, `EN_CAMINO` o `EN_ESPERA`, cancelalo. Si está
+   `INGRESADO` o `EN_DESCARGA`, avanzá por los estados hasta `FINALIZADO`.
+   Verificá que el turno quede `CANCELADO` o `FINALIZADO`.
+3. Desde **Transportistas**, pulsá **Desasociar** junto a la patente y
+   verificá que vuelva a aparecer al elegir un camión para el siguiente
+   invitado. Desasociar sólo cambia el vínculo. Mientras quede un turno
+   activo con esa patente, una nueva reserva devuelve `409 ACTIVE_APPOINTMENT_EXISTS`.
 
 ## Guion de presentación reproducible: dos actores, persistencia y respaldo (#111)
 
