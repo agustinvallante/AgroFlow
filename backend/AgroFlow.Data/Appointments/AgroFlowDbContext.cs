@@ -25,6 +25,7 @@ public sealed class AgroFlowDbContext : IdentityDbContext<AgroFlowUser>
     public DbSet<TransportistaCamion> Asociaciones => Set<TransportistaCamion>();
     public DbSet<Ventana> Ventanas => Set<Ventana>();
     public DbSet<Turno> Turnos => Set<Turno>();
+    public DbSet<IncidenteRuta> IncidentesRuta => Set<IncidenteRuta>();
     public DbSet<AuditEvent> AuditEvents => Set<AuditEvent>();
     public DbSet<IdempotencyRecord> IdempotencyRecords => Set<IdempotencyRecord>();
     public DbSet<ChannelInstance> ChannelInstances => Set<ChannelInstance>();
@@ -137,6 +138,21 @@ public sealed class AgroFlowDbContext : IdentityDbContext<AgroFlowUser>
             // terminal (ver Turno.SetStatus / EfAppointmentStore).
             eb.HasIndex(t => t.CamionId).IsUnique().HasFilter("IsActive = 1");
             eb.HasIndex(t => new { t.IngenioId, t.VentanaId });
+        });
+
+        modelBuilder.Entity<IncidenteRuta>(eb =>
+        {
+            eb.ToTable("IncidentesRuta", t => t.HasCheckConstraint(
+                "CK_IncidentesRuta_EstimatedDelayMinutes_Range",
+                $"EstimatedDelayMinutes >= 0 AND EstimatedDelayMinutes <= {IncidenteRuta.MaxEstimatedDelayMinutes}"));
+            eb.Property(i => i.Type).HasConversion<string>().HasMaxLength(20).IsRequired();
+            eb.Property(i => i.Description).HasMaxLength(IncidenteRuta.MaxDescriptionLength);
+            eb.Property(i => i.ReportedAtUtc).HasConversion(UtcConverter);
+            eb.Property(i => i.ResolvedAtUtc).HasConversion(NullableUtcConverter);
+            // A lo sumo un incidente abierto por turno: constraint real, como el
+            // turno activo por camión. Los resueltos se conservan.
+            eb.HasIndex(i => i.TurnoId).IsUnique().HasFilter("ResolvedAtUtc IS NULL");
+            eb.HasOne<Turno>().WithMany().HasForeignKey(i => i.TurnoId).OnDelete(DeleteBehavior.Restrict);
         });
 
         // Metadatos de PR #47 que MasterDataService escribe en cada mutación.

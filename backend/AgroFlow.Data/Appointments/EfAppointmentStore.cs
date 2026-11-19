@@ -173,6 +173,8 @@ public sealed class EfAppointmentStore : IAppointmentStore, IAppointmentReader, 
         var camiones = await _db.Camiones.AsNoTracking()
             .Where(c => camionIds.Contains(c.Id))
             .ToDictionaryAsync(c => c.Id, cancellationToken);
+        var openIncidents = await LoadOpenIncidentsAsync(
+            matches.Select(x => x.Turno.Id).ToArray(), timeZone, cancellationToken);
 
         return matches.Select(x => new AppointmentSummary(
             x.Turno.Id,
@@ -180,7 +182,8 @@ public sealed class EfAppointmentStore : IAppointmentStore, IAppointmentReader, 
             new AppointmentWindow(
                 TimeZoneInfo.ConvertTime(x.Ventana.StartAt, timeZone),
                 TimeZoneInfo.ConvertTime(x.Ventana.EndAt, timeZone)),
-            AppointmentStatusMapper.ToApplication(x.Turno.Status)))
+            AppointmentStatusMapper.ToApplication(x.Turno.Status),
+            openIncidents.GetValueOrDefault(x.Turno.Id)))
             .ToArray();
     }
 
@@ -222,8 +225,9 @@ public sealed class EfAppointmentStore : IAppointmentStore, IAppointmentReader, 
 
         var ordered = rows.OrderBy(row => row.Window.StartAtUtc).ThenBy(row => row.Turno.Id);
         var page = await ordered.Skip(checked((int)offset)).Take(query.PageSize).ToListAsync(cancellationToken);
+        // The MVP read contract (openapi.mvp-appointment-reads.yaml) has no openIncident.
         return new AppointmentPage(page.Select(row => ToSnapshot(
-            row.Turno, row.Carrier, row.Truck, row.Farm, row.Window, timeZone)).ToArray(), total);
+            row.Turno, row.Carrier, row.Truck, row.Farm, row.Window, timeZone, openIncident: null)).ToArray(), total);
     }
 
     public async Task<AppointmentSnapshot?> GetAsync(Guid ingenioId, Guid id, CancellationToken cancellationToken)
@@ -233,7 +237,7 @@ public sealed class EfAppointmentStore : IAppointmentStore, IAppointmentReader, 
             return null;
 
         var timeZone = await GetTimeZoneAsync(ingenioId, cancellationToken);
-        return ToSnapshot(row.Turno, row.Carrier, row.Truck, row.Farm, row.Window, timeZone);
+        return ToSnapshot(row.Turno, row.Carrier, row.Truck, row.Farm, row.Window, timeZone, openIncident: null);
     }
 
     private sealed class ReadRow
@@ -306,6 +310,7 @@ public sealed class EfAppointmentStore : IAppointmentStore, IAppointmentReader, 
         AppointmentStatus expectedStatus,
         AppointmentStatus nextStatus,
         bool releaseCapacity,
+        bool resolveOpenIncident,
         CancellationToken cancellationToken = default)
     {
         var expectedDomain = AppointmentStatusMapper.ToDomain(expectedStatus);
@@ -328,6 +333,11 @@ public sealed class EfAppointmentStore : IAppointmentStore, IAppointmentReader, 
                 null);
         }
 
+        if (resolveOpenIncident)
+        {
+            await ResolveOpenIncidentAsync(id, cancellationToken);
+        }
+
         if (releaseCapacity)
         {
             var ventanaId = await _db.Turnos.AsNoTracking()
@@ -344,6 +354,111 @@ public sealed class EfAppointmentStore : IAppointmentStore, IAppointmentReader, 
         await transaction.CommitAsync(cancellationToken);
         return new AppointmentTransitionResult(AppointmentTransitionOutcome.Success, snapshot);
     }
+
+    public async Task<AppointmentIncidentResult> TryReportIncidentAsync(
+        Guid id,
+        ReportRouteIncidentCommand command,
+        CancellationToken cancellationToken = default)
+    {
+        await using var transaction = await _db.Database.BeginTransactionAsync(cancellationToken);
+
+        // No-op conditional UPDATE: takes the write lock first, so the status and
+        // open-incident checks below cannot be invalidated before the insert.
+        var enCaminoRows = await _db.Turnos
+            .Where(t => t.Id == id && t.Status == TurnoEstado.EnCamino)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(t => t.Status, t => t.Status), cancellationToken);
+        if (enCaminoRows == 0)
+        {
+            var exists = await _db.Turnos.AsNoTracking().AnyAsync(t => t.Id == id, cancellationToken);
+            return new AppointmentIncidentResult(
+                exists ? AppointmentIncidentOutcome.NotEnCamino : AppointmentIncidentOutcome.NotFound, null);
+        }
+
+        var hasOpenIncident = await _db.IncidentesRuta.AsNoTracking()
+            .AnyAsync(i => i.TurnoId == id && i.ResolvedAtUtc == null, cancellationToken);
+        if (hasOpenIncident)
+        {
+            return new AppointmentIncidentResult(AppointmentIncidentOutcome.OpenIncidentExists, null);
+        }
+
+        var ingenioId = await _db.Turnos.AsNoTracking()
+            .Where(t => t.Id == id)
+            .Select(t => t.IngenioId)
+            .FirstAsync(cancellationToken);
+        var incident = new IncidenteRuta(
+            ingenioId,
+            id,
+            RouteIncidentTypeMapper.ToDomain(command.Type),
+            command.CanContinue,
+            command.EstimatedDelayMinutes,
+            command.Description,
+            _timeProvider.GetUtcNow().UtcDateTime);
+
+        try
+        {
+            _db.IncidentesRuta.Add(incident);
+            await _db.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException exception) when (IsUniqueConstraintViolation(exception))
+        {
+            // The filtered unique index on open incidents is the last barrier.
+            return new AppointmentIncidentResult(AppointmentIncidentOutcome.OpenIncidentExists, null);
+        }
+
+        var snapshot = await BuildSnapshotAsync(id, cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+        return new AppointmentIncidentResult(AppointmentIncidentOutcome.Success, snapshot);
+    }
+
+    public async Task<AppointmentIncidentResult> TryResolveIncidentAsync(
+        Guid id,
+        CancellationToken cancellationToken = default)
+    {
+        await using var transaction = await _db.Database.BeginTransactionAsync(cancellationToken);
+
+        if (await ResolveOpenIncidentAsync(id, cancellationToken) == 0)
+        {
+            var exists = await _db.Turnos.AsNoTracking().AnyAsync(t => t.Id == id, cancellationToken);
+            return new AppointmentIncidentResult(
+                exists ? AppointmentIncidentOutcome.NoOpenIncident : AppointmentIncidentOutcome.NotFound, null);
+        }
+
+        var snapshot = await BuildSnapshotAsync(id, cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+        return new AppointmentIncidentResult(AppointmentIncidentOutcome.Success, snapshot);
+    }
+
+    /// <summary>Conditional UPDATE that closes the open incident; returns the affected rows.</summary>
+    private Task<int> ResolveOpenIncidentAsync(Guid turnoId, CancellationToken cancellationToken)
+    {
+        DateTime? resolvedAtUtc = _timeProvider.GetUtcNow().UtcDateTime;
+        return _db.IncidentesRuta
+            .Where(i => i.TurnoId == turnoId && i.ResolvedAtUtc == null)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(i => i.ResolvedAtUtc, resolvedAtUtc), cancellationToken);
+    }
+
+    private async Task<Dictionary<Guid, RouteIncident>> LoadOpenIncidentsAsync(
+        IReadOnlyCollection<Guid> turnoIds, TimeZoneInfo timeZone, CancellationToken cancellationToken)
+    {
+        if (turnoIds.Count == 0)
+        {
+            return [];
+        }
+
+        var incidents = await _db.IncidentesRuta.AsNoTracking()
+            .Where(i => turnoIds.Contains(i.TurnoId) && i.ResolvedAtUtc == null)
+            .ToListAsync(cancellationToken);
+        return incidents.ToDictionary(i => i.TurnoId, i => ToRouteIncident(i, timeZone));
+    }
+
+    private static RouteIncident ToRouteIncident(IncidenteRuta incident, TimeZoneInfo timeZone) =>
+        new(
+            incident.Id,
+            RouteIncidentTypeMapper.ToApplication(incident.Type),
+            incident.CanContinue,
+            incident.EstimatedDelayMinutes,
+            incident.Description,
+            TimeZoneInfo.ConvertTime(new DateTimeOffset(incident.ReportedAtUtc, TimeSpan.Zero), timeZone));
 
     private sealed record ResolvedReferences(Guid IngenioId, Guid TransportistaId, Guid CamionId, Guid FincaId);
 
@@ -398,12 +513,14 @@ public sealed class EfAppointmentStore : IAppointmentStore, IAppointmentReader, 
         var camion = await _db.Camiones.AsNoTracking().FirstAsync(c => c.Id == turno.CamionId, cancellationToken);
         var finca = await _db.Fincas.AsNoTracking().FirstAsync(f => f.Id == turno.FincaId, cancellationToken);
         var ventana = await _db.Ventanas.AsNoTracking().FirstAsync(v => v.Id == turno.VentanaId, cancellationToken);
+        var openIncidents = await LoadOpenIncidentsAsync([turno.Id], timeZone, cancellationToken);
 
-        return ToSnapshot(turno, transportista, camion, finca, ventana, timeZone);
+        return ToSnapshot(turno, transportista, camion, finca, ventana, timeZone,
+            openIncidents.GetValueOrDefault(turno.Id));
     }
 
     private static AppointmentSnapshot ToSnapshot(Turno turno, Transportista transportista, Camion camion,
-        Finca finca, Ventana ventana, TimeZoneInfo timeZone) =>
+        Finca finca, Ventana ventana, TimeZoneInfo timeZone, RouteIncident? openIncident) =>
         new(
             turno.Id,
             new AppointmentReference(transportista.Id, transportista.Name),
@@ -415,7 +532,8 @@ public sealed class EfAppointmentStore : IAppointmentStore, IAppointmentReader, 
                 TimeZoneInfo.ConvertTime(ventana.StartAt, timeZone),
                 TimeZoneInfo.ConvertTime(ventana.EndAt, timeZone)),
             AppointmentStatusMapper.ToApplication(turno.Status),
-            TimeZoneInfo.ConvertTime(turno.CreatedAt, timeZone));
+            TimeZoneInfo.ConvertTime(turno.CreatedAt, timeZone),
+            openIncident);
 
     private static TimeZoneInfo ResolveTimeZone(string timeZoneId) =>
         TimeZoneInfo.FindSystemTimeZoneById(timeZoneId);

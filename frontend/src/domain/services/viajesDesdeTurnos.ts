@@ -10,17 +10,21 @@
  * - Si no, la posición se estima con el reloj y el camión llega a la hora
  *   estimada. Para la demo importa mostrar el recorrido, no la precisión: con
  *   x10 o x60 los turnos avanzan como cualquier otro viaje.
+ * - Si el turno tiene un problema en ruta abierto, figura con demora y queda
+ *   donde estaba al reportarlo hasta que la API informe que se resolvió.
  *
  * El estado del mapa es una estimación visual: no reemplaza ni recalcula el
  * estado del turno, que sigue siendo el de la API (ADR-003).
  */
-import type { EstadoTurno, Turno } from "../entities/Turno";
+import type { EstadoTurno, IncidenteEnRuta, Turno } from "../entities/Turno";
 import {
   calcularSituacion,
   distanciaRutaKm,
   duracionEstimadaMs,
+  PROGRESO_MAXIMO_SIN_CONFIRMAR,
   type FincaMapa,
   type PuntoGeo,
+  type SituacionViaje,
   type ViajeCalculado,
 } from "./simulacionViajes";
 
@@ -41,11 +45,31 @@ export function fincaDelTurno(turno: Turno, fincas: FincaMapa[]): FincaMapa | nu
   return fincas.find((f) => normalizar(f.nombre) === nombre) ?? null;
 }
 
+/**
+ * El camión se detuvo al reportar el problema: no avanza más allá de donde estaba, ni llega sin confirmación.
+ * `detenidoEnMs` es la hora del mapa en que se vio el incidente por primera vez; sin ella se usa la hora real
+ * del reporte, que con x10 o x60 queda atrás del reloj del mapa y haría retroceder al camión.
+ */
+function situacionConIncidente(
+  incidente: IncidenteEnRuta,
+  salidaMs: number,
+  duracionMs: number,
+  llegadaEstimadaMs: number,
+  ahoraMs: number,
+  detenidoEnMs: number | undefined,
+): SituacionViaje {
+  const reportadoMs = detenidoEnMs ?? Date.parse(incidente.reportadoEn);
+  const hastaMs = Number.isFinite(reportadoMs) ? Math.min(reportadoMs, ahoraMs) : ahoraMs;
+  const { progreso } = calcularSituacion(salidaMs, duracionMs, llegadaEstimadaMs, hastaMs);
+  return { estado: "demora", progreso: Math.min(progreso, PROGRESO_MAXIMO_SIN_CONFIRMAR) };
+}
+
 export function calcularViajeDeTurno(
   turno: Turno,
   finca: FincaMapa,
   ingenio: PuntoGeo,
   ahoraMs: number,
+  detenidoEnMs?: number,
 ): ViajeCalculado | null {
   if (TERMINADOS.includes(turno.estado)) return null;
   const llegadaEstimadaMs = Date.parse(turno.ventana.inicio);
@@ -72,7 +96,14 @@ export function calcularViajeDeTurno(
     llegadaMs: llegadaEstimadaMs,
     situacion: enIngenio
       ? { estado: "en-playa", progreso: 1 }
-      : calcularSituacion(salidaMs, duracionMs, llegadaEstimadaMs, ahoraMs),
-    turno: { id: turno.id, ventana: turno.ventana, estado: turno.estado },
+      : turno.incidente
+        ? situacionConIncidente(turno.incidente, salidaMs, duracionMs, llegadaEstimadaMs, ahoraMs, detenidoEnMs)
+        : calcularSituacion(salidaMs, duracionMs, llegadaEstimadaMs, ahoraMs),
+    turno: {
+      id: turno.id,
+      ventana: turno.ventana,
+      estado: turno.estado,
+      ...(turno.incidente ? { incidente: turno.incidente } : {}),
+    },
   };
 }

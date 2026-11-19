@@ -7,6 +7,7 @@ import { EstadoBadge } from "../components/common/Badges";
 import { EmptyState, ErrorState, LoadingState } from "../components/common/StatusStates";
 import { CambioEstadoSelect } from "../components/common/CambioEstadoSelect";
 import { ESTADOS_SELECCIONABLES } from "../components/common/estadosSeleccionables";
+import { textoIncidente } from "../components/common/incidentes";
 import type { Turno } from "../../domain/entities/Turno";
 import { datetimeLocalARfc3339, fechaHoraDeRfc3339, ventanaDeRfc3339 } from "../../shared/utils/date";
 
@@ -234,6 +235,16 @@ export function ColaTurnosView() {
                 <dd>{detalle.cargaTon !== undefined ? `${detalle.cargaTon} tn` : "—"}</dd>
                 <dt>Creado</dt>
                 <dd>{fechaHoraDeRfc3339(detalle.creadoEn)}</dd>
+                {detalle.incidente && (
+                  <>
+                    <dt>Problema en ruta</dt>
+                    <dd className="incidente-turno">
+                      {textoIncidente(detalle.incidente)}
+                      {detalle.incidente.detalle && <> · {detalle.incidente.detalle}</>}
+                      {" "}(informado {fechaHoraDeRfc3339(detalle.incidente.reportadoEn)})
+                    </dd>
+                  </>
+                )}
               </dl>
               <div style={{ display: "flex", gap: 10 }}>
                 {acciones(detalle)}
@@ -315,7 +326,14 @@ export function ColaTurnosView() {
                   <td>{t.finca}</td>
                   <td style={{ fontSize: 12.5 }}>{t.cargaTon !== undefined ? `${t.cargaTon} tn` : "—"}</td>
                   <td style={{ fontSize: 12.5 }}>{t.horasDesdeCorte} h</td>
-                  <td><EstadoBadge estado={t.estado} /></td>
+                  <td>
+                    <EstadoBadge estado={t.estado} />
+                    {t.incidente && (
+                      <div className="incidente-turno" title={t.incidente.detalle ?? undefined}>
+                        {textoIncidente(t.incidente)}
+                      </div>
+                    )}
+                  </td>
                   <td onClick={(e) => e.stopPropagation()}>{acciones(t)}</td>
                 </tr>
               ))}

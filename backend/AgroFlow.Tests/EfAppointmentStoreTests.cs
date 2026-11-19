@@ -354,9 +354,9 @@ public sealed class EfAppointmentStoreTests : IDisposable
         var today = DateOnly.FromDateTime(Now.Date);
 
         var cancelled = await CreateOnLocalDayAsync(store, db, phone, "AF123BC", today);
-        await store.TryTransitionAsync(cancelled, AppointmentStatus.Asignado, AppointmentStatus.Cancelado, releaseCapacity: true);
+        await store.TryTransitionAsync(cancelled, AppointmentStatus.Asignado, AppointmentStatus.Cancelado, releaseCapacity: true, resolveOpenIncident: false);
         var finished = await CreateOnLocalDayAsync(store, db, phone, "AF123BC", today.AddDays(1));
-        await store.TryTransitionAsync(finished, AppointmentStatus.Asignado, AppointmentStatus.Finalizado, releaseCapacity: false);
+        await store.TryTransitionAsync(finished, AppointmentStatus.Asignado, AppointmentStatus.Finalizado, releaseCapacity: false, resolveOpenIncident: false);
         var todayActive = await CreateOnLocalDayAsync(store, db, phone, "ZZ101AA", today);
         var tomorrow = await CreateOnLocalDayAsync(store, db, phone, "ZZ102AA", today.AddDays(1));
         var later = await CreateOnLocalDayAsync(store, db, phone, "ZZ103AA", today.AddDays(3));
@@ -462,17 +462,17 @@ public sealed class EfAppointmentStoreTests : IDisposable
         var store2 = new EfAppointmentStore(db2, new FixedClock(Now));
 
         var success = await store2.TryTransitionAsync(
-            appointmentId, AppointmentStatus.Asignado, AppointmentStatus.EnCamino, releaseCapacity: false);
+            appointmentId, AppointmentStatus.Asignado, AppointmentStatus.EnCamino, releaseCapacity: false, resolveOpenIncident: false);
         Assert.Equal(AppointmentTransitionOutcome.Success, success.Outcome);
         Assert.Equal(AppointmentStatus.EnCamino, success.Appointment!.Status);
 
         var stale = await store2.TryTransitionAsync(
-            appointmentId, AppointmentStatus.Asignado, AppointmentStatus.EnCamino, releaseCapacity: false);
+            appointmentId, AppointmentStatus.Asignado, AppointmentStatus.EnCamino, releaseCapacity: false, resolveOpenIncident: false);
         Assert.Equal(AppointmentTransitionOutcome.StateChanged, stale.Outcome);
         Assert.Null(stale.Appointment);
 
         var missing = await store2.TryTransitionAsync(
-            Guid.NewGuid(), AppointmentStatus.Asignado, AppointmentStatus.EnCamino, releaseCapacity: false);
+            Guid.NewGuid(), AppointmentStatus.Asignado, AppointmentStatus.EnCamino, releaseCapacity: false, resolveOpenIncident: false);
         Assert.Equal(AppointmentTransitionOutcome.NotFound, missing.Outcome);
     }
 
@@ -496,7 +496,7 @@ public sealed class EfAppointmentStoreTests : IDisposable
         {
             var store = new EfAppointmentStore(db, new FixedClock(Now));
             var result = await store.TryTransitionAsync(
-                appointmentId, AppointmentStatus.Asignado, AppointmentStatus.Cancelado, releaseCapacity: true);
+                appointmentId, AppointmentStatus.Asignado, AppointmentStatus.Cancelado, releaseCapacity: true, resolveOpenIncident: false);
             Assert.Equal(AppointmentTransitionOutcome.Success, result.Outcome);
             Assert.Equal(AppointmentStatus.Cancelado, result.Appointment!.Status);
         }

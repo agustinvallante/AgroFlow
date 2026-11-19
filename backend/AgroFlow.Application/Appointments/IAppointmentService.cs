@@ -16,4 +16,13 @@ public interface IAppointmentService
         Guid id,
         AppointmentStatus newStatus,
         CancellationToken cancellationToken = default);
+
+    /// <summary>Registra un incidente en ruta sobre un turno EN_CAMINO sin cambiar su estado ni ventana.</summary>
+    Task<AppointmentSnapshot> ReportIncidentAsync(
+        Guid id,
+        ReportRouteIncidentCommand command,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>Resuelve el incidente abierto del turno, conservando el registro.</summary>
+    Task<AppointmentSnapshot> ResolveIncidentAsync(Guid id, CancellationToken cancellationToken = default);
 }

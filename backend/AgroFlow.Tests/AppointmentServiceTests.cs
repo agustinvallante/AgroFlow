@@ -279,8 +279,80 @@ public sealed class AppointmentServiceTests
 
         Assert.Equal(sequence, store.TransitionCalls.Select(call => call.NextStatus));
         Assert.All(store.TransitionCalls, call => Assert.False(call.ReleaseCapacity));
+        // Only the step out of EN_CAMINO closes the open route incident.
+        Assert.Equal([false, true, false, false, false], store.ResolveOpenIncidentCalls);
         await AssertCodeAsync(AppointmentErrorCodes.InvalidTransition,
             () => service.TransitionAsync(id, AppointmentStatus.Cancelado));
+    }
+
+    [Fact]
+    public async Task Cancelling_en_camino_also_requests_resolving_the_open_incident()
+    {
+        var store = new FakeStore { Current = FakeStore.NewSnapshot(AppointmentStatus.EnCamino) };
+        var service = new AppointmentService(store);
+
+        await service.TransitionAsync(store.Current.Id, AppointmentStatus.Cancelado);
+
+        Assert.Equal([true], store.ResolveOpenIncidentCalls);
+    }
+
+    [Theory]
+    [InlineData(AppointmentStatus.Asignado)]
+    [InlineData(AppointmentStatus.EnEspera)]
+    [InlineData(AppointmentStatus.Finalizado)]
+    public async Task Incident_report_outside_en_camino_is_rejected_before_the_store(AppointmentStatus status)
+    {
+        var store = new FakeStore { Current = FakeStore.NewSnapshot(status) };
+        var service = new AppointmentService(store);
+
+        await AssertCodeAsync(AppointmentErrorCodes.IncidentNotAllowed, () => service.ReportIncidentAsync(
+            store.Current.Id, new ReportRouteIncidentCommand(RouteIncidentType.Pinchazo, true, 30, null)));
+
+        Assert.Empty(store.ReportCalls);
+    }
+
+    [Theory]
+    [InlineData((RouteIncidentType)99, 30, 0, "type")]
+    [InlineData(RouteIncidentType.Otro, -1, 0, "estimatedDelayMinutes")]
+    [InlineData(RouteIncidentType.Otro, 1441, 0, "estimatedDelayMinutes")]
+    [InlineData(RouteIncidentType.Otro, 30, 501, "description")]
+    public async Task Invalid_incident_report_is_a_field_validation_error(
+        RouteIncidentType type, int delay, int descriptionLength, string field)
+    {
+        var store = new FakeStore { Current = FakeStore.NewSnapshot(AppointmentStatus.EnCamino) };
+        var service = new AppointmentService(store);
+        var description = descriptionLength == 0 ? null : new string('x', descriptionLength);
+
+        var exception = await Assert.ThrowsAsync<AppointmentServiceException>(() => service.ReportIncidentAsync(
+            store.Current.Id, new ReportRouteIncidentCommand(type, true, delay, description)));
+
+        Assert.Equal(AppointmentErrorCodes.ValidationError, exception.Code);
+        Assert.True(exception.Errors!.ContainsKey(field));
+        Assert.Empty(store.ReportCalls);
+    }
+
+    [Fact]
+    public async Task Incident_store_conflicts_map_to_contract_codes()
+    {
+        var store = new FakeStore { Current = FakeStore.NewSnapshot(AppointmentStatus.EnCamino) };
+        var service = new AppointmentService(store);
+        var command = new ReportRouteIncidentCommand(RouteIncidentType.Accidente, false, 60, "Choque leve");
+
+        var reported = await service.ReportIncidentAsync(store.Current.Id, command);
+        Assert.Equal(RouteIncidentType.Accidente, reported.OpenIncident!.Type);
+        await AssertCodeAsync(AppointmentErrorCodes.OpenIncidentExists,
+            () => service.ReportIncidentAsync(store.Current.Id, command));
+
+        var resolved = await service.ResolveIncidentAsync(store.Current.Id);
+        Assert.Null(resolved.OpenIncident);
+        await AssertCodeAsync(AppointmentErrorCodes.NoOpenIncident,
+            () => service.ResolveIncidentAsync(store.Current.Id));
+        Assert.Equal(1, store.ResolveCalls);
+
+        // A concurrent change detected by the store keeps its own code.
+        store.IncidentOutcome = AppointmentIncidentOutcome.NotEnCamino;
+        await AssertCodeAsync(AppointmentErrorCodes.IncidentNotAllowed,
+            () => service.ReportIncidentAsync(store.Current.Id, command));
     }
 
     [Theory]
@@ -378,6 +450,33 @@ public sealed class AppointmentServiceTests
         public List<(AppointmentStatus ExpectedStatus, AppointmentStatus NextStatus, bool ReleaseCapacity)>
             TransitionCalls { get; } = [];
         public AppointmentTransitionOutcome? ForcedTransitionOutcome { get; set; }
+        public List<bool> ResolveOpenIncidentCalls { get; } = [];
+        public List<ReportRouteIncidentCommand> ReportCalls { get; } = [];
+        public int ResolveCalls { get; private set; }
+        public AppointmentIncidentOutcome IncidentOutcome { get; set; } = AppointmentIncidentOutcome.Success;
+
+        public Task<AppointmentIncidentResult> TryReportIncidentAsync(
+            Guid id, ReportRouteIncidentCommand command, CancellationToken cancellationToken = default)
+        {
+            ReportCalls.Add(command);
+            return Task.FromResult(IncidentResult(new RouteIncident(Guid.NewGuid(), command.Type, command.CanContinue,
+                command.EstimatedDelayMinutes, command.Description, Now)));
+        }
+
+        public Task<AppointmentIncidentResult> TryResolveIncidentAsync(
+            Guid id, CancellationToken cancellationToken = default)
+        {
+            ResolveCalls++;
+            return Task.FromResult(IncidentResult(null));
+        }
+
+        private AppointmentIncidentResult IncidentResult(RouteIncident? incident)
+        {
+            if (IncidentOutcome != AppointmentIncidentOutcome.Success)
+                return new AppointmentIncidentResult(IncidentOutcome, null);
+            Current = Current with { OpenIncident = incident };
+            return new AppointmentIncidentResult(IncidentOutcome, Current);
+        }
 
         public Task<AppointmentCreationContext?> GetCreationContextAsync(
             CreateAppointmentCommand command, CancellationToken cancellationToken = default)
@@ -416,9 +515,10 @@ public sealed class AppointmentServiceTests
 
         public Task<AppointmentTransitionResult> TryTransitionAsync(
             Guid id, AppointmentStatus expectedStatus, AppointmentStatus nextStatus,
-            bool releaseCapacity, CancellationToken cancellationToken = default)
+            bool releaseCapacity, bool resolveOpenIncident, CancellationToken cancellationToken = default)
         {
             TransitionCalls.Add((expectedStatus, nextStatus, releaseCapacity));
+            ResolveOpenIncidentCalls.Add(resolveOpenIncident);
             var outcome = ForcedTransitionOutcome ??
                 (Current.Status == expectedStatus
                     ? AppointmentTransitionOutcome.Success

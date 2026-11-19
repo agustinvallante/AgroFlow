@@ -464,6 +464,51 @@ namespace AgroFlow.Data.Migrations.Appointments
                     b.ToTable("IdempotencyRecords", (string)null);
                 });
 
+            modelBuilder.Entity("AgroFlow.Domain.Entities.IncidenteRuta", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("CanContinue")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("EstimatedDelayMinutes")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<Guid>("IngenioId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("ReportedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("ResolvedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("TurnoId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TurnoId")
+                        .IsUnique()
+                        .HasFilter("ResolvedAtUtc IS NULL");
+
+                    b.ToTable("IncidentesRuta", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_IncidentesRuta_EstimatedDelayMinutes_Range", "EstimatedDelayMinutes >= 0 AND EstimatedDelayMinutes <= 1440");
+                        });
+                });
+
             modelBuilder.Entity("AgroFlow.Domain.Entities.Ingenio", b =>
                 {
                     b.Property<Guid>("Id")
@@ -876,6 +921,15 @@ namespace AgroFlow.Data.Migrations.Appointments
                         .WithMany()
                         .HasForeignKey("InReplyToMessageId")
                         .OnDelete(DeleteBehavior.Restrict);
+                });
+
+            modelBuilder.Entity("AgroFlow.Domain.Entities.IncidenteRuta", b =>
+                {
+                    b.HasOne("AgroFlow.Domain.Entities.Turno", null)
+                        .WithMany()
+                        .HasForeignKey("TurnoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("AgroFlow.Domain.Entities.MessageProcessing", b =>
