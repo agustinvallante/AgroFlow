@@ -1,10 +1,13 @@
 import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({ fincas: vi.fn() }));
+const mocks = vi.hoisted(() => ({ fincas: vi.fn(), turnos: vi.fn() }));
 
 vi.mock("../../composition/container", () => ({
-  container: { fincas: { obtenerFincas: { execute: mocks.fincas } } },
+  container: {
+    fincas: { obtenerFincas: { execute: mocks.fincas } },
+    turnos: { obtenerTurnosActivos: { execute: mocks.turnos } },
+  },
 }));
 
 import { MapaView } from "./MapaView";
@@ -19,7 +22,7 @@ const escribir = (etiqueta: string, valor: string) =>
   fireEvent.change(screen.getByLabelText(etiqueta), { target: { value: valor } });
 const clic = (nombre: string) => fireEvent.click(screen.getByRole("button", { name: nombre }));
 const contador = (texto: RegExp) => document.querySelector(".mapa-contadores")?.textContent?.match(texto)?.[1];
-const camiones = () => document.querySelectorAll(".mapa-camion rect");
+const camiones = () => document.querySelectorAll(".mapa-camion circle");
 const avanzar = (ms: number) =>
   act(() => {
     vi.advanceTimersByTime(ms);
@@ -44,6 +47,7 @@ describe("MapaView", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-11-08T15:00:00Z"));
     mocks.fincas.mockReset().mockResolvedValue(FINCAS);
+    mocks.turnos.mockReset().mockResolvedValue([]);
   });
 
   afterEach(() => {
@@ -73,6 +77,34 @@ describe("MapaView", () => {
 
     expect(screen.queryByRole("alert")).toBeNull();
     expect(within(screen.getByRole("img")).getByText("Finca Norte")).toBeTruthy();
+  });
+
+  it("agrega solo el viaje de un turno de la cola, lo acelera y no permite quitarlo", async () => {
+    mocks.turnos.mockResolvedValue([
+      {
+        id: "t1",
+        ventana: { inicio: "2026-11-08T16:30:00Z", fin: "2026-11-08T17:00:00Z" },
+        hora: "13:30",
+        offsetMin: 90,
+        patente: "AF123BC",
+        chofer: "Juan Pérez",
+        finca: "Finca Sur",
+        horasDesdeCorte: 1,
+        estado: "pendiente",
+      },
+    ]);
+    await montar();
+
+    expect(screen.getByText("AF123BC", { selector: "strong" })).toBeTruthy();
+    // La fila no indica si el viaje viene de la cola o de la demo.
+    expect(screen.getByText(/^Finca Sur · \d+ km$/)).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Quitar viaje AF123BC" })).toBeNull();
+    expect(contador(/Programados (\d+)/)).toBe("1");
+
+    // A x60 el turno también avanza: 90 minutos simulados en 90 segundos.
+    clic("x60");
+    avanzar(90_000);
+    expect(contador(/Llegaron (\d+)/)).toBe("1");
   });
 
   it("muestra el viaje cargado en el mapa y la cola", async () => {
@@ -116,10 +148,10 @@ describe("MapaView", () => {
     await montar();
     cargarViaje();
     clic("x60");
-    const inicial = camiones()[0].getAttribute("x");
+    const inicial = camiones()[0].getAttribute("cx");
 
     avanzar(1000);
-    expect(camiones()[0].getAttribute("x")).not.toBe(inicial);
+    expect(camiones()[0].getAttribute("cx")).not.toBe(inicial);
 
     // Ninguna finca queda a más de una hora a 40 km/h; a x60, menos de un minuto real.
     avanzar(90_000);

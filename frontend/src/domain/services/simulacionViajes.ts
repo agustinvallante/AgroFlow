@@ -1,8 +1,10 @@
 /**
  * Simulación de viajes finca → ingenio sin GPS: la posición de cada camión se
  * deduce del reloj, la distancia a su finca y una velocidad estimada. Son
- * funciones puras; la fuente de los datos (hoy, la carga manual) queda afuera.
+ * funciones puras; la fuente de los datos (la cola de turnos y la carga de la demo) queda afuera.
  */
+
+import type { EstadoTurno } from "../entities/Turno";
 
 /**
  * Rangos admitidos para un viaje. Fuera de ellos las horas dejan de ser
@@ -82,6 +84,15 @@ export interface ViajeCalculado {
   llegadaEstimadaMs: number;
   llegadaMs: number;
   situacion: SituacionViaje;
+  /** Presente si el viaje sale de un turno de la cola; si no, es un viaje de la demo. */
+  turno?: TurnoDelViaje;
+}
+
+export interface TurnoDelViaje {
+  id: string;
+  ventana: { inicio: string; fin: string };
+  /** Estado que informa la API; el del mapa es una estimación a partir de él. */
+  estado: EstadoTurno;
 }
 
 /** La ruta real es más larga que la línea recta entre finca e ingenio. Supuesto a calibrar. */

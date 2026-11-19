@@ -2,7 +2,7 @@
 
 ### Requirement: Simulación identificable e independiente
 
-La pestaña Mapa SHALL tomar el catálogo de fincas de AgroFlow API e identificar que las ubicaciones, rutas y viajes son simulados en el navegador, sin GPS. Lo que la API todavía no publica (coordenadas de ingenio y fincas, viajes y llegadas) SHALL resolverse en el frontend como medida temporal. Los viajes simulados MUST NOT crear ni modificar turnos, estados operativos, capacidad o conversaciones del sistema.
+La pestaña Mapa SHALL tomar de AgroFlow API el catálogo de fincas y los turnos activos de la cola, e identificar que las ubicaciones y los recorridos son estimados en el navegador, sin GPS. Lo que la API todavía no publica (coordenadas de ingenio y fincas, hora de salida, posición y hora de llegada) SHALL resolverse en el frontend como medida temporal. Los viajes simulados MUST NOT crear ni modificar turnos, estados operativos, capacidad o conversaciones del sistema.
 
 #### Scenario: Fincas no disponibles
 
@@ -16,9 +16,37 @@ La pestaña Mapa SHALL tomar el catálogo de fincas de AgroFlow API e identifica
 - **WHEN** la simulación muestra Llegó
 - **THEN** se actualiza la visualización local sin ejecutar una transición de un turno de la API
 
+### Requirement: Viajes desde la cola de turnos
+
+El mapa SHALL agregar sin intervención del operador un viaje por cada turno activo de la cola cuya finca figure en el catálogo, y SHALL volver a leer la cola periódicamente. Como medida temporal, SHALL suponer que el camión debe llegar al inicio de la ventana del turno y calcular su salida hacia atrás con la distancia estimada y 40 km/h. Si la API informa el turno en espera, ingresado o en descarga, el viaje SHALL figurar como llegado. Si no, su posición SHALL estimarse con el reloj del mapa y el viaje SHALL llegar a la hora estimada; como el objetivo es mostrar la funcionalidad, los viajes de la cola SHALL avanzar también con x10 y x60. La vista MUST NOT distinguir en la cola de recepción ni en el detalle si un viaje proviene de la cola o de la demo. Los turnos finalizados o cancelados MUST NOT mostrarse. El estado del mapa MUST NOT reemplazar ni modificar el estado del turno, y el operador MUST NOT poder quitar desde el mapa un viaje que proviene de la cola.
+
+#### Scenario: Turno nuevo en la cola
+
+- **GIVEN** un turno activo asignado desde una finca del catálogo
+- **WHEN** el mapa lee la cola de turnos
+- **THEN** el viaje aparece en el mapa y en la cola de recepción, sin opción de quitarlo
+
+#### Scenario: Llegada informada por la API
+
+- **GIVEN** un turno que la API informa en espera
+- **WHEN** el mapa lo muestra
+- **THEN** figura como llegado al ingenio
+
+#### Scenario: Turno acelerado
+
+- **GIVEN** un turno asignado y x60 seleccionado
+- **WHEN** transcurre en tiempo real la duración estimada dividida por sesenta
+- **THEN** el camión recorre la ruta y figura como llegado
+
+#### Scenario: Cola no disponible
+
+- **GIVEN** una falla al leer la cola de turnos
+- **WHEN** el mapa intenta actualizarla
+- **THEN** avisa la falla, conserva los viajes ya leídos y vuelve a intentar sola
+
 ### Requirement: Lugares y validaciones del escenario
 
-El mapa SHALL mostrar las fincas activas que publica la API, ubicadas de forma determinista alrededor del ingenio a una distancia en línea recta de entre 14 y 30 km; si el nombre indica un rumbo (norte, sur, este, oeste o intermedios), la finca SHALL ubicarse hacia ese lado. El ingenio SHALL iniciar en una ubicación de referencia que el operador puede cambiar, con latitud entre -90 y 90 y longitud entre -180 y 180. El mapa SHALL iniciar sin viajes en un navegador sin datos guardados. Un viaje SHALL requerir una finca de la API, patente, una velocidad entre 1 y 120 km/h y una salida relativa y un retraso entre 0 y 1440 minutos. Los valores numéricos MUST ser finitos. Una patente normalizada MUST NOT tener dos viajes simulados sin terminar.
+El mapa SHALL mostrar las fincas activas que publica la API, ubicadas de forma determinista alrededor del ingenio a una distancia en línea recta de entre 14 y 30 km; si el nombre indica un rumbo (norte, sur, este, oeste o intermedios), la finca SHALL ubicarse hacia ese lado. El ingenio SHALL iniciar en una ubicación de referencia que el operador puede cambiar, con latitud entre -90 y 90 y longitud entre -180 y 180. Debajo del mapa, bajo un título que indique que existen únicamente en la demo, SHALL ofrecerse campos para cargar viajes de prueba que quedan en el navegador y no se envían a la API. Sin turnos ni datos guardados, el mapa SHALL iniciar sin viajes. Un viaje de prueba SHALL requerir una finca de la API, patente, una velocidad entre 1 y 120 km/h y una salida relativa y un retraso entre 0 y 1440 minutos. Los valores numéricos MUST ser finitos. Una patente normalizada MUST NOT tener dos viajes sin terminar, contando los de la cola de turnos.
 
 #### Scenario: Fincas de la API en el mapa
 
@@ -56,7 +84,7 @@ Cada viaje SHALL representar un único recorrido desde su finca hasta el ingenio
 
 ### Requirement: Detalle de un camión en el mapa
 
-Los camiones en movimiento SHALL representarse como cuadrados. Al seleccionar uno con el puntero o el teclado, el mapa SHALL mostrar un recuadro junto a él con patente, estado, finca de salida, hora de salida, hora de llegada estimada o real, distancia del recorrido, distancia restante, velocidad y retraso simulado, e indicar que son estimaciones sin GPS. El recuadro SHALL cerrarse con su botón, con Escape o al tocar otro punto del mapa.
+Los camiones en movimiento SHALL representarse como círculos, y las fincas y el ingenio como cuadrados. Al seleccionar uno con el puntero o el teclado, el mapa SHALL mostrar un recuadro junto a él con patente, estado, finca de salida, hora de salida, hora de llegada estimada o real, distancia del recorrido, distancia restante, velocidad y, según el origen, la ventana del turno o el retraso simulado, e indicar que son estimaciones sin GPS. El recuadro SHALL cerrarse con su botón, con Escape o al tocar otro punto del mapa.
 
 #### Scenario: Consultar un camión
 
