@@ -8,6 +8,9 @@ public static class AppointmentErrorCodes
     public const string ActiveAppointmentExists = "ACTIVE_APPOINTMENT_EXISTS";
     public const string NoCapacity = "NO_CAPACITY";
     public const string InvalidTransition = "INVALID_TRANSITION";
+    public const string IncidentNotAllowed = "INCIDENT_NOT_ALLOWED";
+    public const string OpenIncidentExists = "OPEN_INCIDENT_EXISTS";
+    public const string NoOpenIncident = "NO_OPEN_INCIDENT";
 }
 
 /// <summary>

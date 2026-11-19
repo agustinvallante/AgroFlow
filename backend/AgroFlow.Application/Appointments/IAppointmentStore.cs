@@ -38,6 +38,19 @@ public sealed record AppointmentTransitionResult(
     AppointmentTransitionOutcome Outcome,
     AppointmentSnapshot? Appointment);
 
+public enum AppointmentIncidentOutcome
+{
+    Success,
+    NotFound,
+    NotEnCamino,
+    OpenIncidentExists,
+    NoOpenIncident
+}
+
+public sealed record AppointmentIncidentResult(
+    AppointmentIncidentOutcome Outcome,
+    AppointmentSnapshot? Appointment);
+
 /// <summary>
 /// Puerto que implementará Persona 2 con persistencia real. Las lecturas suministran
 /// estado para que la capa Application aplique las reglas; las escrituras deben volver a
@@ -90,12 +103,29 @@ public interface IAppointmentStore
     /// <summary>
     /// Compara el estado persistido con expectedStatus y, solo si coincide, persiste
     /// nextStatus. En CANCELADO libera cupo de forma atómica; conserva el turno para
-    /// futuras lecturas. StateChanged indica conflicto concurrente, no éxito.
+    /// futuras lecturas. Con resolveOpenIncident, resuelve el incidente abierto en la
+    /// misma transacción. StateChanged indica conflicto concurrente, no éxito.
     /// </summary>
     Task<AppointmentTransitionResult> TryTransitionAsync(
         Guid id,
         AppointmentStatus expectedStatus,
         AppointmentStatus nextStatus,
         bool releaseCapacity,
+        bool resolveOpenIncident,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// En una transacción, comprueba que el turno siga EN_CAMINO y sin incidente
+    /// abierto e inserta el incidente con la hora actual. El índice único filtrado
+    /// de incidentes abiertos es la última barrera ante reportes concurrentes.
+    /// </summary>
+    Task<AppointmentIncidentResult> TryReportIncidentAsync(
+        Guid id,
+        ReportRouteIncidentCommand command,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>Marca como resuelto el incidente abierto del turno, si existe, con la hora actual.</summary>
+    Task<AppointmentIncidentResult> TryResolveIncidentAsync(
+        Guid id,
         CancellationToken cancellationToken = default);
 }

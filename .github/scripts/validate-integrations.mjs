@@ -13,7 +13,7 @@ const secretName = /^(authorization|apikey|api[-_]?key|access[-_]?token|password
 const secretValue = /sk-[a-zA-Z0-9_-]{20,}|gh[pousr]_[a-zA-Z0-9]{20,}|-----BEGIN [A-Z ]*PRIVATE KEY-----/;
 const uuid = /[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}/i;
 // Deliberately accept the exported n8n template format, not arbitrary JavaScript.
-const businessUrl = /^=\{\{\s*\$env\.AGROFLOW_API_URL\s*\}\}\/api\/v1\/appointments(?:\/(?:[a-zA-Z0-9-]+|\{\{(?:(?!\{\{|\}\})[\s\S])+\}\})(?:\/transitions)?)?$/;
+const businessUrl = /^=\{\{\s*\$env\.AGROFLOW_API_URL\s*\}\}\/api\/v1\/appointments(?:\/(?:[a-zA-Z0-9-]+|\{\{(?:(?!\{\{|\}\})[\s\S])+\}\})(?:\/transitions|\/incidents(?:\/resolution)?)?)?$/;
 const evolutionUrl = /^=\{\{\s*\$env\.EVOLUTION_INTERNAL_URL\s*\}\}\/message\/sendText\/\{\{\s*\$env\.EVOLUTION_INSTANCE\s*\}\}$/;
 // Persistence routes of the WhatsApp channel: exact templates and methods, only
 // for the ordinary HTTP node (never an agent tool) and only with the service key.

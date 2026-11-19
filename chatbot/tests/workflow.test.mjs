@@ -29,6 +29,11 @@ class FakeAgroFlowApi {
   lookupAppointments() { return { statusCode: 200, body: [] }; }
   lookupFarms() { return { statusCode: 200, body: [] }; }
   createAppointment(body) { return { statusCode: 201, body: { id: 'appointment-1', status: 'ASIGNADO', ...body } }; }
+  reportIncident(id, body) {
+    return { statusCode: 201, body: { id, status: 'EN_CAMINO',
+      openIncident: { id: 'incident-1', ...body, reportedAt: '2026-01-01T09:00:00-03:00' } } };
+  }
+  resolveIncident(id) { return { statusCode: 200, body: { id, status: 'EN_CAMINO', openIncident: null } }; }
 
   handle(request) {
     const path = request.url.replace(env.AGROFLOW_API_URL, '');
@@ -36,6 +41,11 @@ class FakeAgroFlowApi {
     if (pathname === '/api/v1/appointments') {
       assert.equal(request.credential, null, `${request.node} uses the anonymous LocalDemo appointment API`);
       return request.method === 'GET' ? this.lookupAppointments(searchParams) : this.createAppointment(request.body);
+    }
+    const incident = /^\/api\/v1\/appointments\/([^/]+)\/incidents(\/resolution)?$/.exec(pathname);
+    if (request.method === 'POST' && incident) {
+      assert.equal(request.credential, null, `${request.node} uses the anonymous LocalDemo appointment API`);
+      return incident[2] ? this.resolveIncident(incident[1], request.body) : this.reportIncident(incident[1], request.body);
     }
     if (request.method === 'GET' && pathname === '/api/v1/farms') {
       assert.equal(request.credential, 'AgroFlow Service Key account', `${request.node} must use the service key`);
@@ -138,7 +148,8 @@ test('a registered sender is persisted, acknowledged, answered by the agent and 
   assert.equal(calls.agent.length, 1);
   assert.equal(calls.agent[0].text, '[SINTÉTICO] Hola, quiero consultar mi turno');
   assert.deepEqual(calls.agent[0].tools.sort(),
-    ['Create Appointment', 'Lookup Appointments By Phone', 'Lookup Farms', 'Report En Camino']);
+    ['Create Appointment', 'Lookup Appointments By Phone', 'Lookup Farms', 'Report En Camino', 'Report Incident',
+      'Resolve Incident']);
   assert.deepEqual(calls.evolution, [{ number: '5493815550101@s.whatsapp.net', text: '[SINTÉTICO] Respuesta del agente' }]);
   assert.deepEqual(api.sendStatuses, [{ replyId: 'reply-1', status: 'accepted', providerMessageId: 'FIXTURE-OUT-PROVIDER-1' }]);
   const ingest = result.requests.find(request => request.node === 'Register Inbound Message').body;
@@ -492,6 +503,78 @@ test('the agent treats an unreachable farm lookup as an error that blocks the cr
   const prompt = workflow.nodes.find(node => node.name === 'AI Agent1').parameters.options.systemMessage;
 
   assert.match(prompt, /Error response \(`statusCode` >= 400, `body` with a `code` field, or `\{ error \}` on a transport failure\): apologize, say the farms could not be checked right now, and do not call the creation tool/);
+});
+
+const incidentArgs = { appointmentId: 'appointment-1', type: 'PINCHAZO', canContinue: false, estimatedDelayMinutes: 45 };
+
+test('a problem on the road is reported for the confirmed appointment with the exact contract body', async () => {
+  const api = new FakeAgroFlowApi();
+
+  const { request, result } = await callToolOnce(api, 'Report Incident',
+    { ...incidentArgs, description: '[SINTÉTICO] Se pinchó la goma "trasera"' });
+
+  assert.equal(request.method, 'POST');
+  assert.equal(request.url, 'http://api.test/api/v1/appointments/appointment-1/incidents');
+  assert.equal(request.credential, null);
+  assert.deepEqual(request.body, { type: 'PINCHAZO', canContinue: false, estimatedDelayMinutes: 45,
+    description: '[SINTÉTICO] Se pinchó la goma "trasera"' });
+  assert.equal(result.openIncident.type, 'PINCHAZO');
+  assert.equal(result.status, 'EN_CAMINO');
+});
+
+test('a report without a description sends null instead of an empty string', async () => {
+  const { request } = await callToolOnce(new FakeAgroFlowApi(), 'Report Incident',
+    { ...incidentArgs, type: 'ACCIDENTE', canContinue: true, estimatedDelayMinutes: 0, description: '' });
+
+  assert.deepEqual(request.body, { type: 'ACCIDENTE', canContinue: true, estimatedDelayMinutes: 0, description: null });
+});
+
+test('the solved problem is reported to the resolution route with an empty body', async () => {
+  const { request, result } = await callToolOnce(new FakeAgroFlowApi(), 'Resolve Incident',
+    { appointmentId: 'appointment-1' });
+
+  assert.equal(request.method, 'POST');
+  assert.equal(request.url, 'http://api.test/api/v1/appointments/appointment-1/incidents/resolution');
+  assert.equal(request.credential, null);
+  assert.deepEqual(request.body, {});
+  assert.equal(result.openIncident, null);
+});
+
+test('incident errors reach the agent as problem bodies with their code, never as success', async () => {
+  const reporting = new FakeAgroFlowApi();
+  reporting.reportIncident = () => ({ statusCode: 409, body: { status: 409, code: 'OPEN_INCIDENT_EXISTS' } });
+  const resolving = new FakeAgroFlowApi();
+  resolving.resolveIncident = () => ({ statusCode: 409, body: { status: 409, code: 'NO_OPEN_INCIDENT' } });
+
+  assert.equal((await callToolOnce(reporting, 'Report Incident', { ...incidentArgs, description: '' })).result.code,
+    'OPEN_INCIDENT_EXISTS');
+  assert.equal((await callToolOnce(resolving, 'Resolve Incident', { appointmentId: 'appointment-1' })).result.code,
+    'NO_OPEN_INCIDENT');
+});
+
+test('the agent supports reporting and resolving problems on the road under the documented rules', () => {
+  const prompt = workflow.nodes.find(node => node.name === 'AI Agent1').parameters.options.systemMessage;
+  const lookup = workflow.nodes.find(node => node.name === 'Lookup Appointments By Phone').parameters.toolDescription;
+  const report = workflow.nodes.find(node => node.name === 'Report Incident').parameters.toolDescription;
+  const resolve = workflow.nodes.find(node => node.name === 'Resolve Incident').parameters.toolDescription;
+
+  assert.match(prompt, /You support exactly five intents and nothing else/);
+  assert.match(prompt, /4\. Report a problem on the road/);
+  assert.match(prompt, /5\. Report that the problem on the road was solved/);
+  assert.doesNotMatch(prompt, /incident reports/, 'incidents are no longer an invented capability');
+  assert.match(prompt, /## Reporting a problem on the road/);
+  assert.match(prompt, /## Reporting the problem solved/);
+  assert.match(prompt, /if anyone is injured they must call 911/);
+  assert.match(prompt, /do not call the incident report tool/);
+  assert.match(prompt, /Never promise rescheduling/);
+  for (const code of ['INCIDENT_NOT_ALLOWED', 'OPEN_INCIDENT_EXISTS', 'NO_OPEN_INCIDENT']) {
+    assert.match(prompt, new RegExp(`- ${code}:`));
+  }
+  assert.match(lookup, /openIncident/);
+  for (const code of ['VALIDATION_ERROR', 'APPOINTMENT_NOT_FOUND', 'INCIDENT_NOT_ALLOWED', 'OPEN_INCIDENT_EXISTS']) {
+    assert.match(report, new RegExp(code));
+  }
+  assert.match(resolve, /NO_OPEN_INCIDENT/);
 });
 
 test('the export is importable: valid JSON shape, positions, unique names and resolvable connections', () => {
