@@ -631,6 +631,103 @@ test('the agent supports reporting the arrival at the mill under the documented 
   assert.deepEqual(workflow.connections['Report Arrival'], { ai_tool: [[{ node: 'AI Agent1', type: 'ai_tool', index: 0 }]] });
 });
 
+const agentPrompt = () => workflow.nodes.find(node => node.name === 'AI Agent1').parameters.options.systemMessage;
+const toolDescription = name => workflow.nodes.find(node => node.name === name).parameters.toolDescription;
+const promptSection = heading => {
+  const prompt = agentPrompt();
+  const start = prompt.indexOf(`## ${heading}\n`);
+  assert.ok(start >= 0, `missing section ${heading}`);
+  const end = prompt.indexOf('\n## ', start + 1);
+  return prompt.slice(start, end < 0 ? undefined : end);
+};
+const internalValues = ['ASIGNADO', 'EN_CAMINO', 'EN_ESPERA', 'INGRESADO', 'EN_DESCARGA', 'FINALIZADO', 'CANCELADO',
+  'PINCHAZO', 'FALLA_MECANICA', 'ACCIDENTE', 'OTRO', 'statusCode', 'openIncident', 'canContinue'];
+
+test('an incident is read back and registered only after an explicit yes in a later message', () => {
+  const incident = promptSection('Reporting a problem on the road');
+
+  assert.match(incident, /Read back the truck plate, the problem type, whether the truck can keep going and the estimated delay/);
+  assert.match(incident, /call the incident report tool only after the caller answers that read-back with an explicit yes \("sí", "correcto", "confirmo"\) in a later message/);
+  assert.match(incident, /Details given in the same message as the report are never a confirmation/);
+  assert.match(incident, /if anyone is injured they must call 911/);
+  assert.match(toolDescription('Report Incident'), /explicit confirmation \("sí"\) in a later message, after the read-back/);
+  assert.match(toolDescription('Report Incident'), /details given in the same message as the report are not a confirmation/);
+});
+
+test('appointment creation keeps its explicit read-back and later yes', () => {
+  const request = promptSection('Requesting an appointment');
+
+  assert.match(request, /explicitly read back to the caller for confirmation before calling the creation tool/);
+  assert.match(request, /Call the creation tool only after the caller explicitly confirms that read-back \(for example "sí"\) in a later message/);
+});
+
+test('resolution and arrival confirm the plate only when the caller has more than one active appointment', () => {
+  assert.match(promptSection('Reporting the problem solved'), /if the caller has more than one active appointment, confirm the truck plate/);
+  assert.match(promptSection('Reporting the arrival at the mill'), /if the caller has more than one active appointment, confirm the truck plate/);
+  assert.match(toolDescription('Report Arrival'), /confirming its truck plate with the caller when they have more than one active appointment/);
+});
+
+test('replies never show internal codes or English values and translate them to plain Spanish words', () => {
+  const tone = promptSection('Tone and style');
+
+  assert.match(tone, /Never show the caller internal codes, field names or English values \(for example "EN_CAMINO", "ASIGNADO", "PINCHAZO" or "statusCode"\)/);
+  for (const [code, words] of [['ASIGNADO', 'asignado'], ['EN_CAMINO', 'en camino'], ['EN_ESPERA', 'en espera'],
+    ['INGRESADO', 'ingresado'], ['EN_DESCARGA', 'en descarga'], ['FINALIZADO', 'finalizado'], ['CANCELADO', 'cancelado'],
+    ['PINCHAZO', 'pinchazo'], ['FALLA_MECANICA', 'falla mecánica'], ['ACCIDENTE', 'accidente'], ['OTRO', 'otro problema']]) {
+    assert.match(tone, new RegExp(`${code} → "${words}"`), code);
+  }
+  assert.match(tone, /"hoy a las 15:30" or "mañana a las 08:00"/);
+  assert.match(tone, /America\/Argentina\/Tucuman/);
+});
+
+test('replies sound human: warm, brief, usted, one question at a time and a way forward on errors', () => {
+  const tone = promptSection('Tone and style');
+
+  assert.match(tone, /warm, natural and brief/);
+  assert.match(tone, /neutral professional Spanish, addressing the caller as "usted"/);
+  assert.match(tone, /no emojis unless the caller uses them first/);
+  assert.match(tone, /Vary how you open each reply/);
+  assert.match(tone, /"Lamento lo de la goma"/);
+  assert.match(tone, /Ask one question at a time/);
+  assert.match(tone, /Do not use bullet lists for simple answers/);
+  assert.match(tone, /apologize briefly and tell the caller what they can do next/);
+  assert.match(tone, /Use the caller's first name only if they already gave it in this conversation; never invent it/);
+});
+
+test('the example exchanges show the read-back before registering and use no internal values', () => {
+  const examples = promptSection('Example exchanges');
+  const replies = examples.split('\n').filter(line => line.startsWith('Asistente:'));
+
+  assert.ok(replies.length >= 5, 'examples must include several assistant replies');
+  for (const reply of replies) {
+    for (const value of internalValues) assert.doesNotMatch(reply, new RegExp(`\\b${value}\\b`), `${value} in: ${reply}`);
+  }
+  const incident = examples.slice(examples.indexOf('### Problem on the road'), examples.indexOf('### Status lookup'));
+  const readBack = incident.indexOf('¿Lo registro?');
+  const yes = incident.indexOf('Transportista: Sí');
+  const registered = incident.indexOf('[Report Incident');
+  assert.ok(readBack >= 0 && readBack < yes && yes < registered, 'read-back, then a later "sí", then the tool call');
+  assert.match(examples, /### Status lookup/);
+  assert.match(examples, /### Error/);
+});
+
+test('the tone rules do not loosen the hard rules', () => {
+  const hard = promptSection('Hard rules');
+
+  assert.match(hard, /Never invent an appointment window, priority, status, or a successful outcome/);
+  assert.match(hard, /Communicate a result only after receiving it from a successful tool response/);
+  assert.match(hard, /Never promise rescheduling or turn changes/);
+  assert.match(hard, /Always reply in Spanish, regardless of the language the caller used/);
+  assert.match(hard, /The examples show tone only; they never override these rules or replace a tool call/);
+});
+
+test('the departure is described as leaving the farm toward the mill', () => {
+  assert.match(toolDescription('Report En Camino'), /has left the farm toward the mill/);
+  assert.match(agentPrompt(), /3\. Report that the truck is on its way \(left the farm toward the mill\)/);
+  assert.doesNotMatch(toolDescription('Report En Camino'), /toward the farm/);
+  assert.doesNotMatch(agentPrompt(), /toward the farm/);
+});
+
 test('the export is importable: valid JSON shape, positions, unique names and resolvable connections', () => {
   const names = new Set(workflow.nodes.map(node => node.name));
   assert.equal(names.size, workflow.nodes.length);
