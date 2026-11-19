@@ -38,12 +38,9 @@ export class HttpTransportistaRepository implements TransportistaRepository {
     return this.obtener(id);
   }
 
-  async cambiarEstadoActivo(id: string): Promise<Transportista> {
-    const actual = await this.obtener(id);
-    if (!actual.activo) {
-      throw new Error("La reactivación de transportistas no está publicada en la API de la demo.");
-    }
-    await this.api.post<MutationReceiptDto>(`${BASE}/${encodeURIComponent(id)}/inactivation`, undefined, {
+  async cambiarEstadoActivo(id: string, activo: boolean): Promise<Transportista> {
+    const operacion = activo ? "reactivation" : "inactivation";
+    await this.api.post<MutationReceiptDto>(`${BASE}/${encodeURIComponent(id)}/${operacion}`, undefined, {
       "Idempotency-Key": this.nuevaClave(),
     });
     return this.obtener(id);

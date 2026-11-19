@@ -53,7 +53,7 @@ export class CambiarEstadoActivoTransportista {
   constructor(repo: TransportistaRepository) {
     this.repo = repo;
   }
-  execute(id: string): Promise<Transportista> {
-    return this.repo.cambiarEstadoActivo(id);
+  execute(id: string, activo: boolean): Promise<Transportista> {
+    return this.repo.cambiarEstadoActivo(id, activo);
   }
 }

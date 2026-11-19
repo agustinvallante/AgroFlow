@@ -21,5 +21,5 @@ export interface DriverInputDto {
 export interface MutationReceiptDto {
   resourceId: string;
   resourceType: "driver";
-  outcome: "created" | "updated" | "inactivated";
+  outcome: "created" | "updated" | "inactivated" | "reactivated";
 }
