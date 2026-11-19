@@ -361,6 +361,96 @@ describe("MapaView", () => {
     expect(screen.getByRole("button", { name: "x1", pressed: true })).toBeTruthy();
   });
 
+  it("vuelve a la hora real: el turno de la cola recupera su estado y se borran los viajes de prueba", async () => {
+    mocks.turnos.mockResolvedValue([
+      {
+        id: "t1",
+        ventana: { inicio: "2026-11-08T16:30:00Z", fin: "2026-11-08T17:00:00Z" },
+        hora: "13:30",
+        offsetMin: 90,
+        patente: "AF123BC",
+        chofer: "Juan Pérez",
+        finca: "Finca Sur",
+        horasDesdeCorte: 1,
+        estado: "pendiente",
+      },
+    ]);
+    const { unmount } = await montar();
+    // Sin adelanto no hay nada que corregir.
+    expect(screen.queryByRole("button", { name: "Hora real" })).toBeNull();
+
+    cargarViaje();
+    clic("x60");
+    avanzar(90_000);
+    // Con el reloj adelantado, el turno ya figura llegado.
+    expect(contador(/Llegaron (\d+)/)).toBe("2");
+
+    clic("Hora real");
+
+    expect(screen.getByText("Tiempo real")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "x1", pressed: true })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Hora real" })).toBeNull();
+    expect(screen.queryByText("AF600FF", { selector: "strong" })).toBeNull();
+    expect(contador(/Programados (\d+)/)).toBe("1");
+    expect(contador(/Llegaron (\d+)/)).toBe("0");
+
+    // La corrección se conserva al recargar.
+    unmount();
+    await montar();
+    expect(screen.getByText("Tiempo real")).toBeTruthy();
+    expect(screen.queryByText("AF600FF", { selector: "strong" })).toBeNull();
+    expect(contador(/Programados (\d+)/)).toBe("1");
+  });
+
+  it("al volver a la hora real, un camión con problema en ruta queda detenido en su posición real", async () => {
+    // Con la hora real a las 15:00 el camión ya salió y todavía no llegó.
+    const enViaje = {
+      id: "t1",
+      ventana: { inicio: "2026-11-08T15:20:00Z", fin: "2026-11-08T15:50:00Z" },
+      hora: "12:20",
+      offsetMin: 20,
+      patente: "AF123BC",
+      chofer: "Juan Pérez",
+      finca: "Finca Sur",
+      horasDesdeCorte: 1,
+      estado: "viaje",
+    };
+    const incidente = {
+      id: "i1",
+      tipo: "pinchazo",
+      puedeSeguir: true,
+      demoraEstimadaMin: 30,
+      detalle: null,
+      reportadoEn: "2026-11-08T15:00:00Z",
+    };
+    let conIncidente = false;
+    mocks.turnos.mockImplementation(async () => [conIncidente ? { ...enViaje, incidente } : enViaje]);
+    await montar();
+
+    clic("x60");
+    avanzar(5_000);
+    // El incidente llega con el mapa adelantado: queda registrado con esa hora.
+    conIncidente = true;
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(INTERVALO_TURNOS_MS);
+    });
+    expect(contador(/Demora (\d+)/)).toBe("1");
+
+    clic("Hora real");
+    clic("Ver camión AF123BC");
+    const restanteKm = () => {
+      const fila = within(screen.getByRole("dialog", { name: "Detalle del camión AF123BC" })).getByText("Restante");
+      return Number(fila.nextElementSibling?.textContent?.replace(" km", "").replace(",", "."));
+    };
+    const detenido = restanteKm();
+    expect(detenido).toBeGreaterThan(0);
+
+    // A x1 sigue quieto: la hora registrada con el adelanto no lo hace avanzar.
+    avanzar(2 * MINUTO);
+    expect(restanteKm()).toBe(detenido);
+    expect(contador(/Demora (\d+)/)).toBe("1");
+  });
+
   it("a x60 no escribe en el navegador en cada tick", async () => {
     await montar();
     clic("x60");

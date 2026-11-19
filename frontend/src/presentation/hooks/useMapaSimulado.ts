@@ -157,7 +157,12 @@ function useTurnosActivos(relojMapa: () => number) {
     };
   }, [relojMapa]);
 
-  return { turnos, error, detenidos };
+  /** Al volver el reloj atrás, ningún camión puede quedar detenido en una hora posterior. */
+  const limitarDetenidos = useCallback((hastaMs: number) => {
+    setDetenidos((d) => Object.fromEntries(Object.entries(d).map(([id, ms]) => [id, Math.min(ms, hastaMs)])));
+  }, []);
+
+  return { turnos, error, detenidos, limitarDetenidos };
 }
 
 export function useMapaSimulado() {
@@ -232,6 +237,22 @@ export function useMapaSimulado() {
     setEscenario((e) => ({ ...e, viajes: e.viajes.filter((v) => v.id !== id) }));
   }, []);
 
+  /**
+   * Los turnos nuevos (por ejemplo, de WhatsApp) usan la hora real: con el reloj adelantado parecerían del pasado.
+   * Los viajes de prueba se borran porque su salida se calculó con el reloj adelantado.
+   */
+  const { limitarDetenidos } = cola;
+  const volverAHoraReal = useCallback(() => {
+    const ahora = Date.now();
+    adelantoRef.current = 0;
+    setAdelantoMs(0);
+    setAhoraMs(ahora);
+    setMultiplicador(1);
+    limitarDetenidos(ahora);
+    // Cambiar el escenario lo guarda, ya con el adelanto en cero.
+    setEscenario((e) => ({ ...e, viajes: [] }));
+  }, [limitarDetenidos]);
+
   // Viajes de la cola de turnos: los agrega el mapa solo, sin intervención del operador.
   const deTurnos: ViajeCalculado[] = cola.turnos.flatMap((turno) => {
     const finca = fincaDelTurno(turno, fincas);
@@ -264,5 +285,6 @@ export function useMapaSimulado() {
     guardarIngenio,
     agregarViaje,
     quitarViaje,
+    volverAHoraReal,
   };
 }

@@ -55,6 +55,7 @@ export function MapaView() {
     guardarIngenio,
     agregarViaje,
     quitarViaje,
+    volverAHoraReal,
   } = useMapaSimulado();
 
   const contar = (estado: EstadoViaje) =>
@@ -85,6 +86,15 @@ export function MapaView() {
               ? `Adelantado ${minutos(adelantoMs)} min`
               : "Tiempo real"}
           </span>
+          {adelantoMs > 0 && (
+            <button
+              className="btn-mini"
+              title="Quita el adelanto y borra los viajes de prueba"
+              onClick={volverAHoraReal}
+            >
+              Hora real
+            </button>
+          )}
           {MULTIPLICADORES.map((m) => (
             <button
               key={m}
