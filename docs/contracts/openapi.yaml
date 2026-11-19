@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: ZafraFlow API
-  version: 0.8.0
+  version: 0.9.0
   description: >-
     Contrato HTTP canónico para la demo local de turnos básicos aprobada en la
     issue #49. El perfil local opera con un único ingenio sembrado; no
@@ -671,6 +671,39 @@ paths:
       responses:
         '200':
           description: Transportista inhabilitado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MutationReceipt'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/DriverNotFound'
+        '409':
+          $ref: '#/components/responses/DriverConflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/v1/drivers/{id}/reactivation:
+    parameters:
+      - $ref: '#/components/parameters/DriverId'
+    post:
+      tags: [Transportistas]
+      operationId: reactivarTransportista
+      security:
+        - DashboardKey: []
+      summary: Reactivar un transportista
+      description: >-
+        En LocalDemo vuelve a habilitar el mismo registro y conserva sus
+        referencias históricas. Un transportista reactivado sólo puede
+        solicitar turnos con una asociación vigente a un camión habilitado.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Transportista reactivado. El recibo indica reactivated.
           content:
             application/json:
               schema:
@@ -1674,7 +1707,7 @@ components:
           const: driver
         outcome:
           type: string
-          enum: [created, updated, inactivated]
+          enum: [created, updated, inactivated, reactivated]
 
     ProblemDetails:
       type: object

@@ -29,8 +29,16 @@
 
 - [x] Leer el catálogo de fincas de la API y ubicarlas de forma determinista alrededor de un ingenio de referencia, como medida temporal.
 - [x] Reemplazar el relieve por un fondo de rutas, accesos y ríos simulados, y hacer que cada recorrido siga esos caminos.
-- [x] Dibujar los camiones como cuadrados seleccionables y mostrar su detalle en un recuadro.
+- [x] Dibujar los camiones como círculos seleccionables, las fincas y el ingenio como cuadrados, y mostrar su detalle en un recuadro.
 - [x] Adaptar las pruebas de la vista y de la red, y agregar las del detalle y la falla de fincas.
+
+## Viajes desde la cola de turnos
+
+- [x] Leer los turnos activos de la API cada 10 s y agregar un viaje por turno con finca del catálogo.
+- [x] Estimar la salida a partir de la ventana, llegar a la hora estimada y tomar como llegado lo que la API informa en el ingenio.
+- [x] Acelerar también los turnos con x10 y x60, y no distinguir en la vista si el viaje viene de la cola o de la demo.
+- [x] Conservar los campos de prueba bajo un título que indique que existen únicamente en la demo.
+- [x] Probar el viaje automático de un turno y su cálculo según el estado de la API.
 
 ## Cierre
 

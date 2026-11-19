@@ -152,22 +152,19 @@ con `AGROFLOW_DASHBOARD_KEY`, sin prefijo `VITE_`.
    **+ Nuevo transportista**, ingresá nombre y DNI ficticios para el ensayo,
    el número de prueba en formato E.164 y pulsá **Guardar transportista**.
 2. En la columna **Camión asociado**, elegí **Asociar camión**, seleccioná
-   una patente libre y pulsá **Asociar**. El camión debe existir, estar activo
-   y no tener otro transportista activo. La vista lista camiones existentes.
+   `AP001AA` si está libre y pulsá **Asociar**. Podés usar otra patente
+   del rango `AP001AA`–`AP040AA` que esté activa, sin asociación vigente
+   y sin turno activo.
 3. Verificá que la patente aparezca en la fila y desaparezca
    **sin camión asociado · no puede solicitar turnos**. La API lo refleja en
    `GET /api/v1/drivers/{id}` con `canRequestAppointments: true` y la patente
    en `activeTruckPlates`.
 
-Si **Asociar camión** está deshabilitado porque el seed ya asignó todos los
-camiones, usá sólo la base de ensayo descrita en el runbook. En una base de
-ensayo nueva, **Transportista Demo Cinco** tiene `AH303AB`. Comprobá en
-**Cola de turnos** que esa patente no tenga un turno activo, pulsá
-**Desasociar** junto a ella y confirmá. Luego asociá esa misma patente al
-remitente de prueba. Así siguen disponibles las parejas del seed
-`AF123BC` y `AF456DE` para el otro guion. **Desasociar** conserva el historial
-de la asociación y deja los turnos existentes como estaban, por lo que un
-turno activo previo seguiría impidiendo una nueva reserva para esa patente.
+Si no aparece el rango de invitados, verificá que estés ejecutando una
+versión que incluya [#130](https://github.com/agustinvallante/AgroFlow/pull/130),
+reiniciá la API con la misma SQLite y pulsá **Actualizar**. El seed incorpora
+estos camiones al arrancar. Para volver a usar una patente que ya se ensayó,
+seguí los [pasos para cerrar el turno y desasociar el camión](local-demo-runbook.md#reutilizar-el-camión-de-un-invitado).
 
 Si ya había otra asociación activa al confirmar, la API responde
 `409 DUPLICATE_ASSOCIATION`. Pulsá **Actualizar** y elegí un camión libre.

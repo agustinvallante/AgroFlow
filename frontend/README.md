@@ -10,17 +10,17 @@ Next.js y sus librerías asociadas no son decisiones vigentes; véanse los
 ## Estado y alcance actual
 
 Las vistas operativas del dashboard muestran datos de la API de ZafraFlow.
-El mapa usa las fincas de la API y simula los viajes cargados en el navegador.
+El mapa usa las fincas y los turnos activos de la API para simular viajes. También permite cargar viajes de prueba en el navegador.
 Su alcance y prueba reproducible están en la
 [guía del mapa](../docs/development/mapa-simulado-presentacion.md).
 
 | Sección | Fuente |
 |---|---|
 | Cola de turnos | `/api/v1/appointments` ([`openapi.yaml`](../docs/contracts/openapi.yaml)): alta, listado, filtros, detalle, transiciones y cancelación. El alta ofrece transportistas habilitados y sus patentes (`/api/v1/drivers`) y fincas activas (`/api/v1/farms`). |
-| Transportistas | `/api/v1/drivers`: lista, registra (WhatsApp E.164), edita activos e inhabilita. |
+| Transportistas | `/api/v1/drivers`: lista, registra (WhatsApp E.164), edita activos e inhabilita. **Reactivar** habilita el registro existente en LocalDemo. |
 | Chatbot WhatsApp | `/api/v1/conversations`: conversaciones y mensajes persistidos, con remitente y estado de envío informados por la API, recorridos por cursor hasta 1000 por lectura; una lectura incompleta se muestra con aviso. Se refresca cada 15 s. Métricas y plantillas no tienen endpoint: conservan su lugar, sin datos ni acciones. |
 | Panel general | Camiones en curso mediante `/api/v1/appointments?active=true`, de cualquier fecha. Franjas y cupos mediante `/api/v1/windows` (LocalDemo), con fecha opcional y refresco cada 4 segundos. Indicadores, feed del chatbot, molienda y avisos siguen sin datos ni acciones. |
-| Mapa | Fincas de `/api/v1/farms`, ubicadas de forma aproximada alrededor de un ingenio de referencia (la API no publica coordenadas). Viajes ficticios guardados en el navegador, recorridos sobre una red vial simulada y detalle de cada camión. |
+| Mapa | Fincas de `/api/v1/farms`, ubicadas de forma aproximada alrededor de un ingenio de referencia (la API no publica coordenadas). Un viaje por turno activo de `/api/v1/appointments`, con salida y posición estimadas; viajes de prueba sólo para la demo, guardados en el navegador. Recorridos sobre una red vial simulada y detalle de cada camión. |
 | Reportes y configuración | Conservan su diseño, sin datos y con las acciones deshabilitadas. |
 
 No hay requisito de conectar todas las pantallas ahora. El backend sigue siendo

@@ -18,10 +18,11 @@ import {
 const ANCHO = 800;
 const ALTO = 500;
 const MARGEN = 70;
-const LADO_CAMION = 14;
+const RADIO_CAMION = 7.5;
 /** Media etiqueta de llegada: la mantiene dentro del lienzo. */
 const MITAD_AVISO = 100;
-const RADIO_FINCA = 4;
+const LADO_FINCA = 9;
+const LADO_INGENIO = 13;
 const RADIO_HALO = 16;
 
 const cajaCentrada = (x: number, y: number, radio: number): Caja => ({
@@ -78,7 +79,9 @@ function DetalleCamion({ viaje: v, ahoraMs, ancla, onCerrar }: DetalleCamionProp
     ["Distancia", km(v.distanciaKm)],
     ["Restante", km(restanteKm)],
     ["Velocidad", `${v.viaje.velocidadKmh} km/h`],
-    ["Retraso simulado", `${v.viaje.retrasoMin} min`],
+    ...(v.turno
+      ? ([["Ventana", `${hora(Date.parse(v.turno.ventana.inicio))}–${hora(Date.parse(v.turno.ventana.fin))}`]] as [string, string][])
+      : ([["Retraso simulado", `${v.viaje.retrasoMin} min`]] as [string, string][])),
   ];
   // Del lado con más lugar, para no salirse del mapa.
   const izquierda = ancla.x > ANCHO / 2;
@@ -137,7 +140,7 @@ export function MapaRutas({ ingenio, fincas, viajes, ahoraMs }: MapaRutasProps) 
     const posiciones = fincas.map(proyectar);
     const aviso = Math.min(Math.max(destino.x, MITAD_AVISO), ANCHO - MITAD_AVISO);
 
-    const ocupadas: Caja[] = posiciones.map((p) => cajaCentrada(p.x, p.y, RADIO_FINCA));
+    const ocupadas: Caja[] = posiciones.map((p) => cajaCentrada(p.x, p.y, LADO_FINCA / 2));
     if (ingenio) {
       ocupadas.push(
         cajaCentrada(destino.x, destino.y, RADIO_HALO),
@@ -180,7 +183,7 @@ export function MapaRutas({ ingenio, fincas, viajes, ahoraMs }: MapaRutasProps) 
       return ruta ? [{ ...v, ...puntoEnRuta(ruta, v.situacion.progreso) }] : [];
     });
 
-  const ocupadas = [...ocupadasFijas, ...circulando.map((c) => cajaCentrada(c.x, c.y, LADO_CAMION / 2))];
+  const ocupadas = [...ocupadasFijas, ...circulando.map((c) => cajaCentrada(c.x, c.y, RADIO_CAMION))];
   const camiones = circulando.map((c) => {
     const texto = `${c.viaje.patente} · ${ESTADO_LABEL[c.situacion.estado].toUpperCase()}`;
     const posiciones = posicionesCamion(c.x, c.y, c.situacion.estado === "demora");
@@ -226,9 +229,15 @@ export function MapaRutas({ ingenio, fincas, viajes, ahoraMs }: MapaRutasProps) 
 
         {marcas.map(({ finca, pos, etiqueta }) => (
           <g key={finca.id}>
-            <circle cx={pos.x} cy={pos.y} r={RADIO_FINCA} className="mapa-finca">
+            <rect
+              x={pos.x - LADO_FINCA / 2}
+              y={pos.y - LADO_FINCA / 2}
+              width={LADO_FINCA}
+              height={LADO_FINCA}
+              className="mapa-finca"
+            >
               {!etiqueta && <title>{finca.nombre}</title>}
-            </circle>
+            </rect>
             {etiqueta && (
               <text x={etiqueta.x} y={etiqueta.y} textAnchor={etiqueta.anchor} className="mapa-texto">
                 {finca.nombre}
@@ -239,13 +248,21 @@ export function MapaRutas({ ingenio, fincas, viajes, ahoraMs }: MapaRutasProps) 
 
         {ingenio && posIngenio && (
           <g>
-            <circle
-              cx={posIngenio.x}
-              cy={posIngenio.y}
-              r={RADIO_HALO}
+            <rect
+              x={posIngenio.x - RADIO_HALO}
+              y={posIngenio.y - RADIO_HALO}
+              width={RADIO_HALO * 2}
+              height={RADIO_HALO * 2}
+              rx={3}
               className={`mapa-ingenio-halo ${ultimaLlegada ? "con-llegada" : ""}`}
             />
-            <circle cx={posIngenio.x} cy={posIngenio.y} r={6} className="mapa-ingenio" />
+            <rect
+              x={posIngenio.x - LADO_INGENIO / 2}
+              y={posIngenio.y - LADO_INGENIO / 2}
+              width={LADO_INGENIO}
+              height={LADO_INGENIO}
+              className="mapa-ingenio"
+            />
             <text x={posIngenio.x} y={posIngenio.y - 24} textAnchor="middle" className="mapa-texto ingenio">
               {ingenio.nombre.toUpperCase()}
             </text>
@@ -270,9 +287,9 @@ export function MapaRutas({ ingenio, fincas, viajes, ahoraMs }: MapaRutasProps) 
             }}
             onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && setSeleccionId(viaje.id)}
           >
-            <rect x={x - LADO_CAMION / 2} y={y - LADO_CAMION / 2} width={LADO_CAMION} height={LADO_CAMION}>
+            <circle cx={x} cy={y} r={RADIO_CAMION}>
               {!etiqueta && <title>{texto}</title>}
-            </rect>
+            </circle>
             {etiqueta && (
               <text x={etiqueta.x} y={etiqueta.y} textAnchor={etiqueta.anchor}>
                 {texto}
