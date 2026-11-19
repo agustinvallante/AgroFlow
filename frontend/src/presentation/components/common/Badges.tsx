@@ -1,14 +1,5 @@
 import type { EstadoTurno } from "../../../domain/entities/Turno";
-
-const ESTADO_LABELS: Record<EstadoTurno, string> = {
-  pendiente: "Asignado",
-  viaje: "En camino",
-  cancha: "En espera",
-  ingresado: "Ingresado",
-  descargando: "En descarga",
-  completado: "Finalizado",
-  cancelado: "Cancelado",
-};
+import { ESTADO_LABELS } from "./estadoLabels";
 
 export function EstadoBadge({ estado }: { estado: EstadoTurno }) {
   return (

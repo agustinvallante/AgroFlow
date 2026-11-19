@@ -94,8 +94,8 @@ describe("intermediario local del dashboard", () => {
     expect(isAllowedDashboardRequest(local(url, { "sec-fetch-site": "cross-site" }))).toBe(false);
   });
 
-  it.each(["/api/v1/trucks", "/api/v1/farms"])("autoriza %s sólo con GET exacto sobre la colección", (base) => {
-    expect(isAllowedDashboardRequest({ ...local(`${base}?active=true`), method: "GET" })).toBe(true);
+  it.each(["/api/v1/trucks", "/api/v1/farms", "/api/v1/mill"])("autoriza %s sólo con GET exacto", (base) => {
+    expect(isAllowedDashboardRequest({ ...local(base), method: "GET" })).toBe(true);
     for (const method of ["POST", "PUT", "DELETE"]) {
       expect(isAllowedDashboardRequest({ ...local(base), method })).toBe(false);
     }

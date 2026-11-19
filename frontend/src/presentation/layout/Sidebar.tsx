@@ -15,9 +15,6 @@ export function Sidebar({ vistaActiva, onCambiarVista }: SidebarProps) {
           <img src={logo} alt="ZafraFlow" width={200} height={35} />
         </div>
         <div className="brand-sub">By Kallpa Tech</div>
-        <select className="ingenio-select" disabled>
-          <option>Ingenio: sin datos</option>
-        </select>
       </div>
 
       <nav>

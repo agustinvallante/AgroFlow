@@ -56,6 +56,10 @@ export function toAppointmentStatus(estado: EstadoTurno): AppointmentStatusDto |
   return ESTADO_INVERSO[estado];
 }
 
+export function fromAppointmentStatus(status: AppointmentStatusDto): EstadoTurno {
+  return ESTADO_MAP[status];
+}
+
 export function mapAppointment(dto: AppointmentDto): Turno {
   const incidente = mapOpenIncident(dto.openIncident);
   return {
@@ -70,7 +74,7 @@ export function mapAppointment(dto: AppointmentDto): Turno {
     chofer: dto.carrier.name,
     finca: dto.farm.name,
     horasDesdeCorte: Math.max(0, Math.round((Date.now() - new Date(dto.cutAt).getTime()) / 3600000)),
-    estado: ESTADO_MAP[dto.status],
+    estado: fromAppointmentStatus(dto.status),
     corteEn: dto.cutAt,
     cargaTon: dto.estimatedLoadTons,
     creadoEn: dto.createdAt,

@@ -16,6 +16,7 @@ public sealed class LocalDemoAppointmentsConvention(bool isLocalDemo) : IApplica
         typeof(ConversationsController),
         typeof(DriversController),
         typeof(FarmsController),
+        typeof(MillController),
         typeof(TrucksController),
         typeof(WindowsController)
     ];

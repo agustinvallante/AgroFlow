@@ -25,9 +25,10 @@ info:
     agrega el reporte y la resolución de incidentes en ruta de un turno
     `EN_CAMINO` y `openIncident` en las representaciones de turnos. El cambio
     `mapa-eventos-reales` agrega `departedAt` (hora de partida) y `stops`
-    (incidentes resueltos como detenciones) a esas representaciones. Las
-    mutaciones de camiones y de fincas, las asociaciones y la gestión de
-    ventanas siguen sin ruta publicada. El
+    (incidentes resueltos como detenciones) a esas representaciones. El cambio
+    `reportes-y-configuracion-demo` publica la lectura del ingenio (DashboardKey)
+    y compone el reporte diario con las lecturas de turnos y franjas existentes.
+    Las mutaciones de camiones, fincas y ventanas siguen sin ruta publicada. El
     contrato objetivo de las dos lecturas internas autenticadas está en
     openapi.mvp-appointment-reads.yaml y corresponde al perfil MVP.
 servers:
@@ -37,7 +38,7 @@ servers:
     description: API del host vista desde n8n en Docker Desktop
 
 # Turnos y salud no incluyen autenticación en la demo local. Canal,
-# conversaciones, transportistas, camiones, ventanas y fincas usan claves estáticas del perfil LocalDemo
+# conversaciones, transportistas, camiones, ventanas, fincas e ingenio usan claves estáticas del perfil LocalDemo
 # hasta que B03 emita identidades por ingenio. La seguridad de operaciones MVP
 # sigue definida por sus capacidades y se especificará en contratos aprobados.
 
@@ -62,6 +63,8 @@ tags:
     description: Gestión de las asociaciones transportista-camión del ingenio.
   - name: Ventanas
     description: Consulta de sólo lectura de las ventanas y cupos del ingenio.
+  - name: Ingenio
+    description: Lectura de la identidad del ingenio de LocalDemo y su fecha local.
 
 paths:
   /health:
@@ -999,6 +1002,46 @@ paths:
           $ref: '#/components/responses/AssociationConflict'
         '500':
           $ref: '#/components/responses/InternalError'
+  /api/v1/mill:
+    get:
+      tags: [Ingenio]
+      operationId: consultarIngenioDemo
+      security:
+        - DashboardKey: []
+      summary: Consultar los datos del ingenio de la demo
+      description: >-
+        Sólo lectura, exclusiva de LocalDemo. Lee el nombre y la zona horaria
+        persistidos del ingenio efectivo. localDate es la fecha actual en esa
+        zona y permite consultar turnos y ventanas para el mismo día explícito.
+        La operación no admite parámetros ni selecciona el ingenio desde la solicitud.
+      responses:
+        '200':
+          description: Datos del ingenio efectivo y su fecha local actual.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [name, timeZoneId, localDate]
+                properties:
+                  name:
+                    type: string
+                    example: Ingenio Demo
+                  timeZoneId:
+                    type: string
+                    description: Identificador IANA de zona horaria guardado en el ingenio.
+                    example: America/Argentina/Tucuman
+                  localDate:
+                    type: string
+                    format: date
+                    example: '2026-09-28'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
   /api/v1/windows:
     get:
       tags: [Ventanas]

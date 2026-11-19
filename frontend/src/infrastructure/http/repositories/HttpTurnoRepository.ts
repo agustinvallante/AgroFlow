@@ -9,6 +9,7 @@ import type {
 } from "../dto/AppointmentDto";
 import {
   combinarResumenYDetalle,
+  fromAppointmentStatus,
   mapAppointment,
   toAppointmentStatus,
   toCreateAppointmentRequest,
@@ -43,8 +44,17 @@ export class HttpTurnoRepository implements TurnoRepository {
     return this.listar({ active: "true" });
   }
 
+  async obtenerEstadosDelDia(fecha: string): Promise<EstadoTurno[]> {
+    const resumenes = await this.listarResumenes({ date: fecha });
+    return resumenes.map(({ status }) => fromAppointmentStatus(status));
+  }
+
+  private listarResumenes(query: Record<string, string | undefined>): Promise<AppointmentSummaryDto[]> {
+    return this.api.get<AppointmentSummaryDto[]>(BASE, query);
+  }
+
   private async listar(query: Record<string, string | undefined>): Promise<Turno[]> {
-    const resumenes = await this.api.get<AppointmentSummaryDto[]>(BASE, query);
+    const resumenes = await this.listarResumenes(query);
     const turnos = await Promise.all(
       resumenes.map(async (resumen) => {
         const detalle = this.detalles.get(resumen.id) ?? (await this.pedirDetalle(resumen.id));

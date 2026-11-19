@@ -4,8 +4,15 @@ import { HttpConversacionRepository } from "../infrastructure/http/repositories/
 import { HttpVentanaRepository } from "../infrastructure/http/repositories/HttpVentanaRepository";
 import { HttpAsociacionRepository } from "../infrastructure/http/repositories/HttpAsociacionRepository";
 import { HttpFincaRepository } from "../infrastructure/http/repositories/HttpFincaRepository";
+import { ApiClient } from "../infrastructure/http/ApiClient";
 import { ObtenerFincas } from "../application/usecases/fincas/ObtenerFincas";
 import { ObtenerVentanas } from "../application/usecases/ventanas/ObtenerVentanas";
+
+interface DatosIngenio {
+  name: string;
+  timeZoneId: string;
+  localDate: string;
+}
 
 import {
   CambiarEstadoTurno,
@@ -40,10 +47,8 @@ import {
  * (vite.config.ts) lo reenvía a VITE_API_URL, por defecto
  * http://localhost:5000. Así no interviene CORS.
  *
- * Transportistas, asociaciones, camiones, fincas, conversaciones y ventanas exigen la clave del dashboard, que el
- * proxy agrega del lado servidor (server/dashboardProxy.ts). Métricas del
- * panel y del chatbot, plantillas, reportes y configuración no tienen
- * endpoint en openapi.yaml: sus vistas conservan el diseño, sin datos.
+ * Catálogos, asociaciones, conversaciones, ventanas y datos del ingenio
+ * usan la clave que el proxy agrega del lado servidor (server/dashboardProxy.ts).
  */
 function crearContainer() {
   // Solo informativo: las llamadas van al mismo origen ("") vía proxy.
@@ -55,13 +60,18 @@ function crearContainer() {
   const ventanaRepository = new HttpVentanaRepository("");
   const asociacionRepository = new HttpAsociacionRepository("");
   const fincaRepository = new HttpFincaRepository("");
+  const api = new ApiClient("");
 
   return {
     apiUrl,
+    ingenio: {
+      obtener: () => api.get<DatosIngenio>("/api/v1/mill"),
+    },
     ventanas: {
       obtenerVentanas: new ObtenerVentanas(ventanaRepository),
     },
     turnos: {
+      obtenerEstadosDelDia: (fecha: string) => turnoRepository.obtenerEstadosDelDia(fecha),
       obtenerTurnosDelDia: new ObtenerTurnosDelDia(turnoRepository),
       obtenerTurnosActivos: new ObtenerTurnosActivos(turnoRepository),
       obtenerDetalleTurno: new ObtenerDetalleTurno(turnoRepository),
