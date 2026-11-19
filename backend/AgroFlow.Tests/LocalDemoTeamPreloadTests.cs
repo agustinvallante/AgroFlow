@@ -33,7 +33,7 @@ public sealed class LocalDemoTeamPreloadTests : IDisposable
 
         await using var db = CreateContext();
         Assert.Equal(5, await db.Transportistas.CountAsync());
-        Assert.Equal(5, await db.Camiones.CountAsync());
+        Assert.Equal(5 + AppointmentsSeeder.FreeDemoTruckCount, await db.Camiones.CountAsync());
         Assert.Equal(5, await db.Asociaciones.CountAsync(a => a.IsActive));
         foreach (var position in AppointmentsSeeder.DemoPositions)
         {
@@ -79,7 +79,7 @@ public sealed class LocalDemoTeamPreloadTests : IDisposable
         Assert.True(await verify.Transportistas.AnyAsync(t => t.Id == unoId));
         Assert.True(await verify.Transportistas.AnyAsync(t => t.Id == dosId));
         Assert.True(await verify.Turnos.AnyAsync(t => t.Id == turnoId));
-        Assert.Equal(17, await verify.SeedRecords.CountAsync());
+        Assert.Equal(17 + AppointmentsSeeder.FreeDemoTruckCount, await verify.SeedRecords.CountAsync());
     }
 
     [Fact]

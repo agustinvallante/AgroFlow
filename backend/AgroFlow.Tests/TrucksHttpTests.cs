@@ -23,7 +23,8 @@ public sealed class TrucksHttpTests : IDisposable
     private const string ChannelKey = "test-only-channel-service-key-0123456789abcdef";
     private const string DashboardKey = "test-only-dashboard-api-key-0123456789abcdef";
 
-    private static readonly string[] SeededPlates = ["AF123BC", "AF456DE", "AH301AB", "AH302AB", "AH303AB"];
+    private static readonly string[] SeededPlates = ["AF123BC", "AF456DE", "AH301AB", "AH302AB", "AH303AB",
+        .. Enumerable.Range(1, AppointmentsSeeder.FreeDemoTruckCount).Select(i => $"AP{i:000}AA")];
 
     private readonly string _dbPath = Path.Combine(Path.GetTempPath(), $"agroflow-trucks-{Guid.NewGuid():N}.db");
 
