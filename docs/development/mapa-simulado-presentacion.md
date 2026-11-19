@@ -22,17 +22,19 @@ Iniciar también el backend y configurar las claves según la [guía de demo loc
 | Viaje | Patente SIM123, Finca Sur, velocidad 40 km/h, salida en 0 minutos, retraso 0 minutos |
 
 1. Comprobar que Finca Norte y Finca Sur aparecen en el mapa, cada una unida a una ruta del fondo.
-2. Agregar el viaje. Debe aparecer En ruta en la cola y como un cuadrado sobre la ruta de su finca.
-3. Tocar el camión: el recuadro muestra patente, estado, finca, salida, llegada, distancia y distancia restante. Cerrarlo con ×, Escape o tocando el mapa.
-4. Seleccionar x60. Con las distancias de la ubicación temporal, el recorrido tarda menos de un minuto real.
-5. Esperar Llegó. El viaje permanece visible al llegar y su recorrido termina.
-6. Recargar el mismo origen. Deben conservarse el ingenio y el viaje. La velocidad vuelve a x1 y el adelanto acumulado se conserva.
-7. Quitar el viaje, cargar otro con retraso de 10 minutos y usar x60. Al superar la llegada estimada debe pasar a Demora y, tras completar el retraso, a Llegó.
-8. Para observar Programado, cargar otro viaje con una salida de 5 minutos. También puede verificarse que se rechaza un segundo viaje sin terminar de la misma patente.
+2. En **Cola de turnos**, crear un turno desde Finca Sur. Al volver a Mapa, en menos de 10 segundos aparece solo, sin botón para quitarlo. Llega al inicio de su ventana; con x60 recorre la ruta en poco más de un minuto. Si el turno pasa a En espera, el mapa lo muestra como llegado.
+3. Los campos bajo **Sólo para la demo** cargan viajes de prueba que no se envían a la API; se usan para los pasos siguientes.
+4. Agregar el viaje. Debe aparecer En ruta en la cola y como un círculo sobre la ruta de su finca. Las fincas y el ingenio se dibujan como cuadrados.
+5. Tocar el camión: el recuadro muestra patente, estado, finca, salida, llegada, distancia y distancia restante. Cerrarlo con ×, Escape o tocando el mapa.
+6. Seleccionar x60. Con las distancias de la ubicación temporal, el recorrido tarda menos de un minuto real.
+7. Esperar Llegó. El viaje permanece visible al llegar y su recorrido termina.
+8. Recargar el mismo origen. Deben conservarse el ingenio y el viaje. La velocidad vuelve a x1 y el adelanto acumulado se conserva.
+9. Quitar el viaje, cargar otro con retraso de 10 minutos y usar x60. Al superar la llegada estimada debe pasar a Demora y, tras completar el retraso, a Llegó.
+10. Para observar Programado, cargar otro viaje con una salida de 5 minutos. También puede verificarse que se rechaza un segundo viaje sin terminar de la misma patente.
 
 ## Datos y reloj
 
-Ingenio, viajes y adelanto viven en `agroflow.mapa-simulado.v3` de localStorage; las fincas se vuelven a leer de la API. Cada navegador, perfil y origen tiene su escenario propio. Abrir otro puerto u otra dirección, aunque apunten al mismo equipo, usa otro almacenamiento. Para mostrarlo al grupo conviene compartir una sola pantalla.
+Ingenio, viajes de prueba y adelanto viven en `agroflow.mapa-simulado.v3` de localStorage; las fincas y los turnos se vuelven a leer de la API. Con x10 o x60 también se adelantan los viajes de la cola: para la demo importa mostrar el recorrido, no la precisión. Cada navegador, perfil y origen tiene su escenario propio. Abrir otro puerto u otra dirección, aunque apunten al mismo equipo, usa otro almacenamiento. Para mostrarlo al grupo conviene compartir una sola pantalla.
 
 El reloj a x1 sigue el tiempo real. Las velocidades x10 y x60 acumulan un adelanto únicamente mientras el mapa está abierto. Al regresar tras recargar o cambiar de sección, se conserva ese adelanto y se agrega el tiempo real transcurrido. El reloj visible usa la zona de la demo, America/Argentina/Tucuman.
 

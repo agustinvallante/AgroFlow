@@ -1,13 +1,27 @@
-import type { EstadoViaje, ViajeCalculado } from "../../domain/services/simulacionViajes";
-import { FormularioIngenio, FormularioViaje } from "../components/mapa/FormulariosMapa";
+import type {
+  EstadoViaje,
+  ViajeCalculado,
+} from "../../domain/services/simulacionViajes";
+import {
+  FormularioIngenio,
+  FormularioViaje,
+} from "../components/mapa/FormulariosMapa";
 import { MapaRutas } from "../components/mapa/MapaRutas";
 import { ESTADO_LABEL, hora, minutos } from "../components/mapa/formatoMapa";
 import { MULTIPLICADORES, useMapaSimulado } from "../hooks/useMapaSimulado";
 
 /** Orden de la cola: primero lo que está por llegar. */
-const ORDEN_ESTADO: Record<EstadoViaje, number> = { demora: 0, "en-ruta": 1, programado: 2, "en-playa": 3 };
+const ORDEN_ESTADO: Record<EstadoViaje, number> = {
+  demora: 0,
+  "en-ruta": 1,
+  programado: 2,
+  "en-playa": 3,
+};
 
-function detalleTiempo({ situacion, llegadaEstimadaMs, llegadaMs, viaje }: ViajeCalculado, ahoraMs: number): string {
+function detalleTiempo(
+  { situacion, llegadaEstimadaMs, llegadaMs, viaje }: ViajeCalculado,
+  ahoraMs: number,
+): string {
   switch (situacion.estado) {
     case "programado":
       return `Sale ${hora(viaje.salidaMs)}`;
@@ -29,6 +43,8 @@ export function MapaView() {
     cargandoFincas,
     errorFincas,
     reintentarFincas,
+    errorTurnos,
+    turnosSinFinca,
     viajes,
     multiplicador,
     setMultiplicador,
@@ -37,13 +53,16 @@ export function MapaView() {
     quitarViaje,
   } = useMapaSimulado();
 
-  const contar = (estado: EstadoViaje) => viajes.filter((v) => v.situacion.estado === estado).length;
+  const contar = (estado: EstadoViaje) =>
+    viajes.filter((v) => v.situacion.estado === estado).length;
   const cola = [...viajes].sort(
     (a, b) =>
       ORDEN_ESTADO[a.situacion.estado] - ORDEN_ESTADO[b.situacion.estado] ||
       a.llegadaEstimadaMs - b.llegadaEstimadaMs,
   );
-  const patentesEnViaje = viajes.filter((v) => v.situacion.estado !== "en-playa").map((v) => v.viaje.patente);
+  const patentesEnViaje = viajes
+    .filter((v) => v.situacion.estado !== "en-playa")
+    .map((v) => v.viaje.patente);
 
   return (
     <div className="view">
@@ -51,12 +70,17 @@ export function MapaView() {
         <div>
           <h1>Mapa de camiones</h1>
           <div className="zafra">
-            Fincas de la API · Ubicaciones, rutas y viajes simulados en el navegador, sin GPS
+            Turnos y fincas de la API · Ubicaciones y recorridos estimados en el
+            navegador, sin GPS
           </div>
         </div>
         <div className="mapa-controles">
           <span className="mapa-reloj">{hora(ahoraMs)}</span>
-          <span className="mapa-modo">{adelantoMs > 0 ? `Adelantado ${minutos(adelantoMs)} min` : "Tiempo real"}</span>
+          <span className="mapa-modo">
+            {adelantoMs > 0
+              ? `Adelantado ${minutos(adelantoMs)} min`
+              : "Tiempo real"}
+          </span>
           {MULTIPLICADORES.map((m) => (
             <button
               key={m}
@@ -79,21 +103,51 @@ export function MapaView() {
         </div>
       )}
 
+      {errorTurnos && (
+        <div role="alert" className="mapa-aviso">
+          <strong>No se pudo leer la cola de turnos.</strong> {errorTurnos} Se
+          reintenta sola.
+        </div>
+      )}
+      {turnosSinFinca > 0 && (
+        <p className="mapa-nota">
+          {turnosSinFinca === 1
+            ? "1 turno activo tiene"
+            : `${turnosSinFinca} turnos activos tienen`}{" "}
+          una finca que no está en el catálogo y no se muestra en el mapa.
+        </p>
+      )}
+
       <div className="mapa-layout">
         <div className="mapa-panel">
           <div className="mapa-contadores">
-            <span className="mapa-contador en-ruta">En ruta {contar("en-ruta")}</span>
-            <span className="mapa-contador llegaron">Llegaron {contar("en-playa")}</span>
-            <span className="mapa-contador demora">Demora {contar("demora")}</span>
-            <span className="mapa-contador">Programados {contar("programado")}</span>
+            <span className="mapa-contador en-ruta">
+              En ruta {contar("en-ruta")}
+            </span>
+            <span className="mapa-contador llegaron">
+              Llegaron {contar("en-playa")}
+            </span>
+            <span className="mapa-contador demora">
+              Demora {contar("demora")}
+            </span>
+            <span className="mapa-contador">
+              Programados {contar("programado")}
+            </span>
           </div>
-          <MapaRutas ingenio={ingenio} fincas={fincas} viajes={viajes} ahoraMs={ahoraMs} />
+          <MapaRutas
+            ingenio={ingenio}
+            fincas={fincas}
+            viajes={viajes}
+            ahoraMs={ahoraMs}
+          />
           <p className="mapa-nota">Tocá un camión para ver su detalle.</p>
         </div>
 
         <div className="mapa-panel">
           <h2 className="mapa-titulo">Cola de recepción</h2>
-          {cola.length === 0 && <div className="empty-state">Sin viajes cargados.</div>}
+          {cola.length === 0 && (
+            <div className="empty-state">Sin viajes cargados.</div>
+          )}
           <ul className="mapa-cola">
             {cola.map((v) => (
               <li key={v.viaje.id}>
@@ -104,34 +158,52 @@ export function MapaView() {
                   </span>
                 </div>
                 <div className="mapa-cola-estado">
-                  <em className={v.situacion.estado}>{ESTADO_LABEL[v.situacion.estado]}</em>
+                  <em className={v.situacion.estado}>
+                    {ESTADO_LABEL[v.situacion.estado]}
+                  </em>
                   <span>{detalleTiempo(v, ahoraMs)}</span>
                 </div>
-                <button
-                  className="btn-mini"
-                  aria-label={`Quitar viaje ${v.viaje.patente}`}
-                  onClick={() => quitarViaje(v.viaje.id)}
-                >
-                  ×
-                </button>
+                {/* Los viajes de la cola los maneja la API: sólo se quitan los de la demo. */}
+                {!v.turno && (
+                  <button
+                    className="btn-mini"
+                    aria-label={`Quitar viaje ${v.viaje.patente}`}
+                    onClick={() => quitarViaje(v.viaje.id)}
+                  >
+                    ×
+                  </button>
+                )}
               </li>
             ))}
           </ul>
         </div>
       </div>
 
+      <div className="mapa-demo-titulo">
+        <h2>Sólo para la demo</h2>
+        <p>
+          Estos campos existen únicamente para probar el mapa. Los viajes reales
+          se agregan solos desde la cola de turnos.
+        </p>
+      </div>
       <div className="mapa-formularios">
         <section>
           <div className="section-head">
-            <h2>Cargar viaje</h2>
+            <h2>Cargar viaje de prueba</h2>
           </div>
-          <FormularioViaje fincas={fincas} patentesEnViaje={patentesEnViaje} onAgregar={agregarViaje} />
+          <FormularioViaje
+            fincas={fincas}
+            patentesEnViaje={patentesEnViaje}
+            onAgregar={agregarViaje}
+          />
         </section>
         <section>
           <div className="section-head">
             <h2>Fincas</h2>
           </div>
-          {cargandoFincas && <div className="loading-state">Cargando fincas de la API...</div>}
+          {cargandoFincas && (
+            <div className="loading-state">Cargando fincas de la API...</div>
+          )}
           <ul className="mapa-fincas">
             {fincas.map((f) => (
               <li key={f.id}>
@@ -140,8 +212,8 @@ export function MapaView() {
             ))}
           </ul>
           <p className="mapa-nota">
-            Catálogo de la API. La API no publica coordenadas: el mapa las ubica de forma aproximada alrededor del
-            ingenio, como medida temporal.
+            Catálogo de la API. La API no publica coordenadas: el mapa las ubica
+            de forma aproximada alrededor del ingenio, como medida temporal.
           </p>
         </section>
         <section>
@@ -151,7 +223,10 @@ export function MapaView() {
           <p className="mapa-actual">
             {ingenio.nombre} · {ingenio.lat}, {ingenio.lon}
           </p>
-          <p className="mapa-nota">Ubicación de referencia hasta que la API la publique. Podés cambiarla:</p>
+          <p className="mapa-nota">
+            Ubicación de referencia hasta que la API la publique. Podés
+            cambiarla:
+          </p>
           <FormularioIngenio onGuardar={guardarIngenio} />
         </section>
       </div>

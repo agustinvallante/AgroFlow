@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { container } from "../../composition/container";
 import type { Finca } from "../../domain/entities/Finca";
+import type { Turno } from "../../domain/entities/Turno";
 import {
   calcularViaje,
   esUbicacionValida,
@@ -10,6 +11,7 @@ import {
   type ViajeSimulado,
 } from "../../domain/services/simulacionViajes";
 import { INGENIO_TEMPORAL, ubicarFincasTemporalmente } from "../../domain/services/ubicacionTemporal";
+import { calcularViajeDeTurno, fincaDelTurno } from "../../domain/services/viajesDesdeTurnos";
 
 /** x1 es el tiempo real; las otras velocidades sólo sirven para probar un viaje largo. */
 export const MULTIPLICADORES = [1, 10, 60] as const;
@@ -18,6 +20,8 @@ export type Multiplicador = (typeof MULTIPLICADORES)[number];
 export type IngenioMapa = PuntoGeo & { nombre: string };
 
 const INTERVALO_MS = 100;
+/** La cola cambia por el chatbot o el panel de turnos: se vuelve a leer cada tanto. */
+export const INTERVALO_TURNOS_MS = 10_000;
 const MS_POR_MINUTO = 60_000;
 /** v3: las fincas ya no se guardan, vienen de la API; se descartan los escenarios anteriores. */
 export const CLAVE_ALMACENAMIENTO = "agroflow.mapa-simulado.v3";
@@ -117,6 +121,35 @@ function useFincasApi() {
   return { fincas, error, reintentar: useCallback(() => setIntento((i) => i + 1), []) };
 }
 
+/** Turnos activos de la cola. Ante una falla se conserva la última lectura. */
+function useTurnosActivos() {
+  const [turnos, setTurnos] = useState<Turno[]>([]);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let vigente = true;
+    const leer = () =>
+      container.turnos.obtenerTurnosActivos
+        .execute()
+        .then((t) => {
+          if (!vigente) return;
+          setTurnos(t);
+          setError(null);
+        })
+        .catch((e: unknown) => {
+          if (vigente) setError(e instanceof Error && e.message ? e.message : "No se pudo leer la cola de turnos.");
+        });
+    leer();
+    const id = setInterval(leer, INTERVALO_TURNOS_MS);
+    return () => {
+      vigente = false;
+      clearInterval(id);
+    };
+  }, []);
+
+  return { turnos, error };
+}
+
 export function useMapaSimulado() {
   const [{ adelantoMs: adelantoInicial, ...escenarioInicial }] = useState(leerDatos);
   const [escenario, setEscenario] = useState<Escenario>(escenarioInicial);
@@ -124,6 +157,7 @@ export function useMapaSimulado() {
   const [ahoraMs, setAhoraMs] = useState(() => Date.now() + adelantoInicial);
   const [multiplicador, setMultiplicador] = useState<Multiplicador>(1);
   const fincasApi = useFincasApi();
+  const cola = useTurnosActivos();
   // El intervalo y los guardados leen el último valor sin volver a suscribirse.
   const escenarioRef = useRef(escenario);
   const adelantoRef = useRef(adelantoInicial);
@@ -188,11 +222,18 @@ export function useMapaSimulado() {
     setEscenario((e) => ({ ...e, viajes: e.viajes.filter((v) => v.id !== id) }));
   }, []);
 
-  // Un viaje de una finca que la API ya no publica no se muestra, pero se conserva por si vuelve.
-  const viajes: ViajeCalculado[] = escenario.viajes.flatMap((viaje) => {
+  // Viajes de la cola de turnos: los agrega el mapa solo, sin intervención del operador.
+  const deTurnos: ViajeCalculado[] = cola.turnos.flatMap((turno) => {
+    const finca = fincaDelTurno(turno, fincas);
+    const viaje = finca ? calcularViajeDeTurno(turno, finca, ingenio, ahoraMs) : null;
+    return viaje ? [viaje] : [];
+  });
+  // Un viaje de la demo de una finca que la API ya no publica no se muestra, pero se conserva por si vuelve.
+  const deDemo: ViajeCalculado[] = escenario.viajes.flatMap((viaje) => {
     const finca = fincas.find((f) => f.id === viaje.fincaId);
     return finca ? [calcularViaje(viaje, finca, ingenio, ahoraMs)] : [];
   });
+  const viajes = [...deTurnos, ...deDemo];
 
   return {
     ahoraMs,
@@ -202,6 +243,9 @@ export function useMapaSimulado() {
     cargandoFincas: fincasApi.fincas === null && !fincasApi.error,
     errorFincas: fincasApi.error,
     reintentarFincas: fincasApi.reintentar,
+    errorTurnos: cola.error,
+    /** Turnos activos cuya finca no está en el catálogo: no se pueden ubicar en el mapa. */
+    turnosSinFinca: fincasApi.fincas ? cola.turnos.filter((t) => !fincaDelTurno(t, fincas)).length : 0,
     viajes,
     multiplicador,
     setMultiplicador,
