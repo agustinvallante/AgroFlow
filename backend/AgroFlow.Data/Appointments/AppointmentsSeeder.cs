@@ -40,6 +40,7 @@ public static class AppointmentsSeeder
     private const string DefaultTimeZoneId = "America/Argentina/Tucuman";
     private static readonly TimeSpan WindowDuration = TimeSpan.FromMinutes(30);
     private const int WindowCapacity = 2;
+    public const int FreeDemoTruckCount = 40;
     private static readonly TimeSpan DayStart = TimeSpan.FromHours(8);
     private static readonly TimeSpan DayEnd = TimeSpan.FromHours(18);
 
@@ -75,6 +76,14 @@ public static class AppointmentsSeeder
             var camion = await SeedCamionAsync(
                 db, position.CamionKey, ingenio.Id, position.Plate, position.FleetType, now, cancellationToken);
             await SeedAsociacionAsync(db, position.AsociacionKey, ingenio.Id, transportista, camion, now, cancellationToken);
+        }
+
+        // Unassociated trucks so demo guests can be linked to a free truck
+        // from the dashboard (truck creation has no route yet, see OD-013).
+        for (var i = 1; i <= FreeDemoTruckCount; i++)
+        {
+            await SeedCamionAsync(
+                db, $"camion:libre-{i:00}", ingenio.Id, $"AP{i:000}AA", Camion.FleetTypeTerceros, now, cancellationToken);
         }
 
         await SeedFincaAsync(db, "finca:norte", ingenio.Id, "FINCA-NORTE", "Finca Norte", "Ruta 9, km 12", now, cancellationToken);

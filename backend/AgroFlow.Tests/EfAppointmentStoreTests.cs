@@ -84,7 +84,7 @@ public sealed class EfAppointmentStoreTests : IDisposable
         await using var db = CreateContext();
         Assert.Equal(1, await db.Ingenios.CountAsync());
         Assert.Equal(5, await db.Transportistas.CountAsync());
-        Assert.Equal(5, await db.Camiones.CountAsync());
+        Assert.Equal(5 + AppointmentsSeeder.FreeDemoTruckCount, await db.Camiones.CountAsync());
         Assert.Equal(2, await db.Fincas.CountAsync());
         Assert.Equal(5, await db.Asociaciones.CountAsync());
         var windowCountAfterTwoRuns = await db.Ventanas.CountAsync();

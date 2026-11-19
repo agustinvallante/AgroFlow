@@ -253,7 +253,7 @@ public sealed class LocalDemoDatabaseTests : IDisposable
         await using var verify = new AgroFlowDbContext(options);
         Assert.Equal(1, await verify.Turnos.CountAsync());
         Assert.Equal(1, await verify.Ingenios.CountAsync());
-        Assert.Equal(5, await verify.Camiones.CountAsync());
+        Assert.Equal(5 + AppointmentsSeeder.FreeDemoTruckCount, await verify.Camiones.CountAsync());
         Assert.Equal(2, await verify.Fincas.CountAsync());
         Assert.Equal(5, await verify.Asociaciones.CountAsync());
         Assert.Equal(originalWindows.Order(), (await verify.Ventanas.Select(v => v.Id).ToArrayAsync()).Order());
