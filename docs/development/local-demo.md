@@ -157,8 +157,9 @@ con `AGROFLOW_DASHBOARD_KEY`, sin prefijo `VITE_`.
    y sin turno activo.
 3. Verificá que la patente aparezca en la fila y desaparezca
    **sin camión asociado · no puede solicitar turnos**. La API lo refleja en
-   `GET /api/v1/drivers/{id}` con `canRequestAppointments: true` y la patente
-   en `activeTruckPlates`.
+   `GET /api/v1/drivers/{id}`, que requiere el encabezado
+   `X-AgroFlow-Dashboard-Key`. La respuesta incluye
+   `canRequestAppointments: true` y la patente en `activeTruckPlates`.
 
 Si no aparece el rango de invitados, verificá que estés ejecutando una
 versión que incluya [#130](https://github.com/agustinvallante/AgroFlow/pull/130),

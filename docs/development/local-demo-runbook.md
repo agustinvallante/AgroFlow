@@ -180,8 +180,6 @@ Prueba automatizada equivalente, con base y claves temporales (no toca la base d
 
 ### Chat largo: verificar paginación
 
-### Chat largo: verificar paginación
-
 Como parte del ensayo, abrir una conversación ficticia con más de 50 mensajes.
 La segunda petición de historial debe reutilizar nextCursor y responder 200,
 sin `Cursor inválido`. Seguir la [guía de paginación y regresión de #122](conversation-pagination.md).
@@ -243,9 +241,10 @@ esas condiciones. Podés comprobar los turnos activos de cualquier fecha con
    en formato E.164. Pulsá **Guardar transportista**.
 2. En su fila, elegí **Asociar camión**, seleccioná la patente libre y confirmá
    con **Asociar**. Verificá que aparezca la patente y desaparezca el aviso
-   de que no puede solicitar turnos. Si hay dudas, el detalle del
-   transportista en la API debe mostrar `canRequestAppointments: true`
-   y la patente en `activeTruckPlates`.
+   de que no puede solicitar turnos. Para contrastarlo en un cliente local,
+   consultá `GET /api/v1/drivers/{id}` con el encabezado
+   `X-AgroFlow-Dashboard-Key`. La respuesta debe mostrar
+   `canRequestAppointments: true` y la patente en `activeTruckPlates`.
 3. Pedile que abra un chat privado con el número del bot y envíe un texto
    nuevo, por ejemplo «¿Tengo algún turno activo?». En **Chatbot WhatsApp →
    Actualizar**, verificá que la conversación reciente aparezca con el alias
