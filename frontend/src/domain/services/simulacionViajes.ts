@@ -4,7 +4,7 @@
  * funciones puras; la fuente de los datos (la cola de turnos y la carga de la demo) queda afuera.
  */
 
-import type { EstadoTurno } from "../entities/Turno";
+import type { EstadoTurno, IncidenteEnRuta } from "../entities/Turno";
 
 /**
  * Rangos admitidos para un viaje. Fuera de ellos las horas dejan de ser
@@ -95,6 +95,8 @@ export interface TurnoDelViaje {
   transportista: string;
   /** Estado que informa la API; el del mapa es una estimación a partir de él. */
   estado: EstadoTurno;
+  /** Problema en ruta abierto que informa la API. */
+  incidente?: IncidenteEnRuta;
 }
 
 /** La ruta real es más larga que la línea recta entre finca e ingenio. Supuesto a calibrar. */

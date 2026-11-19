@@ -1127,6 +1127,14 @@ button.toggle:focus-visible {
   border-left: 3px solid var(--alerta);
   background: rgba(0, 0, 0, 0.03);
 }
+/* Problema en ruta informado por el transportista: aviso, no cambia el estado del turno. */
+.incidente-turno {
+  margin-top: 4px;
+  padding-left: 6px;
+  border-left: 3px solid var(--alerta);
+  font-size: 11.5px;
+  color: var(--alerta);
+}
 .aviso-filtro ul {
   margin: 6px 0 0 18px;
   padding: 0;
@@ -1467,7 +1475,8 @@ table.datos-desactualizados tbody {
 .mapa-detalle .mapa-estado.en-ruta {
   color: var(--ok);
 }
-.mapa-detalle .mapa-estado.demora {
+.mapa-detalle .mapa-estado.demora,
+.mapa-detalle .mapa-problema {
   color: var(--alerta);
 }
 .mapa-detalle p,

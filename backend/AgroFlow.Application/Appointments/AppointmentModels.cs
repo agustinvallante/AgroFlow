@@ -39,11 +39,36 @@ public sealed record AppointmentTruckReference(Guid Id, string Plate);
 
 public sealed record AppointmentWindow(DateTimeOffset StartAt, DateTimeOffset EndAt);
 
+/// <summary>Tipos de incidente en ruta definidos por docs/contracts/openapi.yaml.</summary>
+public enum RouteIncidentType
+{
+    Pinchazo,
+    FallaMecanica,
+    Accidente,
+    Otro
+}
+
+public sealed record ReportRouteIncidentCommand(
+    RouteIncidentType Type,
+    bool CanContinue,
+    int EstimatedDelayMinutes,
+    string? Description);
+
+/// <summary>Incidente abierto de un turno; ReportedAt lleva el desplazamiento del ingenio.</summary>
+public sealed record RouteIncident(
+    Guid Id,
+    RouteIncidentType Type,
+    bool CanContinue,
+    int EstimatedDelayMinutes,
+    string? Description,
+    DateTimeOffset ReportedAt);
+
 public sealed record AppointmentSummary(
     Guid Id,
     AppointmentTruckReference Truck,
     AppointmentWindow Window,
-    AppointmentStatus Status);
+    AppointmentStatus Status,
+    RouteIncident? OpenIncident = null);
 
 public sealed record AppointmentSnapshot(
     Guid Id,
@@ -54,4 +79,5 @@ public sealed record AppointmentSnapshot(
     double EstimatedLoadTons,
     AppointmentWindow Window,
     AppointmentStatus Status,
-    DateTimeOffset CreatedAt);
+    DateTimeOffset CreatedAt,
+    RouteIncident? OpenIncident = null);

@@ -121,10 +121,15 @@ function useFincasApi() {
   return { fincas, error, reintentar: useCallback(() => setIntento((i) => i + 1), []) };
 }
 
-/** Turnos activos de la cola. Ante una falla se conserva la última lectura. */
-function useTurnosActivos() {
+/**
+ * Turnos activos de la cola. Ante una falla se conserva la última lectura.
+ * También registra la hora del mapa (`relojMapa`) en que llega cada incidente nuevo: con x10 o x60 el reloj del
+ * mapa va adelantado, y la hora real del reporte haría retroceder al camión.
+ */
+function useTurnosActivos(relojMapa: () => number) {
   const [turnos, setTurnos] = useState<Turno[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [detenidos, setDetenidos] = useState<Record<string, number>>({});
 
   useEffect(() => {
     let vigente = true;
@@ -135,6 +140,11 @@ function useTurnosActivos() {
           if (!vigente) return;
           setTurnos(t);
           setError(null);
+          const ahora = relojMapa();
+          setDetenidos((d) => {
+            const nuevos = t.flatMap((turno) => (turno.incidente && !(turno.incidente.id in d) ? [turno.incidente.id] : []));
+            return nuevos.length > 0 ? { ...d, ...Object.fromEntries(nuevos.map((id) => [id, ahora])) } : d;
+          });
         })
         .catch((e: unknown) => {
           if (vigente) setError(e instanceof Error && e.message ? e.message : "No se pudo leer la cola de turnos.");
@@ -145,9 +155,9 @@ function useTurnosActivos() {
       vigente = false;
       clearInterval(id);
     };
-  }, []);
+  }, [relojMapa]);
 
-  return { turnos, error };
+  return { turnos, error, detenidos };
 }
 
 export function useMapaSimulado() {
@@ -157,10 +167,10 @@ export function useMapaSimulado() {
   const [ahoraMs, setAhoraMs] = useState(() => Date.now() + adelantoInicial);
   const [multiplicador, setMultiplicador] = useState<Multiplicador>(1);
   const fincasApi = useFincasApi();
-  const cola = useTurnosActivos();
   // El intervalo y los guardados leen el último valor sin volver a suscribirse.
   const escenarioRef = useRef(escenario);
   const adelantoRef = useRef(adelantoInicial);
+  const cola = useTurnosActivos(useCallback(() => Date.now() + adelantoRef.current, []));
 
   const guardar = useCallback(
     () => guardarDatos({ ...escenarioRef.current, adelantoMs: adelantoRef.current }),
@@ -225,7 +235,9 @@ export function useMapaSimulado() {
   // Viajes de la cola de turnos: los agrega el mapa solo, sin intervención del operador.
   const deTurnos: ViajeCalculado[] = cola.turnos.flatMap((turno) => {
     const finca = fincaDelTurno(turno, fincas);
-    const viaje = finca ? calcularViajeDeTurno(turno, finca, ingenio, ahoraMs) : null;
+    if (!finca) return [];
+    const detenidoEnMs = turno.incidente ? (cola.detenidos[turno.incidente.id] ?? ahoraMs) : undefined;
+    const viaje = calcularViajeDeTurno(turno, finca, ingenio, ahoraMs, detenidoEnMs);
     return viaje ? [viaje] : [];
   });
   // Un viaje de la demo de una finca que la API ya no publica no se muestra, pero se conserva por si vuelve.

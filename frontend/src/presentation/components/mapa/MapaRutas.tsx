@@ -3,6 +3,7 @@ import type { FincaMapa, ViajeCalculado } from "../../../domain/services/simulac
 import type { IngenioMapa } from "../../hooks/useMapaSimulado";
 import { FondoMapa } from "./FondoMapa";
 import { ESTADO_LABEL, hora, km, minutos } from "./formatoMapa";
+import { textoIncidenteCorto } from "../common/incidentes";
 import {
   cajaDeEtiqueta,
   construirRedVial,
@@ -65,14 +66,18 @@ interface DetalleCamionProps {
 function DetalleCamion({ viaje: v, ahoraMs, ancla, onCerrar }: DetalleCamionProps) {
   const { estado, progreso } = v.situacion;
   const restanteKm = estado === "en-playa" ? 0 : v.distanciaKm * (1 - progreso);
+  const incidente = v.turno?.incidente;
   const llegada =
     estado === "en-playa"
       ? `${hora(v.llegadaMs)} (llegó)`
-      : estado === "demora"
+      : incidente
+        ? `${hora(v.llegadaEstimadaMs)} (demora est. ${incidente.demoraEstimadaMin} min)`
+        : estado === "demora"
         ? `${hora(v.llegadaEstimadaMs)} (+${minutos(ahoraMs - v.llegadaEstimadaMs)} min)`
         : `${hora(v.llegadaEstimadaMs)} (en ${minutos(v.llegadaEstimadaMs - ahoraMs)} min)`;
   const filas: [string, string][] = [
     ["Estado", ESTADO_LABEL[estado]],
+    ...(incidente && estado !== "en-playa" ? ([["Problema", textoIncidenteCorto(incidente)]] as [string, string][]) : []),
     // Los viajes de la demo no tienen transportista.
     ...(v.turno ? ([["Transportista", v.turno.transportista]] as [string, string][]) : []),
     ["Sale de", v.finca.nombre],
@@ -109,7 +114,9 @@ function DetalleCamion({ viaje: v, ahoraMs, ancla, onCerrar }: DetalleCamionProp
         {filas.map(([dato, valor]) => (
           <div key={dato}>
             <dt>{dato}</dt>
-            <dd className={dato === "Estado" ? `mapa-estado ${estado}` : undefined}>{valor}</dd>
+            <dd className={dato === "Estado" ? `mapa-estado ${estado}` : dato === "Problema" ? "mapa-problema" : undefined}>
+              {valor}
+            </dd>
           </div>
         ))}
       </dl>

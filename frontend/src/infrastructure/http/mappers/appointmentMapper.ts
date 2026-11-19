@@ -1,9 +1,18 @@
-import type { EstadoTurno, FiltrosTurno, NuevoTurnoManual, Turno } from "../../../domain/entities/Turno";
+import type {
+  EstadoTurno,
+  FiltrosTurno,
+  IncidenteEnRuta,
+  NuevoTurnoManual,
+  TipoIncidente,
+  Turno,
+} from "../../../domain/entities/Turno";
 import type {
   AppointmentDto,
   AppointmentStatusDto,
   AppointmentSummaryDto,
   CreateAppointmentRequestDto,
+  IncidentTypeDto,
+  OpenIncidentDto,
 } from "../dto/AppointmentDto";
 import { horaDeRfc3339 } from "../../../shared/utils/date";
 
@@ -22,6 +31,25 @@ const ESTADO_INVERSO: Partial<Record<EstadoTurno, AppointmentStatusDto>> = Objec
   Object.entries(ESTADO_MAP).map(([api, dominio]) => [dominio, api])
 );
 
+const TIPO_INCIDENTE_MAP: Record<IncidentTypeDto, TipoIncidente> = {
+  PINCHAZO: "pinchazo",
+  FALLA_MECANICA: "falla-mecanica",
+  ACCIDENTE: "accidente",
+  OTRO: "otro",
+};
+
+/** Sin incidente abierto devuelve undefined. Un tipo que este frontend no conoce se muestra como "otro". */
+function mapOpenIncident(dto: OpenIncidentDto | null | undefined): IncidenteEnRuta | undefined {
+  if (!dto) return undefined;
+  return {
+    id: dto.id,
+    tipo: TIPO_INCIDENTE_MAP[dto.type] ?? "otro",
+    puedeSeguir: dto.canContinue,
+    demoraEstimadaMin: dto.estimatedDelayMinutes,
+    detalle: dto.description ?? null,
+    reportadoEn: dto.reportedAt,
+  };
+}
 
 /** Estado del dominio → valor del contrato, o undefined si la API no lo tiene. */
 export function toAppointmentStatus(estado: EstadoTurno): AppointmentStatusDto | undefined {
@@ -29,6 +57,7 @@ export function toAppointmentStatus(estado: EstadoTurno): AppointmentStatusDto |
 }
 
 export function mapAppointment(dto: AppointmentDto): Turno {
+  const incidente = mapOpenIncident(dto.openIncident);
   return {
     id: dto.id,
     ventana: { inicio: dto.window.startAt, fin: dto.window.endAt },
@@ -45,16 +74,25 @@ export function mapAppointment(dto: AppointmentDto): Turno {
     corteEn: dto.cutAt,
     cargaTon: dto.estimatedLoadTons,
     creadoEn: dto.createdAt,
+    ...(incidente ? { incidente } : {}),
   };
 }
 
 /**
  * El listado trae solo id, camión, ventana y estado. El resto sale del
  * detalle (que no cambia salvo ventana y estado), así que ventana y estado
- * del resumen, que es la lectura más reciente, pisan los del detalle.
+ * del resumen, que es la lectura más reciente, pisan los del detalle. El
+ * incidente abierto también, si el resumen lo informa: así un incidente resuelto
+ * desaparece en la siguiente lectura aunque el detalle cacheado lo tuviera.
  */
 export function combinarResumenYDetalle(resumen: AppointmentSummaryDto, detalle: AppointmentDto): Turno {
-  return mapAppointment({ ...detalle, truck: resumen.truck, window: resumen.window, status: resumen.status });
+  return mapAppointment({
+    ...detalle,
+    truck: resumen.truck,
+    window: resumen.window,
+    status: resumen.status,
+    openIncident: resumen.openIncident !== undefined ? resumen.openIncident : detalle.openIncident,
+  });
 }
 
 export function toCreateAppointmentRequest(datos: NuevoTurnoManual): CreateAppointmentRequestDto {

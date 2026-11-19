@@ -31,6 +31,9 @@ internal static class AppointmentProblems
             AppointmentErrorCodes.ActiveAppointmentExists => "El camión ya posee un turno activo",
             AppointmentErrorCodes.NoCapacity => "No hay capacidad disponible",
             AppointmentErrorCodes.InvalidTransition => "Transición inválida",
+            AppointmentErrorCodes.IncidentNotAllowed => "El turno no está en camino",
+            AppointmentErrorCodes.OpenIncidentExists => "El turno ya tiene un incidente abierto",
+            AppointmentErrorCodes.NoOpenIncident => "El turno no tiene un incidente abierto",
             "UNAUTHENTICATED" => "No autenticado",
             "FORBIDDEN" => "Acceso denegado",
             _ => "Error interno"

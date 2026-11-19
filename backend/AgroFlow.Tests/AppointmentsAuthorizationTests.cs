@@ -58,8 +58,15 @@ public sealed class AppointmentsAuthorizationTests
         using var transition = await app.Client.PostAsync(
             $"/api/v1/appointments/{id}/transitions", new StringContent("{}"));
 
+        using var incident = await app.Client.PostAsync(
+            $"/api/v1/appointments/{id}/incidents", new StringContent("{}"));
+        using var resolution = await app.Client.PostAsync(
+            $"/api/v1/appointments/{id}/incidents/resolution", new StringContent("{}"));
+
         Assert.Equal(HttpStatusCode.MethodNotAllowed, create.StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, transition.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, incident.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, resolution.StatusCode);
     }
 
     private static string CreateToken()
@@ -149,6 +156,12 @@ public sealed class AppointmentsAuthorizationTests
             throw new NotSupportedException();
 
         public Task<AppointmentSnapshot> TransitionAsync(Guid id, AppointmentStatus newStatus, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<AppointmentSnapshot> ReportIncidentAsync(Guid id, ReportRouteIncidentCommand command, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<AppointmentSnapshot> ResolveIncidentAsync(Guid id, CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
     }
 }

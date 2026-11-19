@@ -8,6 +8,7 @@ import {
 } from "../components/mapa/FormulariosMapa";
 import { MapaRutas } from "../components/mapa/MapaRutas";
 import { ESTADO_LABEL, hora, minutos } from "../components/mapa/formatoMapa";
+import { TIPO_INCIDENTE_LABEL } from "../components/common/incidentes";
 import { MULTIPLICADORES, useMapaSimulado } from "../hooks/useMapaSimulado";
 
 /** Orden de la cola: primero lo que está por llegar. */
@@ -19,9 +20,12 @@ const ORDEN_ESTADO: Record<EstadoViaje, number> = {
 };
 
 function detalleTiempo(
-  { situacion, llegadaEstimadaMs, llegadaMs, viaje }: ViajeCalculado,
+  { situacion, llegadaEstimadaMs, llegadaMs, viaje, turno }: ViajeCalculado,
   ahoraMs: number,
 ): string {
+  // Problema en ruta informado por el transportista: se muestra su demora estimada.
+  if (turno?.incidente && situacion.estado === "demora")
+    return `${TIPO_INCIDENTE_LABEL[turno.incidente.tipo]} · demora est. ${turno.incidente.demoraEstimadaMin} min`;
   switch (situacion.estado) {
     case "programado":
       return `Sale ${hora(viaje.salidaMs)}`;

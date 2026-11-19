@@ -8,6 +8,23 @@ export type EstadoTurno =
   | "completado"
   | "cancelado";
 
+/** Espejo de IncidentType de openapi.yaml (ver appointmentMapper). */
+export type TipoIncidente = "pinchazo" | "falla-mecanica" | "accidente" | "otro";
+
+/**
+ * Problema que el transportista informó durante el viaje (pinchazo, falla,
+ * accidente). Es información para el operador: no cambia el estado ni la
+ * ventana del turno.
+ */
+export interface IncidenteEnRuta {
+  id: string;
+  tipo: TipoIncidente;
+  puedeSeguir: boolean;
+  demoraEstimadaMin: number;
+  detalle: string | null;
+  reportadoEn: string; // RFC 3339
+}
+
 /**
  * Entidad de dominio: representa un turno de ingreso al ingenio
  * asignado a un camión/transportista. No conoce nada de la UI
@@ -31,6 +48,8 @@ export interface Turno {
   corteEn?: string; // ISO 8601
   cargaTon?: number;
   creadoEn?: string; // ISO 8601
+  /** Incidente abierto que informa la API; ausente si no hay ninguno. */
+  incidente?: IncidenteEnRuta;
 }
 
 /**

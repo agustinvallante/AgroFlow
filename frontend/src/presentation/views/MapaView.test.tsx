@@ -11,6 +11,7 @@ vi.mock("../../composition/container", () => ({
 }));
 
 import { MapaView } from "./MapaView";
+import { INTERVALO_TURNOS_MS } from "../hooks/useMapaSimulado";
 
 /** El catálogo que publica la API en LocalDemo. */
 const FINCAS = [
@@ -108,6 +109,94 @@ describe("MapaView", () => {
     expect(screen.getByText("Juan Pérez")).toBeTruthy();
     avanzar(15_000);
     expect(contador(/Llegaron (\d+)/)).toBe("1");
+  });
+
+  it("un turno con problema en ruta figura con demora y su detalle lo explica hasta que se resuelve", async () => {
+    const enViaje = {
+      id: "t1",
+      ventana: { inicio: "2026-11-08T16:30:00Z", fin: "2026-11-08T17:00:00Z" },
+      hora: "13:30",
+      offsetMin: 90,
+      patente: "AF123BC",
+      chofer: "Juan Pérez",
+      finca: "Finca Sur",
+      horasDesdeCorte: 1,
+      estado: "viaje",
+    };
+    const incidente = {
+      id: "i1",
+      tipo: "pinchazo",
+      puedeSeguir: true,
+      demoraEstimadaMin: 30,
+      detalle: null,
+      reportadoEn: "2026-11-08T14:59:00Z",
+    };
+    mocks.turnos.mockResolvedValueOnce([{ ...enViaje, incidente }]).mockResolvedValue([enViaje]);
+    await montar();
+
+    expect(contador(/Demora (\d+)/)).toBe("1");
+    clic("Ver camión AF123BC");
+    const detalle = within(screen.getByRole("dialog", { name: "Detalle del camión AF123BC" }));
+    expect(detalle.getByText("Problema")).toBeTruthy();
+    expect(detalle.getByText("Pinchazo · puede seguir · demora est. 30 min")).toBeTruthy();
+
+    // Resuelto: en la siguiente lectura vuelve a la normalidad.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(INTERVALO_TURNOS_MS);
+    });
+    expect(contador(/Demora (\d+)/)).toBe("0");
+    expect(screen.queryByText("Pinchazo · puede seguir · demora est. 30 min")).toBeNull();
+  });
+
+  it("a x60 el camión con un problema en ruta se detiene donde estaba, sin volver atrás", async () => {
+    const enViaje = {
+      id: "t1",
+      ventana: { inicio: "2026-11-08T16:30:00Z", fin: "2026-11-08T17:00:00Z" },
+      hora: "13:30",
+      offsetMin: 90,
+      patente: "AF123BC",
+      chofer: "Juan Pérez",
+      finca: "Finca Sur",
+      horasDesdeCorte: 1,
+      estado: "viaje",
+    };
+    // La API registra el reporte con la hora real, que va atrasada respecto del mapa acelerado.
+    const incidente = {
+      id: "i1",
+      tipo: "pinchazo",
+      puedeSeguir: true,
+      demoraEstimadaMin: 30,
+      detalle: null,
+      reportadoEn: "2026-11-08T15:01:00Z",
+    };
+    let conIncidente = false;
+    mocks.turnos.mockImplementation(async () => [conIncidente ? { ...enViaje, incidente } : enViaje]);
+    await montar();
+
+    // Kilómetros que le faltan según el detalle del camión.
+    const restanteKm = () => {
+      const fila = within(screen.getByRole("dialog", { name: "Detalle del camión AF123BC" })).getByText("Restante");
+      return Number(fila.nextElementSibling?.textContent?.replace(" km", "").replace(",", "."));
+    };
+
+    clic("x60");
+    avanzar(75_000);
+    expect(contador(/En ruta (\d+)/)).toBe("1");
+    clic("Ver camión AF123BC");
+    const antes = restanteKm();
+    expect(antes).toBeGreaterThan(0);
+
+    conIncidente = true;
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(INTERVALO_TURNOS_MS);
+    });
+    expect(contador(/Demora (\d+)/)).toBe("1");
+    const detenido = restanteKm();
+    expect(detenido).toBeLessThanOrEqual(antes);
+
+    // Sigue quieto mientras el problema está abierto.
+    avanzar(30_000);
+    expect(restanteKm()).toBe(detenido);
   });
 
   it("muestra el viaje cargado en el mapa y la cola", async () => {
