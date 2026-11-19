@@ -2,7 +2,9 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-libra
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Transportista } from "../../domain/entities/Transportista";
 
-const mocks = vi.hoisted(() => ({ obtener: vi.fn(), editar: vi.fn(), flota: vi.fn(), asociar: vi.fn(), desasociar: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  obtener: vi.fn(), editar: vi.fn(), cambiarEstado: vi.fn(), flota: vi.fn(), asociar: vi.fn(), desasociar: vi.fn(),
+}));
 
 vi.mock("../../composition/container", () => ({
   container: {
@@ -11,7 +13,7 @@ vi.mock("../../composition/container", () => ({
       obtenerTransportistas: { execute: mocks.obtener },
       crearTransportista: { execute: vi.fn() },
       editarTransportista: { execute: mocks.editar },
-      cambiarEstadoActivoTransportista: { execute: vi.fn() },
+      cambiarEstadoActivoTransportista: { execute: mocks.cambiarEstado },
     },
     asociaciones: {
       obtenerFlotaAsociada: { execute: mocks.flota },
@@ -42,6 +44,7 @@ const flotaInicial = {
 describe("TransportistasView", () => {
   beforeEach(() => {
     mocks.obtener.mockReset();
+    mocks.cambiarEstado.mockReset();
     mocks.asociar.mockReset();
     mocks.desasociar.mockReset();
     mocks.flota.mockReset().mockResolvedValue(flotaInicial);
@@ -73,13 +76,35 @@ describe("TransportistasView", () => {
     expect(screen.queryByText("Editar transportista")).toBeNull();
   });
 
-  it("no ofrece reactivar: la API solo publica la inhabilitación", async () => {
-    mocks.obtener.mockResolvedValue([{ ...activo, activo: false, puedeSolicitarTurnos: false }]);
+  it("reactiva el registro inactivo y espera el estado persistido antes de mostrar Dar de baja", async () => {
+    const inactivo = { ...activo, activo: false, puedeSolicitarTurnos: false };
+    mocks.obtener.mockResolvedValueOnce([inactivo]);
+    let completarReactivacion!: (valor: Transportista) => void;
+    mocks.cambiarEstado.mockReturnValue(new Promise<Transportista>((resolve) => { completarReactivacion = resolve; }));
 
     render(<TransportistasView />);
 
-    await screen.findByText("Transportista Sintético");
-    expect(screen.queryByRole("button", { name: /Dar de baja|Reactivar/ })).toBeNull();
+    const boton = await screen.findByRole<HTMLButtonElement>("button", { name: "Reactivar" });
+    expect(screen.queryByRole("button", { name: /Editar|Dar de baja/ })).toBeNull();
+    fireEvent.click(boton);
+    expect(mocks.cambiarEstado).toHaveBeenCalledWith("d1", true);
+    expect(boton.disabled).toBe(true);
+    expect(screen.getByText("inhabilitado")).toBeTruthy();
+
+    await act(async () => completarReactivacion(activo));
+    expect(screen.getByRole("button", { name: "Dar de baja" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Reactivar" })).toBeNull();
+  });
+
+  it("mantiene disponible Reactivar si la solicitud falla", async () => {
+    mocks.obtener.mockResolvedValue([{ ...activo, activo: false, puedeSolicitarTurnos: false }]);
+    mocks.cambiarEstado.mockRejectedValue(new Error("No se pudo reactivar."));
+
+    render(<TransportistasView />);
+    fireEvent.click(await screen.findByRole("button", { name: "Reactivar" }));
+
+    expect(await screen.findByText("No se pudo reactivar.")).toBeTruthy();
+    expect(screen.getByRole<HTMLButtonElement>("button", { name: "Reactivar" }).disabled).toBe(false);
     expect(screen.getByText("inhabilitado")).toBeTruthy();
   });
 

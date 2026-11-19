@@ -62,10 +62,15 @@ dotnet run --launch-profile http --urls http://localhost:5000
   | Transportista 3 (`demo-tres`) | `+5493815550121` → camión `AH301AB` |
   | Transportista 4 (`demo-cuatro`) | `+5493815550122` → camión `AH302AB` |
   | Transportista 5 (`demo-cinco`) | `+5493815550123` → camión `AH303AB` |
+  | Camiones para invitados | `AP001AA` a `AP040AA`, flota `TERCEROS`, habilitados y sin asociación al sembrarlos |
   | Fincas | `FINCA-NORTE`, `FINCA-SUR` |
   | Ventanas | 30 minutos, cupo **2** camiones, de 08:00 a 18:00 hora local, para hoy y mañana |
 
   Las cinco asociaciones están activas: los cinco transportistas pueden solicitar turnos. Una base existente con dos transportistas incorpora las tres posiciones nuevas al arrancar, sin perder datos.
+
+  Al reiniciar la API con la misma SQLite se incorporan los camiones para
+  invitados. Sus asociaciones posteriores se conservan. Seguí el
+  [recorrido para reutilizar una patente](#reutilizar-el-camión-de-un-invitado).
 
 - **Precarga privada del equipo**: si existe `config/local-demo/transportistas.private.json` (ignorado por Git), al arrancar asigna a cada posición el nombre y el WhatsApp autorizado de un integrante. Conserva el DNI, el camión y la asociación de cada posición. Ver la [guía de la precarga](../../config/local-demo/README.md).
 
@@ -193,6 +198,29 @@ ofrece **Actualizar** después de cargar. Una falla posterior conserva los datos
 válidos con un aviso, en lugar de mostrarlos como una respuesta vacía.
 El [ensayo de recuperación de #113](dashboard-read-recovery.md) describe cómo
 comprobarlo sin borrar la base de la demo.
+
+## Reactivar un transportista en LocalDemo
+
+En **Transportistas**, elegí **Todos** o **Inactivos** y pulsá **Reactivar**
+en la fila correspondiente. El dashboard consulta el registro actualizado.
+Si estabas filtrando sólo inactivos, cambiá a **Todos** o **Activos** para
+volver a verlo. Se conserva el mismo registro. Para solicitar un turno,
+el transportista debe tener una asociación vigente a un camión activo.
+Si le falta, usá **Asociar camión** con una patente libre.
+
+La baja conserva el registro, su WhatsApp y las referencias históricas.
+Para el voluntario de la presentación, prepará una SQLite dedicada en una
+carpeta privada, usando el procedimiento de [base temporal de ensayo](#base-temporal-de-ensayo).
+Una vez terminado el ensayo y con la API detenida, descartá esa base de
+presentación, incluidos sus auxiliares y cualquier copia que se haya creado.
+Identificá la ruta antes de descartarla para preservar la base del equipo.
+
+El número también puede figurar en la dirección de la conversación, mensajes,
+ejecuciones fallidas de n8n o datos de Evolution. Revisá esas copias por
+separado. El nombre del proyecto Compose por sí solo no aísla los volúmenes,
+porque la configuración trae nombres explícitos. Si hace falta conservar
+la base compartida y retirar sólo los datos de una persona, el procedimiento
+de purga sigue pendiente en [OD-009](../planning/open-decisions.md).
 
 ## Smoke test del contrato
 
@@ -323,6 +351,21 @@ Comprobar:
 3. Consultarlo y comprobar que permanece como `CANCELADO`.
 4. Crear un turno que pueda usar el cupo liberado.
 5. Comprobar que una cancelación desde `INGRESADO`, `EN_DESCARGA`, `FINALIZADO` o `CANCELADO` responde `409`.
+
+### Reutilizar el camión de un invitado
+
+Desde **Transportistas → Asociar camión**, elegí una patente del rango
+`AP001AA`–`AP040AA` que esté libre de asociación y de turno activo.
+
+1. Al terminar la prueba, abrí el turno del invitado en **Cola de turnos**.
+   Seleccioná la fecha asignada por la API si el turno quedó para otro día.
+2. Si está `ASIGNADO`, `EN_CAMINO` o `EN_ESPERA`, cancelalo. Si está
+   `INGRESADO` o `EN_DESCARGA`, avanzá por los estados hasta `FINALIZADO`.
+   Verificá que el turno quede `CANCELADO` o `FINALIZADO`.
+3. Desde **Transportistas**, pulsá **Desasociar** junto a la patente y
+   verificá que vuelva a aparecer al elegir un camión para el siguiente
+   invitado. Desasociar sólo cambia el vínculo. Mientras quede un turno
+   activo con esa patente, una nueva reserva devuelve `409 ACTIVE_APPOINTMENT_EXISTS`.
 
 ## Guion de presentación reproducible: dos actores, persistencia y respaldo (#111)
 

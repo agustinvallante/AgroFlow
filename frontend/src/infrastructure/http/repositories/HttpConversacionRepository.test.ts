@@ -115,19 +115,23 @@ describe("repositorios HTTP del dashboard", () => {
     expect((error as ApiError).message).toBe("Ya existe un transportista con ese WhatsApp.");
   });
 
-  it("inhabilita a un transportista activo y no simula una reactivación inexistente", async () => {
+  it.each([
+    { activo: false, ruta: "inactivation", resultado: "inactivated" },
+    { activo: true, ruta: "reactivation", resultado: "reactivated" },
+  ])("envía el estado explícito a $ruta y relee el registro persistido", async ({ activo, ruta, resultado }) => {
     fetchMock
-      .mockResolvedValueOnce(respuesta(200, driver))
-      .mockResolvedValueOnce(respuesta(200, { resourceId: "d1", resourceType: "driver", outcome: "inactivated" }))
-      .mockResolvedValueOnce(respuesta(200, { ...driver, isActive: false }));
+      .mockResolvedValueOnce(respuesta(200, { resourceId: "d1", resourceType: "driver", outcome: resultado }))
+      .mockResolvedValueOnce(respuesta(200, { ...driver, isActive: activo }));
     const repo = new HttpTransportistaRepository("", () => "clave-2");
 
-    const inactivo = await repo.cambiarEstadoActivo("d1");
-    expect(inactivo.activo).toBe(false);
-    expect(fetchMock.mock.calls[1][0]).toBe("/api/v1/drivers/d1/inactivation");
-
-    fetchMock.mockResolvedValueOnce(respuesta(200, { ...driver, isActive: false }));
-    await expect(repo.cambiarEstadoActivo("d1")).rejects.toThrow(/reactivación/);
-    expect(fetchMock).toHaveBeenCalledTimes(4);
+    const actualizado = await repo.cambiarEstadoActivo("d1", activo);
+    expect(actualizado.activo).toBe(activo);
+    expect(fetchMock).toHaveBeenNthCalledWith(1, `/api/v1/drivers/d1/${ruta}`, expect.objectContaining({
+      method: "POST",
+      headers: expect.objectContaining({ "Idempotency-Key": "clave-2" }),
+    }));
+    expect(fetchMock).toHaveBeenNthCalledWith(2, expect.stringMatching(/\/api\/v1\/drivers\/d1$/), expect.objectContaining({
+      method: "GET",
+    }));
   });
 });

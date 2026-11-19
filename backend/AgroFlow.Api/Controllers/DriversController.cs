@@ -116,20 +116,28 @@ public sealed class DriversController : StrictJsonControllerBase
     }
 
     [HttpPost("{id}/inactivation")]
-    public async Task<IActionResult> Inactivate(string id, CancellationToken cancellationToken)
+    public Task<IActionResult> Inactivate(string id, CancellationToken cancellationToken) =>
+        SetActive(id, false, cancellationToken);
+
+    [HttpPost("{id}/reactivation")]
+    public Task<IActionResult> Reactivate(string id, CancellationToken cancellationToken) =>
+        SetActive(id, true, cancellationToken);
+
+    private async Task<IActionResult> SetActive(string id, bool active, CancellationToken cancellationToken)
     {
         if (!Guid.TryParse(id, out var driverId))
         {
             return ValidationProblemFor("id", "Debe ser un UUID válido.");
         }
 
-        if (IdempotencyKey() is null)
+        var key = IdempotencyKey();
+        if (key is null)
         {
             return MissingIdempotencyKey();
         }
 
         return await ExecuteAsync(async () =>
-            Ok(ToResponse(await _service.SetDriverActive(driverId, false, IdempotencyKey()!, cancellationToken))));
+            Ok(ToResponse(await _service.SetDriverActive(driverId, active, key, cancellationToken))));
     }
 
     protected override string TitleFor(string code) => code switch

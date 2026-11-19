@@ -761,6 +761,39 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
+  /api/v1/drivers/{id}/reactivation:
+    parameters:
+      - $ref: '#/components/parameters/DriverId'
+    post:
+      tags: [Transportistas]
+      operationId: reactivarTransportista
+      security:
+        - DashboardKey: []
+      summary: Reactivar un transportista
+      description: >-
+        En LocalDemo vuelve a habilitar el mismo registro y conserva sus
+        referencias históricas. Un transportista reactivado sólo puede
+        solicitar turnos con una asociación vigente a un camión habilitado.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Transportista reactivado. El recibo indica reactivated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MutationReceipt'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/DriverNotFound'
+        '409':
+          $ref: '#/components/responses/DriverConflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
   /api/v1/farms:
     get:
       tags: [Fincas]
@@ -1827,7 +1860,7 @@ components:
           const: driver
         outcome:
           type: string
-          enum: [created, updated, inactivated]
+          enum: [created, updated, inactivated, reactivated]
 
     ProblemDetails:
       type: object
