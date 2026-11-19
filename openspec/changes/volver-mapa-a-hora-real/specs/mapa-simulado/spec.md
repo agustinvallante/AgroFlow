@@ -2,13 +2,19 @@
 
 ### Requirement: Reloj y aceleración de demostración
 
-El mapa SHALL avanzar con el tiempo real a x1 y SHALL ofrecer x10 y x60 para acortar el ensayo. SHALL identificar la velocidad seleccionada y el adelanto acumulado. El tiempo transcurrido con la pestaña cerrada o inactiva SHALL reflejarse al volver a mostrar el viaje. Mientras exista adelanto, el mapa SHALL ofrecer volver a la hora real. Al hacerlo SHALL quitar el adelanto, seleccionar x1, borrar los viajes de prueba y conservar el ingenio y ese estado en el navegador. Un camión con problema en ruta MUST NOT quedar detenido en una hora posterior a la hora real.
+El mapa SHALL avanzar con el tiempo real a x1 y SHALL ofrecer x10 y x60 para acortar el ensayo, y un botón que adelanta el reloj una hora de una vez. SHALL identificar la velocidad seleccionada y el adelanto acumulado. El tiempo transcurrido con la pestaña cerrada o inactiva SHALL reflejarse al volver a mostrar el viaje. Mientras exista adelanto, el mapa SHALL ofrecer volver a la hora real. Al hacerlo SHALL quitar el adelanto, seleccionar x1, borrar los viajes de prueba y conservar el ingenio y ese estado en el navegador. Un camión con problema en ruta MUST NOT quedar detenido en una hora posterior a la hora real.
 
 #### Scenario: Ensayo acelerado
 
 - **GIVEN** un viaje en curso con x60 seleccionado
 - **WHEN** transcurre un segundo de tiempo real
 - **THEN** su reloj simulado avanza sesenta segundos y muestra el adelanto acumulado
+
+#### Scenario: Adelanto de una hora
+
+- **GIVEN** el mapa con cualquier velocidad seleccionada
+- **WHEN** el operador adelanta una hora
+- **THEN** el reloj simulado suma sesenta minutos al adelanto acumulado y lo conserva al recargar
 
 #### Scenario: Vuelta a la hora real
 

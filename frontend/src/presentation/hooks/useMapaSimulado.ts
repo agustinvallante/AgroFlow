@@ -253,6 +253,19 @@ export function useMapaSimulado() {
     setEscenario((e) => ({ ...e, viajes: [] }));
   }, [limitarDetenidos]);
 
+  /** Salto de reloj para la demo: adelanta el mapa sin esperar, como x10 o x60 pero de una vez. */
+  const adelantar = useCallback(
+    (ms: number) => {
+      const extraMs = Math.min(ms, ADELANTO_MAXIMO_MS - adelantoRef.current);
+      if (extraMs <= 0) return;
+      adelantoRef.current += extraMs;
+      setAdelantoMs(adelantoRef.current);
+      setAhoraMs((previo) => previo + extraMs);
+      guardar();
+    },
+    [guardar],
+  );
+
   // Viajes de la cola de turnos: los agrega el mapa solo, sin intervención del operador.
   const deTurnos: ViajeCalculado[] = cola.turnos.flatMap((turno) => {
     const finca = fincaDelTurno(turno, fincas);
@@ -286,5 +299,6 @@ export function useMapaSimulado() {
     agregarViaje,
     quitarViaje,
     volverAHoraReal,
+    adelantar,
   };
 }
