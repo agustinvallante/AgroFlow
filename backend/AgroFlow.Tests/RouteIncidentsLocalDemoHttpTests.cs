@@ -295,7 +295,7 @@ public sealed class RouteIncidentsLocalDemoHttpTests : IDisposable
     }
 
     [Fact]
-    public async Task Existing_transition_and_list_keep_their_previous_shape_plus_a_null_open_incident()
+    public async Task Existing_transition_and_list_keep_their_previous_shape_plus_local_demo_fields()
     {
         using var factory = CreateFactory();
         using var client = factory.CreateClient();
@@ -308,7 +308,7 @@ public sealed class RouteIncidentsLocalDemoHttpTests : IDisposable
         var moved = await transition.Content.ReadFromJsonAsync<JsonElement>();
         Assert.Equal("EN_CAMINO", moved.GetProperty("status").GetString());
         Assert.Equal(
-            new[] { "id", "carrier", "truck", "farm", "cutAt", "estimatedLoadTons", "window", "status", "createdAt", "openIncident" },
+            new[] { "id", "carrier", "truck", "farm", "cutAt", "estimatedLoadTons", "window", "status", "createdAt", "openIncident", "departedAt", "stops" },
             moved.EnumerateObject().Select(property => property.Name));
         Assert.Equal(JsonValueKind.Null, moved.GetProperty("openIncident").ValueKind);
 
@@ -318,7 +318,7 @@ public sealed class RouteIncidentsLocalDemoHttpTests : IDisposable
 
         var summary = Assert.Single((await client.GetFromJsonAsync<JsonElement>("/api/v1/appointments?active=true")).EnumerateArray());
         Assert.Equal(
-            new[] { "id", "truck", "window", "status", "openIncident" },
+            new[] { "id", "truck", "window", "status", "openIncident", "departedAt", "stops" },
             summary.EnumerateObject().Select(property => property.Name));
         Assert.Equal("EN_CAMINO", summary.GetProperty("status").GetString());
         Assert.Equal(JsonValueKind.Null, summary.GetProperty("openIncident").ValueKind);

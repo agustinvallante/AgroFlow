@@ -62,6 +62,12 @@ public sealed class Turno : EntityBase
 
     public DateTimeOffset CreatedAt { get; private set; }
 
+    /// <summary>
+    /// UTC instant the appointment moved to EN_CAMINO. Null until it departs, and
+    /// for appointments that were already EN_CAMINO before the column existed.
+    /// </summary>
+    public DateTime? DepartedAtUtc { get; private set; }
+
     public void SetStatus(TurnoEstado status)
     {
         Status = status;

@@ -133,6 +133,7 @@ public sealed class AgroFlowDbContext : IdentityDbContext<AgroFlowUser>
         {
             eb.ToTable("Turnos");
             eb.Property(t => t.Status).HasConversion<string>().HasMaxLength(20).IsRequired();
+            eb.Property(t => t.DepartedAtUtc).HasConversion(NullableUtcConverter);
             // Único turno no terminal por camión: constraint real, no sólo en
             // memoria. IsActive se mantiene en falso apenas el estado es
             // terminal (ver Turno.SetStatus / EfAppointmentStore).

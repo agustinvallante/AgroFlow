@@ -73,6 +73,22 @@ public sealed class MvpAppointmentReadsHttpTests : IDisposable
     }
 
     [Fact]
+    public async Task Mvp_list_and_detail_keep_their_shape_without_local_demo_fields()
+    {
+        using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+        await LoginAsync(client, OperatorA);
+        string[] mvpFields = ["id", "carrier", "truck", "farm", "cutAt", "estimatedLoadTons", "window", "status", "createdAt"];
+
+        var page = await client.GetFromJsonAsync<JsonElement>($"{Route}?date={Day}");
+        Assert.Equal(["items", "page", "pageSize", "totalCount"], page.EnumerateObject().Select(p => p.Name));
+        var item = Assert.Single(page.GetProperty("items").EnumerateArray());
+        Assert.Equal(mvpFields, item.EnumerateObject().Select(p => p.Name));
+        var detail = await client.GetFromJsonAsync<JsonElement>($"{Route}/{item.GetProperty("id").GetGuid()}");
+        Assert.Equal(mvpFields, detail.EnumerateObject().Select(p => p.Name));
+    }
+
+    [Fact]
     public async Task List_applies_local_midnight_filters_stable_pagination_and_empty_pages()
     {
         using var factory = CreateFactory();
@@ -248,8 +264,7 @@ public sealed class MvpAppointmentReadsHttpTests : IDisposable
             var farm = await db.Fincas.FirstAsync();
             var oldTurn = new Turno(ingenio.Id, carrier.Id, truck.Id, farm.Id, window.Id, now.AddHours(-2), 12, now);
             oldTurn.SetStatus(TurnoEstado.Cancelado);
-            db.Turnos.Add(oldTurn);
-            await db.SaveChangesAsync();
+            await LegacyTurnoRows.InsertAsync(db, oldTurn);
             await db.Database.ExecuteSqlRawAsync("UPDATE Ventanas SET StartAtUtc = NULL");
             oldTurnId = oldTurn.Id;
             oldWindowId = window.Id;
@@ -297,8 +312,9 @@ public sealed class MvpAppointmentReadsHttpTests : IDisposable
                 (await db.Transportistas.FirstAsync()).Id, (await db.Camiones.FirstAsync()).Id,
                 (await db.Fincas.FirstAsync()).Id, window.Id, now.AddHours(-2), 12, now);
             oldTurn.SetStatus(TurnoEstado.Cancelado);
-            db.AddRange(window, oldTurn);
+            db.Add(window);
             await db.SaveChangesAsync();
+            await LegacyTurnoRows.InsertAsync(db, oldTurn);
             // El arranque debe rellenarlo mediante datetime(StartAt), no mediante el mapper EF.
             await db.Database.ExecuteSqlInterpolatedAsync(
                 $"UPDATE Ventanas SET StartAtUtc = NULL WHERE Id = {window.Id}");
