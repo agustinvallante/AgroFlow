@@ -140,6 +140,29 @@ describe("ColaTurnosView", () => {
     expect(screen.queryByText(/Datos desactualizados/)).toBeNull();
   });
 
+  it("muestra el problema en ruta en la fila del turno sin cambiar su estado, y lo quita al resolverse", async () => {
+    const enViaje: Turno = { ...turno, estado: "viaje" };
+    const incidente = {
+      id: "i1",
+      tipo: "pinchazo" as const,
+      puedeSeguir: false,
+      demoraEstimadaMin: 30,
+      detalle: "Rueda trasera",
+      reportadoEn: "2026-09-29T07:40:00-03:00",
+    };
+    mocks.obtenerTurnos.mockResolvedValueOnce([{ ...enViaje, incidente }]).mockResolvedValue([enViaje]);
+
+    render(<ColaTurnosView />);
+    await esperar();
+
+    const fila = screen.getByText("AF123BC").closest("tr")!;
+    expect(fila.textContent).toContain("Pinchazo · No puede seguir · Demora estimada 30 min");
+    expect(fila.textContent).toContain("En camino");
+
+    await esperar(INTERVALO_POLLING_MS);
+    expect(screen.queryByText(/Pinchazo/)).toBeNull();
+  });
+
   it("con un filtro incompleto lo informa y no muestra la lista sin filtrar", async () => {
     mocks.obtenerTurnos.mockResolvedValue([turno]);
 

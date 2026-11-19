@@ -52,4 +52,52 @@ describe("mapAppointment", () => {
     expect(turno.ventana).toEqual({ inicio: window.startAt, fin: window.endAt });
     expect(turno.estado).toBe("viaje");
   });
+
+  it("traduce el incidente abierto que informa la API", () => {
+    const turno = mapAppointment({
+      ...dto,
+      status: "EN_CAMINO",
+      openIncident: {
+        id: "i1",
+        type: "FALLA_MECANICA",
+        canContinue: false,
+        estimatedDelayMinutes: 45,
+        description: "Se cortó la correa",
+        reportedAt: "2026-09-28T22:10:00-03:00",
+      },
+    });
+    expect(turno.incidente).toEqual({
+      id: "i1",
+      tipo: "falla-mecanica",
+      puedeSeguir: false,
+      demoraEstimadaMin: 45,
+      detalle: "Se cortó la correa",
+      reportadoEn: "2026-09-28T22:10:00-03:00",
+    });
+    // El incidente no cambia el estado del turno.
+    expect(turno.estado).toBe("viaje");
+  });
+
+  it("sin incidente abierto, o con uno desconocido, no inventa datos", () => {
+    expect(mapAppointment({ ...dto, openIncident: null }).incidente).toBeUndefined();
+    expect(mapAppointment(dto).incidente).toBeUndefined();
+    const incidente = { id: "i2", canContinue: true, estimatedDelayMinutes: 10, description: null, reportedAt: dto.createdAt };
+    const raro = mapAppointment({ ...dto, openIncident: { ...incidente, type: "INUNDACION" as never } });
+    expect(raro.incidente?.tipo).toBe("otro");
+  });
+
+  it("toma el incidente del resumen, la lectura más reciente, sobre el del detalle cacheado", () => {
+    const abierto = {
+      id: "i1",
+      type: "PINCHAZO" as const,
+      canContinue: true,
+      estimatedDelayMinutes: 30,
+      description: null,
+      reportedAt: "2026-09-28T22:10:00-03:00",
+    };
+    const resumen = { id: dto.id, truck: dto.truck, window: dto.window, status: "EN_CAMINO" as const };
+    // Resuelto: el resumen trae null aunque el detalle cacheado lo tenía abierto.
+    expect(combinarResumenYDetalle({ ...resumen, openIncident: null }, { ...dto, openIncident: abierto }).incidente).toBeUndefined();
+    expect(combinarResumenYDetalle({ ...resumen, openIncident: abierto }, { ...dto, openIncident: null }).incidente?.tipo).toBe("pinchazo");
+  });
 });

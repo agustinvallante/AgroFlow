@@ -28,12 +28,26 @@ export interface AppointmentWindowDto {
   endAt: string;
 }
 
+export type IncidentTypeDto = "PINCHAZO" | "FALLA_MECANICA" | "ACCIDENTE" | "OTRO";
+
+/** Incidente en ruta abierto de un turno `EN_CAMINO`. */
+export interface OpenIncidentDto {
+  id: string;
+  type: IncidentTypeDto;
+  canContinue: boolean;
+  estimatedDelayMinutes: number;
+  description: string | null;
+  reportedAt: string;
+}
+
 /** Elemento de GET /api/v1/appointments. */
 export interface AppointmentSummaryDto {
   id: string;
   truck: TruckReferenceDto;
   window: AppointmentWindowDto;
   status: AppointmentStatusDto;
+  /** Opcional: una API anterior a los incidentes no lo envía. */
+  openIncident?: OpenIncidentDto | null;
 }
 
 /** Respuesta de POST, GET /{id} y POST /{id}/transitions. */
@@ -47,6 +61,8 @@ export interface AppointmentDto {
   window: AppointmentWindowDto;
   status: AppointmentStatusDto;
   createdAt: string;
+  /** Opcional: una API anterior a los incidentes no lo envía. */
+  openIncident?: OpenIncidentDto | null;
 }
 
 export interface CreateAppointmentRequestDto {

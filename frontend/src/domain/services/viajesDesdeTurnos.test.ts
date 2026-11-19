@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { EstadoTurno, Turno } from "../entities/Turno";
 import { calcularViajeDeTurno, fincaDelTurno } from "./viajesDesdeTurnos";
+import { PROGRESO_MAXIMO_SIN_CONFIRMAR } from "./simulacionViajes";
 
 const ingenio = { lat: -26.83, lon: -65.2 };
 const finca = { id: "f1", nombre: "Finca Norte", lat: -26.65, lon: -65.2 };
@@ -33,5 +34,52 @@ describe("viajes desde la cola de turnos", () => {
     for (const estado of ["completado", "cancelado"] as const) {
       expect(calcularViajeDeTurno(turno(estado), finca, ingenio, inicio)).toBeNull();
     }
+  });
+
+  describe("con un problema en ruta", () => {
+    const enViaje = turno("viaje");
+    // Recorrido sin incidente: sale del inicio de la ventana menos la duración estimada.
+    const salidaMs = calcularViajeDeTurno(enViaje, finca, ingenio, inicio)!.viaje.salidaMs;
+    const reportadoMs = salidaMs + (inicio - salidaMs) / 2;
+    const conIncidente: Turno = {
+      ...enViaje,
+      incidente: {
+        id: "i1",
+        tipo: "pinchazo",
+        puedeSeguir: true,
+        demoraEstimadaMin: 30,
+        detalle: null,
+        reportadoEn: new Date(reportadoMs).toISOString(),
+      },
+    };
+
+    it("figura con demora y queda donde estaba al reportarlo", () => {
+      const alReportar = calcularViajeDeTurno(enViaje, finca, ingenio, reportadoMs)!.situacion.progreso;
+      expect(alReportar).toBeGreaterThan(0);
+
+      for (const ahoraMs of [reportadoMs + 60_000, inicio - 60_000, inicio + 3_600_000]) {
+        const viaje = calcularViajeDeTurno(conIncidente, finca, ingenio, ahoraMs)!;
+        expect(viaje.situacion.estado).toBe("demora");
+        expect(viaje.situacion.progreso).toBeCloseTo(alReportar);
+        expect(viaje.situacion.progreso).toBeLessThanOrEqual(PROGRESO_MAXIMO_SIN_CONFIRMAR);
+        expect(viaje.turno?.incidente).toEqual(conIncidente.incidente);
+        // El estado de la API no cambia por el incidente.
+        expect(viaje.turno?.estado).toBe("viaje");
+      }
+    });
+
+    it("si la API ya lo informa en el ingenio, figura como llegado", () => {
+      for (const estado of ["cancha", "ingresado", "descargando"] as const) {
+        const viaje = calcularViajeDeTurno({ ...conIncidente, estado }, finca, ingenio, reportadoMs + 60_000)!;
+        expect(viaje.situacion).toEqual({ estado: "en-playa", progreso: 1 });
+      }
+    });
+
+    it("sin incidente avanza como siempre", () => {
+      const viaje = calcularViajeDeTurno(enViaje, finca, ingenio, reportadoMs + 60_000)!;
+      expect(viaje.situacion.estado).toBe("en-ruta");
+      expect(viaje.situacion.progreso).toBeGreaterThan(calcularViajeDeTurno(enViaje, finca, ingenio, reportadoMs)!.situacion.progreso);
+      expect(viaje.turno).not.toHaveProperty("incidente");
+    });
   });
 });
