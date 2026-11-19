@@ -378,6 +378,3 @@ agroflow-mvp.db-*
 # Precarga privada del equipo para LocalDemo: nombres y WhatsApp reales
 # autorizados. Se comparte por un canal seguro, nunca por Git.
 config/local-demo/*.private.json
-
-# Local Pi runtime state
-.atl/
