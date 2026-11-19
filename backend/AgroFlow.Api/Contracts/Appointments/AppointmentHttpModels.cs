@@ -22,15 +22,42 @@ public sealed class TransitionAppointmentRequest
     public string? NewStatus { get; init; }
 }
 
+[JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
+public sealed class ReportIncidentRequest
+{
+    public string? Type { get; init; }
+    public bool? CanContinue { get; init; }
+
+    [JsonNumberHandling(JsonNumberHandling.Strict)]
+    public int? EstimatedDelayMinutes { get; init; }
+
+    public string? Description { get; init; }
+}
+
+/// <summary>The resolution body is the empty object <c>{}</c>.</summary>
+[JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
+public sealed class ResolveIncidentRequest
+{
+}
+
 public sealed record AppointmentReferenceResponse(Guid Id, string Name);
 public sealed record AppointmentTruckResponse(Guid Id, string Plate);
 public sealed record AppointmentWindowResponse(DateTimeOffset StartAt, DateTimeOffset EndAt);
+
+public sealed record RouteIncidentResponse(
+    Guid Id,
+    string Type,
+    bool CanContinue,
+    int EstimatedDelayMinutes,
+    string? Description,
+    DateTimeOffset ReportedAt);
 
 public sealed record AppointmentSummaryResponse(
     Guid Id,
     AppointmentTruckResponse Truck,
     AppointmentWindowResponse Window,
-    string Status);
+    string Status,
+    RouteIncidentResponse? OpenIncident);
 
 public sealed record AppointmentResponse(
     Guid Id,
@@ -42,6 +69,23 @@ public sealed record AppointmentResponse(
     AppointmentWindowResponse Window,
     string Status,
     DateTimeOffset CreatedAt);
+
+/// <summary>
+/// LocalDemo representation of <c>Appointment</c> (openapi.yaml): the MVP one
+/// (<see cref="AppointmentResponse"/>, openapi.mvp-appointment-reads.yaml) has no
+/// openIncident and keeps its shape.
+/// </summary>
+public sealed record LocalDemoAppointmentResponse(
+    Guid Id,
+    AppointmentReferenceResponse Carrier,
+    AppointmentTruckResponse Truck,
+    AppointmentReferenceResponse Farm,
+    DateTimeOffset CutAt,
+    double EstimatedLoadTons,
+    AppointmentWindowResponse Window,
+    string Status,
+    DateTimeOffset CreatedAt,
+    RouteIncidentResponse? OpenIncident);
 
 public sealed record AppointmentPageResponse(
     IReadOnlyList<AppointmentResponse> Items, int Page, int PageSize, long TotalCount);
@@ -71,11 +115,57 @@ public static class AppointmentHttpMapper
         ToWireStatus(snapshot.Status),
         snapshot.CreatedAt);
 
+    public static LocalDemoAppointmentResponse ToLocalDemoResponse(AppointmentSnapshot snapshot) => new(
+        snapshot.Id,
+        new AppointmentReferenceResponse(snapshot.Carrier.Id, snapshot.Carrier.Name),
+        new AppointmentTruckResponse(snapshot.Truck.Id, snapshot.Truck.Plate),
+        new AppointmentReferenceResponse(snapshot.Farm.Id, snapshot.Farm.Name),
+        snapshot.CutAt,
+        snapshot.EstimatedLoadTons,
+        new AppointmentWindowResponse(snapshot.Window.StartAt, snapshot.Window.EndAt),
+        ToWireStatus(snapshot.Status),
+        snapshot.CreatedAt,
+        ToResponse(snapshot.OpenIncident));
+
     public static AppointmentSummaryResponse ToResponse(AppointmentSummary summary) => new(
         summary.Id,
         new AppointmentTruckResponse(summary.Truck.Id, summary.Truck.Plate),
         new AppointmentWindowResponse(summary.Window.StartAt, summary.Window.EndAt),
-        ToWireStatus(summary.Status));
+        ToWireStatus(summary.Status),
+        ToResponse(summary.OpenIncident));
+
+    private static RouteIncidentResponse? ToResponse(RouteIncident? incident) => incident is null
+        ? null
+        : new RouteIncidentResponse(
+            incident.Id,
+            ToWireIncidentType(incident.Type),
+            incident.CanContinue,
+            incident.EstimatedDelayMinutes,
+            incident.Description,
+            incident.ReportedAt);
+
+    public static bool TryParseIncidentType(string? value, out RouteIncidentType type)
+    {
+        type = value switch
+        {
+            "PINCHAZO" => RouteIncidentType.Pinchazo,
+            "FALLA_MECANICA" => RouteIncidentType.FallaMecanica,
+            "ACCIDENTE" => RouteIncidentType.Accidente,
+            "OTRO" => RouteIncidentType.Otro,
+            _ => default
+        };
+
+        return value is "PINCHAZO" or "FALLA_MECANICA" or "ACCIDENTE" or "OTRO";
+    }
+
+    public static string ToWireIncidentType(RouteIncidentType type) => type switch
+    {
+        RouteIncidentType.Pinchazo => "PINCHAZO",
+        RouteIncidentType.FallaMecanica => "FALLA_MECANICA",
+        RouteIncidentType.Accidente => "ACCIDENTE",
+        RouteIncidentType.Otro => "OTRO",
+        _ => throw new ArgumentOutOfRangeException(nameof(type))
+    };
 
     public static bool TryParseStatus(string? value, out AppointmentStatus status)
     {

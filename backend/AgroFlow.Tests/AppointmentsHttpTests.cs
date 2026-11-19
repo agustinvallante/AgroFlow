@@ -546,5 +546,11 @@ public sealed class AppointmentsHttpTests
             if (TransitionError is not null) throw TransitionError;
             return Task.FromResult(Appointment with { Status = newStatus });
         }
+
+        public Task<AppointmentSnapshot> ReportIncidentAsync(Guid id, ReportRouteIncidentCommand command, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<AppointmentSnapshot> ResolveIncidentAsync(Guid id, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
     }
 }

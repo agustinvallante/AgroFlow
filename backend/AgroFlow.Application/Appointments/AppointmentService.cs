@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using AgroFlow.Domain.Entities;
 
 namespace AgroFlow.Application.Appointments;
 
@@ -143,11 +144,14 @@ public sealed class AppointmentService : IAppointmentService
                 AppointmentErrorCodes.InvalidTransition,
                 "Transición inválida.");
 
+        // Leaving EN_CAMINO (arrival or cancellation) closes the open route incident
+        // in the same persistence unit as the status change.
         var result = await _store.TryTransitionAsync(
             id,
             current.Status,
             newStatus,
             releaseCapacity: newStatus == AppointmentStatus.Cancelado,
+            resolveOpenIncident: current.Status == AppointmentStatus.EnCamino && newStatus != AppointmentStatus.EnCamino,
             cancellationToken);
 
         return result.Outcome switch
@@ -162,6 +166,86 @@ public sealed class AppointmentService : IAppointmentService
             _ => throw new InvalidOperationException("El adaptador devolvió una transición incompleta.")
         };
     }
+
+    public async Task<AppointmentSnapshot> ReportIncidentAsync(
+        Guid id,
+        ReportRouteIncidentCommand command,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(command);
+
+        var errors = ValidateIncident(command);
+        if (errors.Count > 0)
+            throw new AppointmentServiceException(
+                AppointmentErrorCodes.ValidationError,
+                "Solicitud inválida.",
+                errors);
+
+        var current = await GetAsync(id, cancellationToken);
+        if (current.Status != AppointmentStatus.EnCamino)
+            throw IncidentNotAllowed();
+        if (current.OpenIncident is not null)
+            throw OpenIncidentExists();
+
+        var result = await _store.TryReportIncidentAsync(id, command, cancellationToken);
+        return ToIncidentResponse(result);
+    }
+
+    public async Task<AppointmentSnapshot> ResolveIncidentAsync(
+        Guid id,
+        CancellationToken cancellationToken = default)
+    {
+        var current = await GetAsync(id, cancellationToken);
+        if (current.OpenIncident is null)
+            throw NoOpenIncident();
+
+        var result = await _store.TryResolveIncidentAsync(id, cancellationToken);
+        return ToIncidentResponse(result);
+    }
+
+    /// <summary>Reglas de entrada de un incidente en ruta, también usadas por la API para responder por campo.</summary>
+    public static Dictionary<string, string[]> ValidateIncident(ReportRouteIncidentCommand command)
+    {
+        var errors = new Dictionary<string, string[]>(StringComparer.Ordinal);
+        if (!Enum.IsDefined(command.Type))
+            errors["type"] = [IncidentTypeError];
+        if (command.EstimatedDelayMinutes is < 0 or > MaxIncidentDelayMinutes)
+            errors["estimatedDelayMinutes"] = [IncidentDelayError];
+        if (command.Description is { Length: > MaxIncidentDescriptionLength })
+            errors["description"] = [IncidentDescriptionError];
+        return errors;
+    }
+
+    public const int MaxIncidentDelayMinutes = IncidenteRuta.MaxEstimatedDelayMinutes;
+    public const int MaxIncidentDescriptionLength = IncidenteRuta.MaxDescriptionLength;
+    public const string IncidentTypeError = "Debe ser PINCHAZO, FALLA_MECANICA, ACCIDENTE u OTRO.";
+    public const string IncidentDelayError = "Debe ser un entero entre 0 y 1440.";
+    public const string IncidentDescriptionError = "Debe tener como máximo 500 caracteres.";
+
+    private static AppointmentSnapshot ToIncidentResponse(AppointmentIncidentResult result) =>
+        result.Outcome switch
+        {
+            AppointmentIncidentOutcome.Success when result.Appointment is not null => result.Appointment,
+            AppointmentIncidentOutcome.NotFound => throw new AppointmentServiceException(
+                AppointmentErrorCodes.AppointmentNotFound,
+                "Turno inexistente."),
+            AppointmentIncidentOutcome.NotEnCamino => throw IncidentNotAllowed(),
+            AppointmentIncidentOutcome.OpenIncidentExists => throw OpenIncidentExists(),
+            AppointmentIncidentOutcome.NoOpenIncident => throw NoOpenIncident(),
+            _ => throw new InvalidOperationException("El adaptador devolvió un incidente incompleto.")
+        };
+
+    private static AppointmentServiceException IncidentNotAllowed() => new(
+        AppointmentErrorCodes.IncidentNotAllowed,
+        "Sólo se puede reportar un incidente de un turno EN_CAMINO.");
+
+    private static AppointmentServiceException OpenIncidentExists() => new(
+        AppointmentErrorCodes.OpenIncidentExists,
+        "El turno ya tiene un incidente abierto.");
+
+    private static AppointmentServiceException NoOpenIncident() => new(
+        AppointmentErrorCodes.NoOpenIncident,
+        "El turno no tiene un incidente abierto.");
 
     /// <summary>Mensaje único para una patente que no cumple <see cref="IsValidTruckPlate"/>.</summary>
     public const string TruckPlateError = "Debe tener entre 6 y 10 caracteres y al menos una letra o dígito.";

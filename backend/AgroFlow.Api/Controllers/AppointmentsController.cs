@@ -42,6 +42,11 @@ public sealed class AppointmentsController : ControllerBase
     private static readonly HashSet<string> TransitionBodyKeys =
         new(["newStatus"], StringComparer.Ordinal);
 
+    private static readonly HashSet<string> ReportIncidentBodyKeys =
+        new(["type", "canContinue", "estimatedDelayMinutes", "description"], StringComparer.Ordinal);
+
+    private static readonly HashSet<string> ResolveIncidentBodyKeys = new(StringComparer.Ordinal);
+
     private static readonly JsonSerializerOptions RequestJsonOptions = new(JsonSerializerDefaults.Web)
     {
         PropertyNameCaseInsensitive = false
@@ -128,7 +133,7 @@ public sealed class AppointmentsController : ControllerBase
 
             return Created(
                 $"/api/v1/appointments/{created.Id:D}",
-                AppointmentHttpMapper.ToResponse(created));
+                AppointmentHttpMapper.ToLocalDemoResponse(created));
         });
     }
 
@@ -223,7 +228,7 @@ public sealed class AppointmentsController : ControllerBase
         return await ExecuteAsync(async () =>
         {
             var result = await _service.GetAsync(appointmentId, cancellationToken);
-            return Ok(AppointmentHttpMapper.ToResponse(result));
+            return Ok(AppointmentHttpMapper.ToLocalDemoResponse(result));
         });
     }
 
@@ -260,7 +265,92 @@ public sealed class AppointmentsController : ControllerBase
                 appointmentId,
                 newStatus,
                 cancellationToken);
-            return Ok(AppointmentHttpMapper.ToResponse(result));
+            return Ok(AppointmentHttpMapper.ToLocalDemoResponse(result));
+        });
+    }
+
+    [HttpPost("{id}/incidents")]
+    public async Task<IActionResult> ReportIncident(string id, CancellationToken cancellationToken)
+    {
+        if (!Guid.TryParse(id, out var appointmentId))
+        {
+            return ValidationProblemFor("id", "Debe ser un UUID válido.");
+        }
+
+        var (request, failure) = await ReadRequestBodyAsync<ReportIncidentRequest>(
+            ReportIncidentBodyKeys, cancellationToken);
+        if (failure is not null)
+        {
+            return failure;
+        }
+
+        if (request is null)
+        {
+            return ProblemResult(400, AppointmentErrorCodes.ValidationError);
+        }
+
+        var errors = new Dictionary<string, string[]>(StringComparer.Ordinal);
+        if (!AppointmentHttpMapper.TryParseIncidentType(request.Type, out var type))
+        {
+            errors["type"] = [AppointmentService.IncidentTypeError];
+        }
+
+        if (request.CanContinue is null)
+        {
+            errors["canContinue"] = ["Debe ser true o false."];
+        }
+
+        if (request.EstimatedDelayMinutes is null)
+        {
+            errors["estimatedDelayMinutes"] = [AppointmentService.IncidentDelayError];
+        }
+
+        var command = new ReportRouteIncidentCommand(
+            type,
+            request.CanContinue ?? false,
+            request.EstimatedDelayMinutes ?? 0,
+            request.Description);
+        foreach (var (field, messages) in AppointmentService.ValidateIncident(command))
+        {
+            errors.TryAdd(field, messages);
+        }
+
+        if (errors.Count > 0)
+        {
+            return ProblemResult(400, AppointmentErrorCodes.ValidationError, errors);
+        }
+
+        return await ExecuteAsync(async () =>
+        {
+            var result = await _service.ReportIncidentAsync(appointmentId, command, cancellationToken);
+            return StatusCode(StatusCodes.Status201Created, AppointmentHttpMapper.ToLocalDemoResponse(result));
+        });
+    }
+
+    [HttpPost("{id}/incidents/resolution")]
+    public async Task<IActionResult> ResolveIncident(string id, CancellationToken cancellationToken)
+    {
+        if (!Guid.TryParse(id, out var appointmentId))
+        {
+            return ValidationProblemFor("id", "Debe ser un UUID válido.");
+        }
+
+        var (request, failure) = await ReadRequestBodyAsync<ResolveIncidentRequest>(
+            ResolveIncidentBodyKeys, cancellationToken);
+        if (failure is not null)
+        {
+            return failure;
+        }
+
+        if (request is null)
+        {
+            return ProblemResult(400, AppointmentErrorCodes.ValidationError);
+        }
+
+        return await ExecuteAsync(async () =>
+        {
+            var result = await _service.ResolveIncidentAsync(appointmentId, cancellationToken);
+            return Ok(AppointmentHttpMapper.ToLocalDemoResponse(result));
         });
     }
 
@@ -351,7 +441,8 @@ public sealed class AppointmentsController : ControllerBase
                 AppointmentErrorCodes.ValidationError => 400,
                 AppointmentErrorCodes.ReferenceNotFound or AppointmentErrorCodes.AppointmentNotFound => 404,
                 AppointmentErrorCodes.ActiveAppointmentExists or AppointmentErrorCodes.NoCapacity or
-                    AppointmentErrorCodes.InvalidTransition => 409,
+                    AppointmentErrorCodes.InvalidTransition or AppointmentErrorCodes.IncidentNotAllowed or
+                    AppointmentErrorCodes.OpenIncidentExists or AppointmentErrorCodes.NoOpenIncident => 409,
                 _ => 500
             };
 

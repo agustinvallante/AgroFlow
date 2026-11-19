@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: ZafraFlow API
-  version: 0.8.0
+  version: 0.9.0
   description: >-
     Contrato HTTP canónico para la demo local de turnos básicos aprobada en la
     issue #49. El perfil local opera con un único ingenio sembrado; no
@@ -21,8 +21,11 @@ info:
     `DashboardKey`, sólo lectura). El cambio `listar-camiones-demo` agrega el
     listado de camiones (`DashboardKey`, sólo lectura). El cambio
     `listar-ventanas-demo` agrega el listado de ventanas y cupos de una fecha
-    (`DashboardKey`, sólo lectura). Las mutaciones de camiones y de fincas, las
-    asociaciones y la gestión de ventanas siguen sin ruta publicada. El
+    (`DashboardKey`, sólo lectura). El cambio `reportar-incidentes-en-ruta`
+    agrega el reporte y la resolución de incidentes en ruta de un turno
+    `EN_CAMINO` y `openIncident` en las representaciones de turnos. Las
+    mutaciones de camiones y de fincas, las asociaciones y la gestión de
+    ventanas siguen sin ruta publicada. El
     contrato objetivo de las dos lecturas internas autenticadas está en
     openapi.mvp-appointment-reads.yaml y corresponde al perfil MVP.
 servers:
@@ -265,6 +268,78 @@ paths:
           $ref: '#/components/responses/AppointmentNotFound'
         '409':
           $ref: '#/components/responses/BusinessConflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/v1/appointments/{id}/incidents:
+    parameters:
+      - $ref: '#/components/parameters/AppointmentId'
+    post:
+      tags: [Turnos]
+      operationId: reportarIncidenteTurno
+      security: []
+      summary: Reportar un incidente en ruta
+      description: >-
+        Registra un incidente en ruta (pinchazo, falla mecánica, accidente u
+        otro) sobre un turno `EN_CAMINO`. No cambia el estado ni la ventana del
+        turno: la decisión operativa queda en manos del operador. Un turno
+        tiene como máximo un incidente abierto. Usa la misma autorización que
+        `POST /api/v1/appointments/{id}/transitions`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReportIncidentRequest'
+      responses:
+        '201':
+          description: Incidente registrado; el turno se devuelve con `openIncident`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Appointment'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '404':
+          $ref: '#/components/responses/AppointmentNotFound'
+        '409':
+          $ref: '#/components/responses/IncidentConflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/v1/appointments/{id}/incidents/resolution:
+    parameters:
+      - $ref: '#/components/parameters/AppointmentId'
+    post:
+      tags: [Turnos]
+      operationId: resolverIncidenteTurno
+      security: []
+      summary: Informar la resolución del incidente abierto
+      description: >-
+        Marca como resuelto el incidente abierto del turno. El registro se
+        conserva con su hora de resolución, que no se expone en esta versión.
+        Si el turno sale de `EN_CAMINO` por cualquier transición, su incidente
+        abierto se resuelve automáticamente en la misma operación. Usa la misma
+        autorización que `POST /api/v1/appointments/{id}/transitions`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResolveIncidentRequest'
+      responses:
+        '200':
+          description: Incidente resuelto; el turno se devuelve con `openIncident` en `null`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Appointment'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '404':
+          $ref: '#/components/responses/AppointmentNotFound'
+        '409':
+          $ref: '#/components/responses/IncidentConflict'
         '500':
           $ref: '#/components/responses/InternalError'
 
@@ -1103,6 +1178,74 @@ components:
         - newStatus: EN_CAMINO
         - newStatus: CANCELADO
 
+    RouteIncidentType:
+      type: string
+      enum:
+        - PINCHAZO
+        - FALLA_MECANICA
+        - ACCIDENTE
+        - OTRO
+
+    ReportIncidentRequest:
+      type: object
+      additionalProperties: false
+      required: [type, canContinue, estimatedDelayMinutes]
+      properties:
+        type:
+          $ref: '#/components/schemas/RouteIncidentType'
+        canContinue:
+          type: boolean
+          description: Si el camión puede seguir viaje.
+        estimatedDelayMinutes:
+          type: integer
+          minimum: 0
+          maximum: 1440
+          description: Demora estimada en minutos.
+        description:
+          type: [string, 'null']
+          maxLength: 500
+          description: Detalle opcional del problema.
+      examples:
+        - type: PINCHAZO
+          canContinue: true
+          estimatedDelayMinutes: 30
+
+    ResolveIncidentRequest:
+      type: object
+      additionalProperties: false
+      description: Cuerpo vacío (`{}`).
+      examples:
+        - {}
+
+    RouteIncident:
+      type: object
+      additionalProperties: false
+      required: [id, type, canContinue, estimatedDelayMinutes, description, reportedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        type:
+          $ref: '#/components/schemas/RouteIncidentType'
+        canContinue:
+          type: boolean
+        estimatedDelayMinutes:
+          type: integer
+          minimum: 0
+          maximum: 1440
+        description:
+          type: [string, 'null']
+          maxLength: 500
+        reportedAt:
+          type: string
+          format: date-time
+
+    OpenRouteIncident:
+      description: Incidente en ruta abierto del turno, o `null` si no hay ninguno.
+      oneOf:
+        - $ref: '#/components/schemas/RouteIncident'
+        - type: 'null'
+
     AppointmentStatus:
       type: string
       enum:
@@ -1159,6 +1302,7 @@ components:
         - truck
         - window
         - status
+        - openIncident
       properties:
         id:
           type: string
@@ -1169,6 +1313,8 @@ components:
           $ref: '#/components/schemas/AppointmentWindow'
         status:
           $ref: '#/components/schemas/AppointmentStatus'
+        openIncident:
+          $ref: '#/components/schemas/OpenRouteIncident'
 
     Appointment:
       type: object
@@ -1207,6 +1353,13 @@ components:
         createdAt:
           type: string
           format: date-time
+        openIncident:
+          description: >-
+            Incidente en ruta abierto del turno, o `null` si no hay ninguno. El
+            perfil LocalDemo lo emite siempre en todas las respuestas de turnos.
+            Las lecturas del perfil MVP (openapi.mvp-appointment-reads.yaml),
+            que reutilizan este esquema, no lo emiten.
+          $ref: '#/components/schemas/OpenRouteIncident'
 
     ConversationEventInput:
       type: object
@@ -1706,6 +1859,9 @@ components:
             - ACTIVE_APPOINTMENT_EXISTS
             - NO_CAPACITY
             - INVALID_TRANSITION
+            - INCIDENT_NOT_ALLOWED
+            - OPEN_INCIDENT_EXISTS
+            - NO_OPEN_INCIDENT
             - INTERNAL_ERROR
             - SERVICE_UNAVAILABLE
             - UNAUTHENTICATED
@@ -1815,6 +1971,38 @@ components:
                 title: No hay capacidad disponible
                 status: 409
                 code: NO_CAPACITY
+                traceId: 00-demo-trace
+
+    IncidentConflict:
+      description: >-
+        El turno no está `EN_CAMINO` (`INCIDENT_NOT_ALLOWED`), ya tiene un
+        incidente abierto (`OPEN_INCIDENT_EXISTS`) o no tiene un incidente
+        abierto para resolver (`NO_OPEN_INCIDENT`).
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+          examples:
+            incidentNotAllowed:
+              value:
+                type: 'about:blank'
+                title: El turno no está en camino
+                status: 409
+                code: INCIDENT_NOT_ALLOWED
+                traceId: 00-demo-trace
+            openIncidentExists:
+              value:
+                type: 'about:blank'
+                title: El turno ya tiene un incidente abierto
+                status: 409
+                code: OPEN_INCIDENT_EXISTS
+                traceId: 00-demo-trace
+            noOpenIncident:
+              value:
+                type: 'about:blank'
+                title: El turno no tiene un incidente abierto
+                status: 409
+                code: NO_OPEN_INCIDENT
                 traceId: 00-demo-trace
 
     InternalError:
