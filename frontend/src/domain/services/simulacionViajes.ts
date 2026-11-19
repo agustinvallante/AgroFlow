@@ -91,6 +91,8 @@ export interface ViajeCalculado {
 export interface TurnoDelViaje {
   id: string;
   ventana: { inicio: string; fin: string };
+  /** Nombre del transportista que informa la API. */
+  transportista: string;
   /** Estado que informa la API; el del mapa es una estimación a partir de él. */
   estado: EstadoTurno;
 }

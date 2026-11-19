@@ -10,13 +10,16 @@ import { SIN_DATO } from "../components/common/sinDatos";
 import { BotFeedPanel } from "../components/panel/BotFeedPanel";
 import { Timeline } from "../components/panel/Timeline";
 import { ventanaDeRfc3339 } from "../../shared/utils/date";
+import { turnosManuales, useMoliendaDemo } from "../hooks/medidasTemporalesPanel";
 
 const ACTIVOS = ["viaje", "cancha", "ingresado", "descargando"];
 
 /**
- * Camiones en curso y franjas salen de ZafraFlow API. Indicadores,
- * feed del chatbot, molienda y avisos conservan su
- * lugar en la pantalla, sin datos y sin acciones.
+ * Camiones en curso, camiones en espera y franjas salen de ZafraFlow API.
+ * Como medida temporal para la demo, los turnos del bot son los activos que
+ * este dashboard no cargó, y la molienda se simula en el navegador. La espera
+ * promedio, el feed del chatbot y el aviso a la flota conservan su lugar, sin
+ * datos y sin acciones: la API no publica cuándo cambió el estado de un turno.
  */
 export function PanelGeneralView() {
   const { turnos, estadoCarga, error, desactualizado, recargar, cambiarEstado, enCurso, errorAccion } = useColaTurnos("activos");
@@ -24,13 +27,21 @@ export function PanelGeneralView() {
   const ventanas = useVentanas();
 
   const activos = useMemo(() => turnos.filter((t) => ACTIVOS.includes(t.estado)), [turnos]);
+  // Sin una respuesta válida, "0" sería un dato falso.
+  const hayDatos = estadoCarga === "ok" || desactualizado;
+  const enEspera = activos.filter((t) => t.estado === "cancha").length;
+  const delBot = useMemo(() => {
+    const manuales = turnosManuales();
+    return turnos.filter((t) => !manuales.has(t.id)).length;
+  }, [turnos]);
+  const molienda = useMoliendaDemo();
 
   return (
     <div className="view">
       <div className="topbar">
         <div>
           <h1>Panel general</h1>
-          <div className="zafra">Camiones y franjas: ZafraFlow API · Indicadores y avisos: sin datos</div>
+          <div className="zafra">Camiones y franjas: ZafraFlow API · Turnos del bot y molienda: estimados para la demo</div>
         </div>
         <div className="clockbox">
           <div className="time">{hora}</div>
@@ -39,10 +50,18 @@ export function PanelGeneralView() {
       </div>
 
       <div className="metrics">
-        <MetricCard label="Camiones en espera ahora" value={SIN_DATO} />
+        <MetricCard label="Camiones en espera ahora" value={hayDatos ? enEspera : SIN_DATO} />
         <MetricCard label="Espera promedio en canchón" value={SIN_DATO} />
-        <MetricCard label="Turnos gestionados por el bot" value={SIN_DATO} />
-        <MetricCard label="Estado de la molienda" value={SIN_DATO} />
+        <MetricCard
+          label="Turnos gestionados por el bot"
+          value={hayDatos ? delBot : SIN_DATO}
+          trend={hayDatos ? `de ${turnos.length} turnos activos` : undefined}
+        />
+        <MetricCard
+          label="Estado de la molienda"
+          value={molienda.operando ? "Operando" : "Detenida"}
+          valueColor={molienda.operando ? "var(--ok)" : "var(--alerta)"}
+        />
       </div>
 
       <section>
@@ -155,9 +174,17 @@ export function PanelGeneralView() {
               camiones en ruta para que no salgan de la finca.
             </p>
             <div className="toggle-row">
-              <div className="toggle sin-dato" aria-disabled="true" />
-              <span className="toggle-label">Sin datos</span>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={molienda.operando}
+                aria-label="Molienda en funcionamiento"
+                className={`toggle ${molienda.operando ? "" : "off"}`}
+                onClick={molienda.alternar}
+              />
+              <span className="toggle-label">{molienda.operando ? "Operando" : "Detenida"}</span>
             </div>
+            <p className="meta">Simulado para la demo: no avisa por WhatsApp.</p>
           </div>
           <div className="alert-card">
             <h3>Aviso manual a transportistas</h3>

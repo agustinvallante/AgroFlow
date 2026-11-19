@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { container } from "../../composition/container";
+import { registrarTurnoManual } from "./medidasTemporalesPanel";
 import type { EstadoTurno, FiltrosTurno, NuevoTurnoManual, Turno } from "../../domain/entities/Turno";
 
 export type FiltroEstado = "todos" | Turno["estado"];
@@ -207,6 +208,7 @@ export function useColaTurnos(modo: "dia" | "activos" = "dia") {
   const crearTurno = useCallback(async (datos: NuevoTurnoManual): Promise<Turno> => {
     // El error se propaga al formulario. Solo cambiamos la vista tras el POST confirmado.
     const creado = await container.turnos.crearTurnoManual.execute(datos);
+    registrarTurnoManual(creado.id);
     ultimaConsulta.current++;
     ultimoDetalle.current++;
     setErrorAccion(null);

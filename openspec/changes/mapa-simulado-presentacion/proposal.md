@@ -18,7 +18,7 @@ La capacidad nueva [mapa-simulado](specs/mapa-simulado/spec.md) contiene los req
 - Reloj real y aceleraciones x10 y x60 para el ensayo.
 - Persistencia local y eliminación de viajes cargados.
 - Representación SVG con un fondo de rutas, accesos y ríos simulados; cada recorrido sigue esos caminos.
-- Camiones como círculos, fincas e ingenio como cuadrados, y un recuadro de detalle del camión: patente, estado, finca, horarios, distancia total y restante.
+- Camiones como círculos, fincas e ingenio como cuadrados, y un recuadro de detalle del camión: patente, estado, transportista del turno, finca, horarios, distancia total y restante.
 
 La autorización corresponde a una demostración independiente. Las lecturas operativas del dashboard siguen obteniéndose de AgroFlow API, según [ADR-003](../../../docs/architecture/decisions/ADR-003-backend-fuente-de-verdad.md) y [ADR-005](../../../docs/architecture/decisions/ADR-005-continuidad-react-vite-para-el-mvp.md).
 

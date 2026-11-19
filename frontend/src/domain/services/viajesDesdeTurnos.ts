@@ -73,6 +73,6 @@ export function calcularViajeDeTurno(
     situacion: enIngenio
       ? { estado: "en-playa", progreso: 1 }
       : calcularSituacion(salidaMs, duracionMs, llegadaEstimadaMs, ahoraMs),
-    turno: { id: turno.id, ventana: turno.ventana, estado: turno.estado },
+    turno: { id: turno.id, ventana: turno.ventana, estado: turno.estado, transportista: turno.chofer },
   };
 }

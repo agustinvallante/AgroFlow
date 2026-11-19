@@ -73,6 +73,8 @@ function DetalleCamion({ viaje: v, ahoraMs, ancla, onCerrar }: DetalleCamionProp
         : `${hora(v.llegadaEstimadaMs)} (en ${minutos(v.llegadaEstimadaMs - ahoraMs)} min)`;
   const filas: [string, string][] = [
     ["Estado", ESTADO_LABEL[estado]],
+    // Los viajes de la demo no tienen transportista.
+    ...(v.turno ? ([["Transportista", v.turno.transportista]] as [string, string][]) : []),
     ["Sale de", v.finca.nombre],
     ["Salida", hora(v.viaje.salidaMs)],
     ["Llegada", llegada],
