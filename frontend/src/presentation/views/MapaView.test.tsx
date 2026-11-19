@@ -348,16 +348,17 @@ describe("MapaView", () => {
     expect(contador(/En ruta (\d+)/)).toBe("1");
   });
 
-  it("conserva el adelanto acumulado al recargar", async () => {
+  it("conserva el adelanto acumulado al recargar, también el de +1 h", async () => {
     const { unmount } = await montar();
     clic("x60");
     avanzar(10_000);
+    clic("Adelantar una hora");
     unmount();
 
     await montar();
 
-    // 10 s a x60 adelantan 590 s: unos 10 minutos.
-    expect(screen.getByText("Adelantado 10 min")).toBeTruthy();
+    // 10 s a x60 adelantan 590 s, unos 10 minutos, más la hora del botón.
+    expect(screen.getByText("Adelantado 70 min")).toBeTruthy();
     expect(screen.getByRole("button", { name: "x1", pressed: true })).toBeTruthy();
   });
 

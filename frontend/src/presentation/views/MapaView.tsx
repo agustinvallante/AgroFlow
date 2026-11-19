@@ -11,6 +11,8 @@ import { ESTADO_LABEL, hora, minutos } from "../components/mapa/formatoMapa";
 import { TIPO_INCIDENTE_LABEL } from "../components/common/incidentes";
 import { MULTIPLICADORES, useMapaSimulado } from "../hooks/useMapaSimulado";
 
+const MS_POR_HORA = 3_600_000;
+
 /** Orden de la cola: primero lo que está por llegar. */
 const ORDEN_ESTADO: Record<EstadoViaje, number> = {
   demora: 0,
@@ -56,6 +58,7 @@ export function MapaView() {
     agregarViaje,
     quitarViaje,
     volverAHoraReal,
+    adelantar,
   } = useMapaSimulado();
 
   const contar = (estado: EstadoViaje) =>
@@ -95,6 +98,9 @@ export function MapaView() {
               Hora real
             </button>
           )}
+          <button className="btn-mini" aria-label="Adelantar una hora" onClick={() => adelantar(MS_POR_HORA)}>
+            +1 h
+          </button>
           {MULTIPLICADORES.map((m) => (
             <button
               key={m}
