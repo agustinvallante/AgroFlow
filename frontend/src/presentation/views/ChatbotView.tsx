@@ -13,6 +13,10 @@ export function ChatbotView() {
     seleccion,
     cargandoMensajes,
     errorMensajes,
+    mensajesNuevos,
+    llegadas,
+    noLeidos,
+    destacadas,
     recargar,
     cargando,
     error,
@@ -33,7 +37,9 @@ export function ChatbotView() {
       <div className="topbar">
         <div>
           <h1>Chatbot de WhatsApp</h1>
-          <div className="zafra">Conversaciones: ZafraFlow API · Métricas y plantillas: sin datos</div>
+          <div className="zafra">
+            Conversaciones: ZafraFlow API, se actualizan solas · Métricas y plantillas: sin datos
+          </div>
         </div>
         <div className="conn-status">
           <i />
@@ -68,12 +74,17 @@ export function ChatbotView() {
             conversaciones={conversaciones}
             activaId={conversacionActiva?.id ?? null}
             onSeleccionar={seleccionarConversacion}
+            noLeidos={noLeidos}
+            destacadas={destacadas}
           />
           <ChatTranscript
             conversacion={conversacionActiva}
             seleccion={seleccion}
             cargando={cargandoMensajes}
             error={errorMensajes}
+            nuevos={mensajesNuevos}
+            llegadas={llegadas}
+            enVivo={!errorRefresco}
           />
         </div>
       </section>
