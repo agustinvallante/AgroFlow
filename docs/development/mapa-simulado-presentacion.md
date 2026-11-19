@@ -1,4 +1,4 @@
-# Probar el mapa simulado de AgroFlow
+# Probar el mapa simulado de ZafraFlow
 
 El mapa permite demostrar viajes ficticios de finca a ingenio. Su alcance se define en el [cambio OpenSpec mapa-simulado-presentacion](../../openspec/changes/mapa-simulado-presentacion/proposal.md). La preparación del guion completo se sigue en [#111](https://github.com/agustinvallante/AgroFlow/issues/111).
 
