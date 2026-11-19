@@ -75,6 +75,8 @@ export function mapAppointment(dto: AppointmentDto): Turno {
     cargaTon: dto.estimatedLoadTons,
     creadoEn: dto.createdAt,
     ...(incidente ? { incidente } : {}),
+    ...(dto.departedAt ? { salidaEn: dto.departedAt } : {}),
+    paradas: (dto.stops ?? []).map((p) => ({ inicio: p.startedAt, fin: p.endedAt })),
   };
 }
 
@@ -82,7 +84,7 @@ export function mapAppointment(dto: AppointmentDto): Turno {
  * El listado trae solo id, camión, ventana y estado. El resto sale del
  * detalle (que no cambia salvo ventana y estado), así que ventana y estado
  * del resumen, que es la lectura más reciente, pisan los del detalle. El
- * incidente abierto también, si el resumen lo informa: así un incidente resuelto
+ * incidente abierto, la salida y las paradas también, si el resumen los informa: así un incidente resuelto
  * desaparece en la siguiente lectura aunque el detalle cacheado lo tuviera.
  */
 export function combinarResumenYDetalle(resumen: AppointmentSummaryDto, detalle: AppointmentDto): Turno {
@@ -92,6 +94,8 @@ export function combinarResumenYDetalle(resumen: AppointmentSummaryDto, detalle:
     window: resumen.window,
     status: resumen.status,
     openIncident: resumen.openIncident !== undefined ? resumen.openIncident : detalle.openIncident,
+    departedAt: resumen.departedAt !== undefined ? resumen.departedAt : detalle.departedAt,
+    stops: resumen.stops ?? detalle.stops,
   });
 }
 

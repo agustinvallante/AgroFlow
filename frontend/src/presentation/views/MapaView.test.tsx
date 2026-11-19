@@ -11,7 +11,8 @@ vi.mock("../../composition/container", () => ({
 }));
 
 import { MapaView } from "./MapaView";
-import { INTERVALO_TURNOS_MS } from "../hooks/useMapaSimulado";
+import { CLAVE_ALMACENAMIENTO, INTERVALO_TURNOS_MS } from "../hooks/useMapaSimulado";
+import { TRAMOS_MAXIMOS } from "../../domain/services/relojMapa";
 
 /** El catálogo que publica la API en LocalDemo. */
 const FINCAS = [
@@ -29,6 +30,44 @@ const avanzar = (ms: number) =>
     vi.advanceTimersByTime(ms);
   });
 const MINUTO = 60_000;
+const esperarLectura = (ms = INTERVALO_TURNOS_MS) =>
+  act(async () => {
+    await vi.advanceTimersByTimeAsync(ms);
+  });
+const detalleCamion = (patente: string) => within(screen.getByRole("dialog", { name: `Detalle del camión ${patente}` }));
+/** Kilómetros que le faltan según el detalle del camión. */
+const restanteKm = (patente = "AF123BC") => {
+  const fila = detalleCamion(patente).getByText("Restante");
+  return Number(fila.nextElementSibling?.textContent?.replace(" km", "").replace(",", "."));
+};
+/** Minutos del día de la llegada estimada que muestra el detalle. */
+const llegadaMin = (patente = "AF123BC") => {
+  const [h, m] = detalleCamion(patente).getByText("Llegada").nextElementSibling!.textContent!.split(" ")[0].split(":");
+  return Number(h) * 60 + Number(m);
+};
+const tramosGuardados = () => JSON.parse(localStorage.getItem(CLAVE_ALMACENAMIENTO) ?? "{}").tramosReloj;
+const iso = (ms: number) => new Date(ms).toISOString();
+
+/** Turno de la cola tal como lo entrega el repositorio. */
+const turnoBase = {
+  id: "t1",
+  ventana: { inicio: "2026-11-08T16:30:00Z", fin: "2026-11-08T17:00:00Z" },
+  hora: "13:30",
+  offsetMin: 90,
+  patente: "AF123BC",
+  chofer: "Juan Pérez",
+  finca: "Finca Sur",
+  horasDesdeCorte: 1,
+  paradas: [],
+};
+const pinchazo = (reportadoEn: string) => ({
+  id: "i1",
+  tipo: "pinchazo",
+  puedeSeguir: true,
+  demoraEstimadaMin: 30,
+  detalle: null,
+  reportadoEn,
+});
 
 /** Monta la vista y espera las fincas de la API. */
 async function montar() {
@@ -80,20 +119,8 @@ describe("MapaView", () => {
     expect(within(screen.getByRole("img")).getByText("Finca Norte")).toBeTruthy();
   });
 
-  it("agrega solo el viaje de un turno de la cola, lo acelera y no permite quitarlo", async () => {
-    mocks.turnos.mockResolvedValue([
-      {
-        id: "t1",
-        ventana: { inicio: "2026-11-08T16:30:00Z", fin: "2026-11-08T17:00:00Z" },
-        hora: "13:30",
-        offsetMin: 90,
-        patente: "AF123BC",
-        chofer: "Juan Pérez",
-        finca: "Finca Sur",
-        horasDesdeCorte: 1,
-        estado: "pendiente",
-      },
-    ]);
+  it("agrega solo el viaje de un turno asignado, que espera en su finca aunque el reloj avance", async () => {
+    mocks.turnos.mockResolvedValue([{ ...turnoBase, estado: "pendiente" }]);
     await montar();
 
     expect(screen.getByText("AF123BC", { selector: "strong" })).toBeTruthy();
@@ -101,102 +128,146 @@ describe("MapaView", () => {
     expect(screen.getByText(/^Finca Sur · \d+ km$/)).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Quitar viaje AF123BC" })).toBeNull();
     expect(contador(/Programados (\d+)/)).toBe("1");
+    expect(screen.getByText("Espera aviso de salida")).toBeTruthy();
 
-    // A x60 el turno también avanza: 90 minutos simulados en 90 segundos.
+    // Ni a x60 ni con +1 h sale sin que el transportista avise: pasan más de tres horas del mapa.
     clic("x60");
-    avanzar(75_000);
+    await esperarLectura(3 * MINUTO);
+    clic("Adelantar una hora");
+    expect(contador(/Programados (\d+)/)).toBe("1");
+    expect(contador(/En ruta (\d+)/)).toBe("0");
+    expect(contador(/Llegaron (\d+)/)).toBe("0");
+    expect(camiones().length).toBe(0);
+  });
+
+  it("un turno en camino sale a la hora de la API, espera en la puerta y llega cuando la API lo informa", async () => {
+    let estado = "viaje";
+    // Salió hace cinco minutos según la API.
+    const salidaEn = iso(Date.now() - 5 * MINUTO);
+    mocks.turnos.mockImplementation(async () => [{ ...turnoBase, estado, salidaEn }]);
+    await montar();
+
+    expect(contador(/En ruta (\d+)/)).toBe("1");
     clic("Ver camión AF123BC");
-    expect(screen.getByText("Juan Pérez")).toBeTruthy();
-    avanzar(15_000);
+    expect(detalleCamion("AF123BC").getByText("Salida").nextElementSibling?.textContent).toBe("11:55");
+    clic("Cerrar detalle");
+
+    // A x60 llega a la hora estimada, pero sin aviso de la API espera en la puerta.
+    clic("x60");
+    await esperarLectura(90_000);
+    expect(contador(/En la puerta (\d+)/)).toBe("1");
+    expect(contador(/Llegaron (\d+)/)).toBe("0");
+    expect(screen.getByText("En la puerta", { selector: "em" })).toBeTruthy();
+    expect(screen.getByText("Esperando ingreso")).toBeTruthy();
+    expect(within(screen.getByRole("img")).getByText("AF123BC · EN LA PUERTA")).toBeTruthy();
+
+    // El transportista avisa que llegó: la API lo pasa a En espera.
+    estado = "cancha";
+    await esperarLectura();
     expect(contador(/Llegaron (\d+)/)).toBe("1");
+    expect(contador(/En la puerta (\d+)/)).toBe("0");
+  });
+
+  it("si la API no informa la salida, el camión sale cuando el mapa lo ve en camino", async () => {
+    mocks.turnos.mockResolvedValue([{ ...turnoBase, estado: "viaje" }]);
+    await montar();
+
+    clic("Ver camión AF123BC");
+    const total = Number(detalleCamion("AF123BC").getByText("Distancia").nextElementSibling?.textContent?.replace(" km", "").replace(",", "."));
+    expect(restanteKm()).toBe(total);
+    await esperarLectura(3 * MINUTO);
+    expect(restanteKm()).toBeLessThan(total);
   });
 
   it("un turno con problema en ruta figura con demora y su detalle lo explica hasta que se resuelve", async () => {
-    const enViaje = {
-      id: "t1",
-      ventana: { inicio: "2026-11-08T16:30:00Z", fin: "2026-11-08T17:00:00Z" },
-      hora: "13:30",
-      offsetMin: 90,
-      patente: "AF123BC",
-      chofer: "Juan Pérez",
-      finca: "Finca Sur",
-      horasDesdeCorte: 1,
-      estado: "viaje",
-    };
-    const incidente = {
-      id: "i1",
-      tipo: "pinchazo",
-      puedeSeguir: true,
-      demoraEstimadaMin: 30,
-      detalle: null,
-      reportadoEn: "2026-11-08T14:59:00Z",
-    };
-    mocks.turnos.mockResolvedValueOnce([{ ...enViaje, incidente }]).mockResolvedValue([enViaje]);
+    const enViaje = { ...turnoBase, estado: "viaje", salidaEn: "2026-11-08T14:50:00Z" };
+    const incidente = pinchazo("2026-11-08T14:59:00Z");
+    mocks.turnos
+      .mockResolvedValueOnce([{ ...enViaje, incidente }])
+      .mockResolvedValue([{ ...enViaje, paradas: [{ inicio: incidente.reportadoEn, fin: "2026-11-08T15:00:00Z" }] }]);
     await montar();
 
     expect(contador(/Demora (\d+)/)).toBe("1");
     clic("Ver camión AF123BC");
-    const detalle = within(screen.getByRole("dialog", { name: "Detalle del camión AF123BC" }));
+    const detalle = detalleCamion("AF123BC");
     expect(detalle.getByText("Problema")).toBeTruthy();
     expect(detalle.getByText("Pinchazo · puede seguir · demora est. 30 min")).toBeTruthy();
 
     // Resuelto: en la siguiente lectura vuelve a la normalidad.
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(INTERVALO_TURNOS_MS);
-    });
+    await esperarLectura();
     expect(contador(/Demora (\d+)/)).toBe("0");
     expect(screen.queryByText("Pinchazo · puede seguir · demora est. 30 min")).toBeNull();
   });
 
   it("a x60 el camión con un problema en ruta se detiene donde estaba, sin volver atrás", async () => {
-    const enViaje = {
-      id: "t1",
-      ventana: { inicio: "2026-11-08T16:30:00Z", fin: "2026-11-08T17:00:00Z" },
-      hora: "13:30",
-      offsetMin: 90,
-      patente: "AF123BC",
-      chofer: "Juan Pérez",
-      finca: "Finca Sur",
-      horasDesdeCorte: 1,
-      estado: "viaje",
-    };
-    // La API registra el reporte con la hora real, que va atrasada respecto del mapa acelerado.
-    const incidente = {
-      id: "i1",
-      tipo: "pinchazo",
-      puedeSeguir: true,
-      demoraEstimadaMin: 30,
-      detalle: null,
-      reportadoEn: "2026-11-08T15:01:00Z",
-    };
-    let conIncidente = false;
-    mocks.turnos.mockImplementation(async () => [conIncidente ? { ...enViaje, incidente } : enViaje]);
+    const enViaje = { ...turnoBase, estado: "viaje", salidaEn: iso(Date.now()) };
+    let incidente: ReturnType<typeof pinchazo> | null = null;
+    mocks.turnos.mockImplementation(async () => [incidente ? { ...enViaje, incidente } : enViaje]);
     await montar();
 
-    // Kilómetros que le faltan según el detalle del camión.
-    const restanteKm = () => {
-      const fila = within(screen.getByRole("dialog", { name: "Detalle del camión AF123BC" })).getByText("Restante");
-      return Number(fila.nextElementSibling?.textContent?.replace(" km", "").replace(",", "."));
-    };
-
     clic("x60");
-    avanzar(75_000);
+    await esperarLectura(15_000);
     expect(contador(/En ruta (\d+)/)).toBe("1");
     clic("Ver camión AF123BC");
     const antes = restanteKm();
     expect(antes).toBeGreaterThan(0);
 
-    conIncidente = true;
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(INTERVALO_TURNOS_MS);
-    });
+    // La API registra el reporte con la hora real; el mapa la convierte a su propio reloj.
+    incidente = pinchazo(iso(Date.now()));
+    await esperarLectura();
     expect(contador(/Demora (\d+)/)).toBe("1");
     const detenido = restanteKm();
-    expect(detenido).toBeLessThanOrEqual(antes);
+    expect(detenido).toBe(antes);
 
     // Sigue quieto mientras el problema está abierto.
-    avanzar(30_000);
+    await esperarLectura(30_000);
     expect(restanteKm()).toBe(detenido);
+  });
+
+  it.each([
+    ["x1", 1, false],
+    ["x60", 60, false],
+    ["x1 con +1 h", 1, true],
+    ["x60 con +1 h", 60, true],
+  ])("a %s, al resolverse el problema sigue desde el mismo punto, sin saltar, y llega más tarde", async (_, x, unaHora) => {
+    // Tiempo real que equivale a `min` minutos del mapa con este multiplicador, en lecturas completas.
+    const real = (min: number) => Math.ceil((min * MINUTO) / x / INTERVALO_TURNOS_MS) * INTERVALO_TURNOS_MS;
+    const enViaje = { ...turnoBase, estado: "viaje", salidaEn: iso(Date.now()) };
+    let reportadoEn: string | null = null;
+    let resuelto = false;
+    let resueltoEn: string | null = null;
+    // La API registra la resolución en el momento de la lectura que la trae: así un salto sería visible.
+    mocks.turnos.mockImplementation(async () => {
+      if (!reportadoEn) return [enViaje];
+      if (!resuelto) return [{ ...enViaje, incidente: pinchazo(reportadoEn) }];
+      resueltoEn ??= iso(Date.now());
+      return [{ ...enViaje, paradas: [{ inicio: reportadoEn, fin: resueltoEn }] }];
+    });
+    await montar();
+    if (x === 60) clic("x60");
+
+    await esperarLectura(real(9));
+    clic("Ver camión AF123BC");
+    const llegadaSinProblema = llegadaMin();
+    reportadoEn = iso(Date.now());
+    await esperarLectura();
+    expect(contador(/Demora (\d+)/)).toBe("1");
+    const detenido = restanteKm();
+
+    await esperarLectura(real(20));
+    if (unaHora) clic("Adelantar una hora");
+    expect(restanteKm()).toBe(detenido);
+
+    resuelto = true;
+    await esperarLectura();
+    expect(contador(/Demora (\d+)/)).toBe("0");
+    expect(contador(/En ruta (\d+)/)).toBe("1");
+    expect(Math.abs(restanteKm() - detenido)).toBeLessThanOrEqual(0.1);
+    expect(llegadaMin() - llegadaSinProblema).toBeGreaterThanOrEqual(unaHora ? 80 : 20);
+
+    // Y sigue avanzando desde ahí.
+    await esperarLectura(real(3));
+    expect(restanteKm()).toBeLessThan(detenido);
   });
 
   it("muestra el viaje cargado en el mapa y la cola", async () => {
@@ -362,20 +433,8 @@ describe("MapaView", () => {
     expect(screen.getByRole("button", { name: "x1", pressed: true })).toBeTruthy();
   });
 
-  it("vuelve a la hora real: el turno de la cola recupera su estado y se borran los viajes de prueba", async () => {
-    mocks.turnos.mockResolvedValue([
-      {
-        id: "t1",
-        ventana: { inicio: "2026-11-08T16:30:00Z", fin: "2026-11-08T17:00:00Z" },
-        hora: "13:30",
-        offsetMin: 90,
-        patente: "AF123BC",
-        chofer: "Juan Pérez",
-        finca: "Finca Sur",
-        horasDesdeCorte: 1,
-        estado: "pendiente",
-      },
-    ]);
+  it("vuelve a la hora real: se borran los viajes de prueba y el turno sigue programado", async () => {
+    mocks.turnos.mockResolvedValue([{ ...turnoBase, estado: "pendiente" }]);
     const { unmount } = await montar();
     // Sin adelanto no hay nada que corregir.
     expect(screen.queryByRole("button", { name: "Hora real" })).toBeNull();
@@ -383,8 +442,9 @@ describe("MapaView", () => {
     cargarViaje();
     clic("x60");
     avanzar(90_000);
-    // Con el reloj adelantado, el turno ya figura llegado.
-    expect(contador(/Llegaron (\d+)/)).toBe("2");
+    // Con el reloj adelantado llegó el viaje de prueba; el turno asignado sigue en su finca.
+    expect(contador(/Llegaron (\d+)/)).toBe("1");
+    expect(contador(/Programados (\d+)/)).toBe("1");
 
     clic("Hora real");
 
@@ -406,15 +466,10 @@ describe("MapaView", () => {
   it("al volver a la hora real, un camión con problema en ruta queda detenido en su posición real", async () => {
     // Con la hora real a las 15:00 el camión ya salió y todavía no llegó.
     const enViaje = {
-      id: "t1",
+      ...turnoBase,
       ventana: { inicio: "2026-11-08T15:20:00Z", fin: "2026-11-08T15:50:00Z" },
-      hora: "12:20",
-      offsetMin: 20,
-      patente: "AF123BC",
-      chofer: "Juan Pérez",
-      finca: "Finca Sur",
-      horasDesdeCorte: 1,
       estado: "viaje",
+      salidaEn: "2026-11-08T14:55:00Z",
     };
     const incidente = {
       id: "i1",
@@ -439,10 +494,6 @@ describe("MapaView", () => {
 
     clic("Hora real");
     clic("Ver camión AF123BC");
-    const restanteKm = () => {
-      const fila = within(screen.getByRole("dialog", { name: "Detalle del camión AF123BC" })).getByText("Restante");
-      return Number(fila.nextElementSibling?.textContent?.replace(" km", "").replace(",", "."));
-    };
     const detenido = restanteKm();
     expect(detenido).toBeGreaterThan(0);
 
@@ -450,6 +501,57 @@ describe("MapaView", () => {
     avanzar(2 * MINUTO);
     expect(restanteKm()).toBe(detenido);
     expect(contador(/Demora (\d+)/)).toBe("1");
+  });
+
+  it("lee la cola de turnos cada 3 segundos", async () => {
+    expect(INTERVALO_TURNOS_MS).toBe(3_000);
+    await montar();
+    expect(mocks.turnos).toHaveBeenCalledTimes(1);
+
+    await esperarLectura(3_000);
+    expect(mocks.turnos).toHaveBeenCalledTimes(2);
+    await esperarLectura(6_000);
+    expect(mocks.turnos).toHaveBeenCalledTimes(4);
+  });
+
+  it("registra un tramo del reloj por cada cambio de velocidad y +1 h; Hora real lo borra", async () => {
+    const salidaEn = iso(Date.now() - 5 * MINUTO);
+    mocks.turnos.mockResolvedValue([{ ...turnoBase, estado: "viaje", salidaEn }]);
+    await montar();
+    expect(tramosGuardados() ?? []).toEqual([]);
+
+    clic("x60");
+    await esperarLectura(6_000);
+    clic("Adelantar una hora");
+    avanzar(1_000);
+    clic("x10");
+    // Lo guardado termina a x1 desde el último guardado, como si el mapa se cerrara ahí.
+    await esperarLectura(6_000);
+    const tramos = tramosGuardados();
+    expect(tramos.map((t: { multiplicador: number }) => t.multiplicador)).toEqual([60, 60, 10, 1]);
+    expect(tramos[1].adelantoInicioMs - tramos[0].adelantoInicioMs).toBe(6_000 * 59 + 60 * MINUTO);
+
+    clic("Hora real");
+    expect(tramosGuardados()).toEqual([]);
+    // Sin adelanto, la posición vuelve a ser la que da la hora real de salida.
+    expect(contador(/En ruta (\d+)/)).toBe("1");
+  });
+
+  it("conserva el registro del reloj al recargar, acotado a los últimos tramos", async () => {
+    const { unmount } = await montar();
+    for (let i = 0; i < TRAMOS_MAXIMOS + 10; i++) {
+      clic(i % 2 ? "x10" : "x60");
+      avanzar(100);
+    }
+    unmount();
+
+    const guardados = tramosGuardados();
+    expect(guardados.length).toBeLessThanOrEqual(TRAMOS_MAXIMOS);
+    // Al cerrar queda a x1: el tiempo con la página cerrada no se cuenta acelerado.
+    expect(guardados.at(-1).multiplicador).toBe(1);
+
+    await montar();
+    expect(tramosGuardados()).toEqual(guardados);
   });
 
   it("a x60 no escribe en el navegador en cada tick", async () => {

@@ -5,6 +5,7 @@ export const ESTADO_LABEL: Record<EstadoViaje, string> = {
   "en-ruta": "En ruta",
   demora: "Demora",
   programado: "Programado",
+  "en-puerta": "En la puerta",
   "en-playa": "Llegó",
 };
 

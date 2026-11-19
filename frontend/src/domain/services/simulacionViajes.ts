@@ -69,7 +69,8 @@ export interface ViajeSimulado {
   retrasoMin: number;
 }
 
-export type EstadoViaje = "programado" | "en-ruta" | "demora" | "en-playa";
+/** `en-puerta`: un turno de la cola llegó a la hora estimada, pero la API todavía no informa que está en el ingenio. */
+export type EstadoViaje = "programado" | "en-ruta" | "demora" | "en-puerta" | "en-playa";
 
 export interface SituacionViaje {
   estado: EstadoViaje;

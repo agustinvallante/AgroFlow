@@ -42,7 +42,7 @@ function posicionesFinca(x: number, y: number): PosicionEtiqueta[] {
   ];
 }
 
-function posicionesCamion(x: number, y: number, demorado: boolean): PosicionEtiqueta[] {
+function posicionesCamion(x: number, y: number, cercaDelIngenio: boolean): PosicionEtiqueta[] {
   const arriba: PosicionEtiqueta[] = [
     { x: x + 13, y: y - 9, anchor: "start" },
     { x: x - 13, y: y - 9, anchor: "end" },
@@ -51,8 +51,8 @@ function posicionesCamion(x: number, y: number, demorado: boolean): PosicionEtiq
     { x: x + 13, y: y + 20, anchor: "start" },
     { x: x - 13, y: y + 20, anchor: "end" },
   ];
-  // En demora espera junto al ingenio: debajo no se encima con su nombre.
-  return demorado ? [...abajo, ...arriba] : [...arriba, ...abajo];
+  // En demora o en la puerta espera junto al ingenio: debajo no se encima con su nombre.
+  return cercaDelIngenio ? [...abajo, ...arriba] : [...arriba, ...abajo];
 }
 
 interface DetalleCamionProps {
@@ -65,12 +65,14 @@ interface DetalleCamionProps {
 
 function DetalleCamion({ viaje: v, ahoraMs, ancla, onCerrar }: DetalleCamionProps) {
   const { estado, progreso } = v.situacion;
-  const restanteKm = estado === "en-playa" ? 0 : v.distanciaKm * (1 - progreso);
+  const restanteKm = estado === "en-playa" || estado === "en-puerta" ? 0 : v.distanciaKm * (1 - progreso);
   const incidente = v.turno?.incidente;
   const llegada =
     estado === "en-playa"
       ? `${hora(v.llegadaMs)} (llegó)`
-      : incidente
+      : estado === "en-puerta"
+        ? `${hora(v.llegadaEstimadaMs)} (esperando ingreso)`
+        : incidente
         ? `${hora(v.llegadaEstimadaMs)} (demora est. ${incidente.demoraEstimadaMin} min)`
         : estado === "demora"
         ? `${hora(v.llegadaEstimadaMs)} (+${minutos(ahoraMs - v.llegadaEstimadaMs)} min)`
@@ -81,7 +83,8 @@ function DetalleCamion({ viaje: v, ahoraMs, ancla, onCerrar }: DetalleCamionProp
     // Los viajes de la demo no tienen transportista.
     ...(v.turno ? ([["Transportista", v.turno.transportista]] as [string, string][]) : []),
     ["Sale de", v.finca.nombre],
-    ["Salida", hora(v.viaje.salidaMs)],
+    // Un turno asignado todavía no salió: su salida depende del aviso del transportista.
+    ["Salida", v.turno && estado === "programado" ? "Sin aviso" : hora(v.viaje.salidaMs)],
     ["Llegada", llegada],
     ["Distancia", km(v.distanciaKm)],
     ["Restante", km(restanteKm)],
@@ -183,9 +186,9 @@ export function MapaRutas({ ingenio, fincas, viajes, ahoraMs }: MapaRutasProps) 
   const ultimaLlegada = llegados[0];
   const rutaDe = (v: ViajeCalculado) => marcas.find((m) => m.finca.id === v.finca.id)?.ruta ?? null;
 
-  // Las demoras eligen primero: son lo que más importa ver.
+  // Las demoras eligen primero: son lo que más importa ver. Los que esperan en la puerta siguen sobre la ruta.
   const circulando = viajes
-    .filter((v) => v.situacion.estado === "en-ruta" || v.situacion.estado === "demora")
+    .filter((v) => ["en-ruta", "demora", "en-puerta"].includes(v.situacion.estado))
     .sort((a, b) => Number(b.situacion.estado === "demora") - Number(a.situacion.estado === "demora"))
     .flatMap((v) => {
       const ruta = rutaDe(v);
@@ -195,7 +198,7 @@ export function MapaRutas({ ingenio, fincas, viajes, ahoraMs }: MapaRutasProps) 
   const ocupadas = [...ocupadasFijas, ...circulando.map((c) => cajaCentrada(c.x, c.y, RADIO_CAMION))];
   const camiones = circulando.map((c) => {
     const texto = `${c.viaje.patente} · ${ESTADO_LABEL[c.situacion.estado].toUpperCase()}`;
-    const posiciones = posicionesCamion(c.x, c.y, c.situacion.estado === "demora");
+    const posiciones = posicionesCamion(c.x, c.y, c.situacion.estado !== "en-ruta");
     return { ...c, texto, etiqueta: ubicarEtiqueta(texto, posiciones, ocupadas, ANCHO, ALTO) };
   });
 

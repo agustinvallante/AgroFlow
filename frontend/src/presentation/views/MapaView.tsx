@@ -16,9 +16,10 @@ const MS_POR_HORA = 3_600_000;
 /** Orden de la cola: primero lo que está por llegar. */
 const ORDEN_ESTADO: Record<EstadoViaje, number> = {
   demora: 0,
-  "en-ruta": 1,
-  programado: 2,
-  "en-playa": 3,
+  "en-puerta": 1,
+  "en-ruta": 2,
+  programado: 3,
+  "en-playa": 4,
 };
 
 function detalleTiempo(
@@ -30,11 +31,14 @@ function detalleTiempo(
     return `${TIPO_INCIDENTE_LABEL[turno.incidente.tipo]} · demora est. ${turno.incidente.demoraEstimadaMin} min`;
   switch (situacion.estado) {
     case "programado":
-      return `Sale ${hora(viaje.salidaMs)}`;
+      // Un turno asignado sale cuando el transportista lo avisa, no a una hora prevista.
+      return turno ? "Espera aviso de salida" : `Sale ${hora(viaje.salidaMs)}`;
     case "en-ruta":
       return `Llega ${hora(llegadaEstimadaMs)} · ${minutos(llegadaEstimadaMs - ahoraMs)} min`;
     case "demora":
       return `Debía llegar ${hora(llegadaEstimadaMs)} · +${minutos(ahoraMs - llegadaEstimadaMs)} min`;
+    case "en-puerta":
+      return "Esperando ingreso";
     case "en-playa":
       return `Al ingenio a las ${hora(llegadaMs)}`;
   }
@@ -143,6 +147,9 @@ export function MapaView() {
           <div className="mapa-contadores">
             <span className="mapa-contador en-ruta">
               En ruta {contar("en-ruta")}
+            </span>
+            <span className="mapa-contador en-puerta">
+              En la puerta {contar("en-puerta")}
             </span>
             <span className="mapa-contador llegaron">
               Llegaron {contar("en-playa")}

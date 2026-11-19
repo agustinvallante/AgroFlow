@@ -1624,6 +1624,10 @@ table.datos-desactualizados tbody {
   color: var(--alerta);
   border-color: var(--alerta);
 }
+.mapa-contador.en-puerta {
+  color: var(--tinta);
+  border-color: var(--tinta);
+}
 .mapa-svg {
   display: block;
   width: 100%;
@@ -1772,6 +1776,9 @@ table.datos-desactualizados tbody {
 .mapa-camion.demora text {
   fill: var(--alerta);
 }
+.mapa-camion.en-puerta circle {
+  fill: var(--tinta);
+}
 .mapa-cola,
 .mapa-fincas {
   list-style: none;
@@ -1815,6 +1822,10 @@ table.datos-desactualizados tbody {
 }
 .mapa-cola-estado em.demora {
   color: var(--alerta);
+}
+.mapa-cola-estado em.en-puerta,
+.mapa-detalle .mapa-estado.en-puerta {
+  color: var(--tinta);
 }
 .mapa-cola-estado em.en-playa {
   color: var(--tinta);

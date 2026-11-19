@@ -25,6 +25,12 @@ export interface IncidenteEnRuta {
   reportadoEn: string; // RFC 3339
 }
 
+/** Problema en ruta ya resuelto: el camión estuvo detenido entre ambos instantes (RFC 3339). */
+export interface ParadaEnRuta {
+  inicio: string;
+  fin: string;
+}
+
 /**
  * Entidad de dominio: representa un turno de ingreso al ingenio
  * asignado a un camión/transportista. No conoce nada de la UI
@@ -50,6 +56,10 @@ export interface Turno {
   creadoEn?: string; // ISO 8601
   /** Incidente abierto que informa la API; ausente si no hay ninguno. */
   incidente?: IncidenteEnRuta;
+  /** Hora en que salió hacia el ingenio (RFC 3339); ausente si la API no la informa. */
+  salidaEn?: string;
+  /** Problemas en ruta ya resueltos, en orden; el abierto está en `incidente`. */
+  paradas?: ParadaEnRuta[];
 }
 
 /**

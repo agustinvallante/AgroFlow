@@ -86,6 +86,36 @@ describe("mapAppointment", () => {
     expect(raro.incidente?.tipo).toBe("otro");
   });
 
+  it("traduce la salida y las paradas resueltas; sin ellas no inventa datos", () => {
+    const turno = mapAppointment({
+      ...dto,
+      status: "EN_CAMINO",
+      departedAt: "2026-09-28T22:00:00-03:00",
+      stops: [{ startedAt: "2026-09-28T22:10:00-03:00", endedAt: "2026-09-28T22:40:00-03:00" }],
+    });
+    expect(turno.salidaEn).toBe("2026-09-28T22:00:00-03:00");
+    expect(turno.paradas).toEqual([{ inicio: "2026-09-28T22:10:00-03:00", fin: "2026-09-28T22:40:00-03:00" }]);
+
+    const sinDatos = mapAppointment({ ...dto, departedAt: null });
+    expect(sinDatos).not.toHaveProperty("salidaEn");
+    expect(sinDatos.paradas).toEqual([]);
+  });
+
+  it("toma salida y paradas del resumen, la lectura más reciente, sobre el detalle cacheado", () => {
+    const resumen = { id: dto.id, truck: dto.truck, window: dto.window, status: "EN_CAMINO" as const };
+    const parada = { startedAt: "2026-09-28T22:10:00-03:00", endedAt: "2026-09-28T22:40:00-03:00" };
+    const turno = combinarResumenYDetalle(
+      { ...resumen, departedAt: "2026-09-28T22:00:00-03:00", stops: [parada] },
+      { ...dto, departedAt: null, stops: [] },
+    );
+    expect(turno.salidaEn).toBe("2026-09-28T22:00:00-03:00");
+    expect(turno.paradas).toHaveLength(1);
+    // Una API anterior que no los envía en el resumen deja los del detalle.
+    const anterior = combinarResumenYDetalle(resumen, { ...dto, departedAt: "2026-09-28T21:00:00-03:00", stops: [parada] });
+    expect(anterior.salidaEn).toBe("2026-09-28T21:00:00-03:00");
+    expect(anterior.paradas).toHaveLength(1);
+  });
+
   it("toma el incidente del resumen, la lectura más reciente, sobre el del detalle cacheado", () => {
     const abierto = {
       id: "i1",
