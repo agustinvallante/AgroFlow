@@ -33,6 +33,7 @@ export function TransportistasView() {
   const [mostrarForm, setMostrarForm] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [accionError, setAccionError] = useState<string | null>(null);
+  const [cambiandoEstado, setCambiandoEstado] = useState(false);
   const [form, setForm] = useState(FORM_VACIO);
   /** El mismo formulario sirve para el alta y para corregir un transportista activo. */
   const [editandoId, setEditandoId] = useState<string | null>(null);
@@ -72,12 +73,15 @@ export function TransportistasView() {
     setMostrarForm(false);
   }
 
-  const darDeBaja = async (id: string) => {
+  const guardarEstado = async (id: string, activo: boolean) => {
+    setCambiandoEstado(true);
     setAccionError(null);
     try {
-      await cambiarEstado(id);
+      await cambiarEstado(id, activo);
     } catch (e) {
       setAccionError(e instanceof Error ? e.message : "No se pudo cambiar el estado del transportista.");
+    } finally {
+      setCambiandoEstado(false);
     }
   };
 
@@ -209,13 +213,14 @@ export function TransportistasView() {
                     </span>
                   </td>
                   <td>
-                    {/* La API publica la edición y la inhabilitación de activos, no la reactivación. */}
-                    {t.activo && (
-                      <div className="row-actions">
+                    <div className="row-actions">
+                      {t.activo && (
                         <button className="btn-mini" aria-label={`Editar ${t.nombre}`} onClick={() => abrirEdicion(t)}>Editar</button>
-                        <button className="btn-mini" onClick={() => darDeBaja(t.id)}>Dar de baja</button>
-                      </div>
-                    )}
+                      )}
+                      <button className="btn-mini" disabled={cambiandoEstado} onClick={() => guardarEstado(t.id, !t.activo)}>
+                        {t.activo ? "Dar de baja" : "Reactivar"}
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}

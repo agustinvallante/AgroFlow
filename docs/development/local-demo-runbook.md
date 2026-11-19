@@ -194,6 +194,29 @@ válidos con un aviso, en lugar de mostrarlos como una respuesta vacía.
 El [ensayo de recuperación de #113](dashboard-read-recovery.md) describe cómo
 comprobarlo sin borrar la base de la demo.
 
+## Reactivar un transportista en LocalDemo
+
+En **Transportistas**, elegí **Todos** o **Inactivos** y pulsá **Reactivar**
+en la fila correspondiente. El dashboard consulta el registro actualizado.
+Si estabas filtrando sólo inactivos, cambiá a **Todos** o **Activos** para
+volver a verlo. Se conserva el mismo registro. Para solicitar un turno,
+el transportista debe tener una asociación vigente a un camión activo.
+Si le falta, usá **Asociar camión** con una patente libre.
+
+La baja conserva el registro, su WhatsApp y las referencias históricas.
+Para el voluntario de la presentación, prepará una SQLite dedicada en una
+carpeta privada, usando el procedimiento de [base temporal de ensayo](#base-temporal-de-ensayo).
+Una vez terminado el ensayo y con la API detenida, descartá esa base de
+presentación, incluidos sus auxiliares y cualquier copia que se haya creado.
+Identificá la ruta antes de descartarla para preservar la base del equipo.
+
+El número también puede figurar en la dirección de la conversación, mensajes,
+ejecuciones fallidas de n8n o datos de Evolution. Revisá esas copias por
+separado. El nombre del proyecto Compose por sí solo no aísla los volúmenes,
+porque la configuración trae nombres explícitos. Si hace falta conservar
+la base compartida y retirar sólo los datos de una persona, el procedimiento
+de purga sigue pendiente en [OD-009](../planning/open-decisions.md).
+
 ## Smoke test del contrato
 
 Usá la UI, el chatbot o un cliente HTTP que respete OpenAPI.

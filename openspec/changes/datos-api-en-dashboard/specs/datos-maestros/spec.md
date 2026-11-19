@@ -16,4 +16,6 @@ El dashboard SHALL permitir corregir nombre, DNI y WhatsApp de un transportista 
 
 - **GIVEN** un transportista inactivo
 - **WHEN** el operador ve el listado
-- **THEN** ese transportista no ofrece editar ni reactivar
+- **THEN** ese transportista no ofrece editar
+
+La acción Reactivar de LocalDemo se define en [reactivar-transportistas-localdemo](../../../reactivar-transportistas-localdemo/proposal.md).
