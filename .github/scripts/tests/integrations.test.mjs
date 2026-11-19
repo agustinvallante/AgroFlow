@@ -153,7 +153,8 @@ test('hardcoded business endpoint fails', () => {
 
 test('business tools accept the exported base template and dynamic appointment routes', () => {
   for (const suffix of ['', '/{{ $json.appointmentId }}', '/{{ $json.appointmentId }}/transitions',
-    "/{{ /*n8n-auto-generated-fromAI-override*/ $fromAI('appointmentId', 'ID from lookup', 'string') }}/transitions"]) {
+    "/{{ /*n8n-auto-generated-fromAI-override*/ $fromAI('appointmentId', 'ID from lookup', 'string') }}/transitions",
+    '/{{ $json.appointmentId }}/incidents', '/{{ $json.appointmentId }}/incidents/resolution']) {
     const value = workflow();
     value.nodes[1].parameters.url = '={{ $env.AGROFLOW_API_URL }}/api/v1/appointments' + suffix;
     validateWorkflow(value);
