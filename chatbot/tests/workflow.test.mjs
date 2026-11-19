@@ -34,6 +34,7 @@ class FakeAgroFlowApi {
       openIncident: { id: 'incident-1', ...body, reportedAt: '2026-01-01T09:00:00-03:00' } } };
   }
   resolveIncident(id) { return { statusCode: 200, body: { id, status: 'EN_CAMINO', openIncident: null } }; }
+  transition(id, body) { return { statusCode: 200, body: { id, status: body.newStatus, openIncident: null } }; }
 
   handle(request) {
     const path = request.url.replace(env.AGROFLOW_API_URL, '');
@@ -46,6 +47,11 @@ class FakeAgroFlowApi {
     if (request.method === 'POST' && incident) {
       assert.equal(request.credential, null, `${request.node} uses the anonymous LocalDemo appointment API`);
       return incident[2] ? this.resolveIncident(incident[1], request.body) : this.reportIncident(incident[1], request.body);
+    }
+    const transition = /^\/api\/v1\/appointments\/([^/]+)\/transitions$/.exec(pathname);
+    if (request.method === 'POST' && transition) {
+      assert.equal(request.credential, null, `${request.node} uses the anonymous LocalDemo appointment API`);
+      return this.transition(transition[1], request.body);
     }
     if (request.method === 'GET' && pathname === '/api/v1/farms') {
       assert.equal(request.credential, 'AgroFlow Service Key account', `${request.node} must use the service key`);
@@ -148,8 +154,8 @@ test('a registered sender is persisted, acknowledged, answered by the agent and 
   assert.equal(calls.agent.length, 1);
   assert.equal(calls.agent[0].text, '[SINTÉTICO] Hola, quiero consultar mi turno');
   assert.deepEqual(calls.agent[0].tools.sort(),
-    ['Create Appointment', 'Lookup Appointments By Phone', 'Lookup Farms', 'Report En Camino', 'Report Incident',
-      'Resolve Incident']);
+    ['Create Appointment', 'Lookup Appointments By Phone', 'Lookup Farms', 'Report Arrival', 'Report En Camino',
+      'Report Incident', 'Resolve Incident']);
   assert.deepEqual(calls.evolution, [{ number: '5493815550101@s.whatsapp.net', text: '[SINTÉTICO] Respuesta del agente' }]);
   assert.deepEqual(api.sendStatuses, [{ replyId: 'reply-1', status: 'accepted', providerMessageId: 'FIXTURE-OUT-PROVIDER-1' }]);
   const ingest = result.requests.find(request => request.node === 'Register Inbound Message').body;
@@ -558,7 +564,7 @@ test('the agent supports reporting and resolving problems on the road under the 
   const report = workflow.nodes.find(node => node.name === 'Report Incident').parameters.toolDescription;
   const resolve = workflow.nodes.find(node => node.name === 'Resolve Incident').parameters.toolDescription;
 
-  assert.match(prompt, /You support exactly five intents and nothing else/);
+  assert.match(prompt, /You support exactly six intents and nothing else/);
   assert.match(prompt, /4\. Report a problem on the road/);
   assert.match(prompt, /5\. Report that the problem on the road was solved/);
   assert.doesNotMatch(prompt, /incident reports/, 'incidents are no longer an invented capability');
@@ -575,6 +581,54 @@ test('the agent supports reporting and resolving problems on the road under the 
     assert.match(report, new RegExp(code));
   }
   assert.match(resolve, /NO_OPEN_INCIDENT/);
+});
+
+test('reporting the arrival moves the confirmed appointment to EN_ESPERA with the exact contract body', async () => {
+  const { request, result } = await callToolOnce(new FakeAgroFlowApi(), 'Report Arrival',
+    { appointmentId: 'appointment-1' });
+
+  assert.equal(request.method, 'POST');
+  assert.equal(request.url, 'http://api.test/api/v1/appointments/appointment-1/transitions');
+  assert.equal(request.credential, null);
+  assert.deepEqual(request.body, { newStatus: 'EN_ESPERA' });
+  assert.equal(result.status, 'EN_ESPERA');
+});
+
+test('reporting the departure keeps its EN_CAMINO body', async () => {
+  const { request, result } = await callToolOnce(new FakeAgroFlowApi(), 'Report En Camino',
+    { appointmentId: 'appointment-1' });
+
+  assert.equal(request.url, 'http://api.test/api/v1/appointments/appointment-1/transitions');
+  assert.deepEqual(request.body, { newStatus: 'EN_CAMINO' });
+  assert.equal(result.status, 'EN_CAMINO');
+});
+
+test('an arrival rejected by the API reaches the agent as a problem body with its code, never as success', async () => {
+  const api = new FakeAgroFlowApi();
+  api.transition = () => ({ statusCode: 409, body: { status: 409, code: 'INVALID_TRANSITION' } });
+
+  const { result } = await callToolOnce(api, 'Report Arrival', { appointmentId: 'appointment-1' });
+
+  assert.equal(result.code, 'INVALID_TRANSITION');
+});
+
+test('the agent supports reporting the arrival at the mill under the documented rules', () => {
+  const prompt = workflow.nodes.find(node => node.name === 'AI Agent1').parameters.options.systemMessage;
+  const lookup = workflow.nodes.find(node => node.name === 'Lookup Appointments By Phone').parameters.toolDescription;
+  const arrival = workflow.nodes.find(node => node.name === 'Report Arrival');
+
+  assert.match(prompt, /You support exactly six intents and nothing else/);
+  assert.match(prompt, /6\. Report that the truck arrived at the mill/);
+  assert.match(prompt, /## Reporting the arrival at the mill/);
+  assert.match(prompt, /"Llegué"/);
+  assert.match(prompt, /"ya estoy en el ingenio"/);
+  assert.match(prompt, /If there is no EN_CAMINO appointment, explain that only a trip that is on its way can report its arrival and do not call the arrival tool/);
+  assert.match(prompt, /Registramos su llegada\. Espere el llamado para ingresar\./);
+  assert.match(prompt, /- INVALID_TRANSITION: the appointment cannot move to the requested status \(EN_CAMINO or EN_ESPERA\) from its current state/);
+  assert.match(lookup, /reporting EN_CAMINO, the arrival at the mill, a problem on the road or its resolution/);
+  assert.match(arrival.parameters.toolDescription, /EN_ESPERA/);
+  assert.match(arrival.parameters.toolDescription, /INVALID_TRANSITION/);
+  assert.deepEqual(workflow.connections['Report Arrival'], { ai_tool: [[{ node: 'AI Agent1', type: 'ai_tool', index: 0 }]] });
 });
 
 test('the export is importable: valid JSON shape, positions, unique names and resolvable connections', () => {
